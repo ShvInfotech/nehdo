@@ -50,7 +50,7 @@ const Navbar = () => {
             <nav className={`sticky top-0 z-50 transition-all duration-500 ${scrolled ? "glass shadow-nav py-3" : "bg-surface py-4"}`}>
                 <div className="max-w-[1440px] mx-auto px-4 md:px-8 lg:px-16 flex items-center justify-between gap-4">
                     <Link to="/" className="flex-shrink-0 group">
-                        <img src="/images/nehdo-logo.png" alt="NEHDO" className="h-6 md:h-8 object-contain transition-transform group-hover:scale-105" />
+                        <img src={`${import.meta.env.BASE_URL}images/nehdo-logo.png`} alt="NEHDO" className="h-6 md:h-8 object-contain transition-transform group-hover:scale-105" />
                     </Link>
                     <div className="hidden lg:flex items-center gap-1">
                         {navLinks.map(link => (
@@ -99,7 +99,7 @@ const Navbar = () => {
                         <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 bg-black/40 z-50 lg:hidden" onClick={() => setMobileMenuOpen(false)} />
                         <motion.div initial={{ x: "100%" }} animate={{ x: 0 }} exit={{ x: "100%" }} transition={{ type: "spring", damping: 30, stiffness: 300 }} className="fixed top-0 right-0 bottom-0 w-[300px] bg-white z-50 shadow-2xl lg:hidden">
                             <div className="flex items-center justify-between p-6 border-b border-gray-100">
-                                <img src="/images/nehdo-logo.png" alt="NEHDO" className="h-6 object-contain" />
+                                <img src={`${import.meta.env.BASE_URL}images/nehdo-logo.png`} alt="NEHDO" className="h-6 object-contain" />
                                 <button onClick={() => setMobileMenuOpen(false)} className="p-2 rounded-full hover:bg-gray-100 transition-colors" aria-label="Close menu"><IoCloseOutline size={24} /></button>
                             </div>
                             <div className="flex flex-col py-4">

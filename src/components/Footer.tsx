@@ -61,7 +61,7 @@ const Footer = () => {
                     {/* Brand Column */}
                     <div>
                         <Link to="/" className="inline-block mb-5">
-                            <img src="/images/nehdo-logo.png" alt="NEHDO" className="h-8 md:h-10 object-contain" />
+                            <img src={`${import.meta.env.BASE_URL}images/nehdo-logo.png`} alt="NEHDO" className="h-8 md:h-10 object-contain" />
                         </Link>
                         <p className="text-muted text-sm leading-relaxed max-w-xs mb-6">
                             We have clothes that suit your style and which you're proud to wear. From women to men, designed for everyone.

@@ -48,7 +48,7 @@ const AdminLogin = () => {
                 <div className="sm:mx-auto sm:w-full sm:max-w-md">
                     <div className="flex justify-center mb-6">
                         <div className="w-16 h-16 bg-brand/20 rounded-2xl flex items-center justify-center">
-                            <img src="/images/nehdo-logo.png" alt="NEHDO" className="h-8" onError={(e) => {
+                            <img src={`${import.meta.env.BASE_URL}images/nehdo-logo.png`} alt="NEHDO" className="h-8" onError={(e) => {
                                 (e.target as HTMLImageElement).style.display = 'none';
                                 (e.target as HTMLImageElement).parentElement!.innerHTML = '<span class="text-2xl font-bold text-white">N</span>';
                             }} />

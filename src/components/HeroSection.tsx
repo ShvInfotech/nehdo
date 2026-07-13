@@ -59,7 +59,7 @@ const HeroSection = () => {
     const bgScale = useTransform(scrollYProgress, [0, 1], [1, 1.1]);
 
     const sliderImages = [
-        "/images/hero-model.png",
+        `${import.meta.env.BASE_URL}images/hero-model.png`,
         "https://images.unsplash.com/photo-1483985988355-763728e1935b?auto=format&fit=crop&q=80&w=800",
         "https://images.unsplash.com/photo-1515886657613-9f3515b0c78f?auto=format&fit=crop&q=80&w=800"
     ];
@@ -301,7 +301,7 @@ const HeroSection = () => {
                                     className="bg-white/95 backdrop-blur-xl rounded-2xl shadow-card-hover p-4 w-[160px] border border-white/50"
                                 >
                                     <div className="w-full aspect-square rounded-xl bg-gradient-to-br from-brand-100 to-brand-200 mb-3 overflow-hidden">
-                                        <img src="/images/hero-products.png" alt="Featured product" className="w-full h-full object-cover" />
+                                        <img src={`${import.meta.env.BASE_URL}images/hero-products.png`} alt="Featured product" className="w-full h-full object-cover" />
                                     </div>
                                     <p className="font-heading text-xs font-bold text-gray-800 truncate">Premium Jacket</p>
                                     <div className="flex items-center justify-between mt-1">

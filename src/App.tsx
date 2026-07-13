@@ -26,6 +26,7 @@ const AdminProtectedRoute = lazy(() => import('./components/AdminProtectedRoute'
 const AdminDashboard = lazy(() => import('./pages/admin/AdminDashboard'));
 const AdminProducts = lazy(() => import('./pages/admin/AdminProducts'));
 const AdminCategories = lazy(() => import('./pages/admin/AdminCategories'));
+const AdminBrands = lazy(() => import('./pages/admin/AdminBrands'));
 const AdminOrders = lazy(() => import('./pages/admin/AdminOrders'));
 const AdminCustomers = lazy(() => import('./pages/admin/AdminCustomers'));
 const AdminInventory = lazy(() => import('./pages/admin/AdminInventory'));
@@ -51,7 +52,7 @@ const PageLoader = () => (
 
 function App() {
     return (
-        <BrowserRouter>
+        <BrowserRouter basename="/nehdo">
             <Suspense fallback={<PageLoader />}>
                 <Routes>
                     <Route element={<Layout />}>
@@ -86,6 +87,7 @@ function App() {
                             <Route index element={<AdminDashboard />} />
                             <Route path="products" element={<AdminProducts />} />
                             <Route path="categories" element={<AdminCategories />} />
+                            <Route path="brands" element={<AdminBrands />} />
                             <Route path="orders" element={<AdminOrders />} />
                             <Route path="customers" element={<AdminCustomers />} />
                             <Route path="inventory" element={<AdminInventory />} />

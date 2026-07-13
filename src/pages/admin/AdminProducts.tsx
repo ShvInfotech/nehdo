@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import { IoAddOutline, IoSearchOutline, IoFilterOutline, IoEllipsisVertical, IoCloseOutline, IoCloudUploadOutline, IoTrashOutline, IoImageOutline } from "react-icons/io5";
-import { products } from "../../data/products";
+import { products, brands } from "../../data/products";
 
 const AdminProducts = () => {
     const [isAddModalOpen, setIsAddModalOpen] = useState(false);
@@ -112,7 +112,12 @@ const AdminProducts = () => {
                                         </div>
                                         <div>
                                             <label className="block text-sm font-semibold text-gray-700 mb-2">Brand *</label>
-                                            <input type="text" placeholder="e.g. Zara, H&M, Gucci" className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:border-brand" />
+                                            <select className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:border-brand">
+                                                <option value="">Select Brand</option>
+                                                {brands.map((brand, i) => (
+                                                    <option key={i} value={brand}>{brand}</option>
+                                                ))}
+                                            </select>
                                         </div>
                                         <div>
                                             <label className="block text-sm font-semibold text-gray-700 mb-2">Tags</label>

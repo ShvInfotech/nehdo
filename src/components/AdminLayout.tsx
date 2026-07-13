@@ -16,6 +16,7 @@ const sidebarLinks = [
     { title: "E-Commerce", items: [
         { name: "Products", path: "/admin/products", icon: IoCubeOutline },
         { name: "Categories", path: "/admin/categories", icon: IoLayersOutline },
+        { name: "Brands", path: "/admin/brands", icon: IoPricetagOutline },
         { name: "Orders", path: "/admin/orders", icon: IoCartOutline },
         { name: "Customers", path: "/admin/customers", icon: IoPeopleOutline },
         { name: "Inventory", path: "/admin/inventory", icon: IoStatsChartOutline },
@@ -61,7 +62,7 @@ const AdminLayout = () => {
             <aside className={`fixed lg:static inset-y-0 left-0 w-64 bg-white border-r border-gray-200 z-50 transform transition-transform duration-300 flex flex-col ${sidebarOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0"}`}>
                 <div className="h-16 flex items-center px-6 border-b border-gray-100 flex-shrink-0">
                     <Link to="/" className="flex items-center gap-2">
-                        <img src="/images/nehdo-logo.png" alt="NEHDO" className="h-6" />
+                        <img src={`${import.meta.env.BASE_URL}images/nehdo-logo.png`} alt="NEHDO" className="h-6" />
                         <span className="font-heading font-bold text-xs uppercase tracking-widest text-brand mt-1 border-l pl-2 border-gray-300">Admin</span>
                     </Link>
                 </div>
