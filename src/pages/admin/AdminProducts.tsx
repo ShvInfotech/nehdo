@@ -1,10 +1,12 @@
 import React, { useState } from "react";
 import { IoAddOutline, IoSearchOutline, IoFilterOutline, IoEllipsisVertical, IoCloseOutline, IoCloudUploadOutline, IoTrashOutline, IoImageOutline } from "react-icons/io5";
-import { products, brands } from "../../data/products";
+import { products, brands, categories, subCategories } from "../../data/products";
 
 const AdminProducts = () => {
     const [isAddModalOpen, setIsAddModalOpen] = useState(false);
     const [productList, setProductList] = useState(products);
+    const [selectedCategory, setSelectedCategory] = useState("");
+    const [selectedSubCategory, setSelectedSubCategory] = useState("");
     const [activeTab, setActiveTab] = useState<'general' | 'variants' | 'inventory' | 'shipping' | 'seo'>('general');
 
     const tabs = [
@@ -89,25 +91,33 @@ const AdminProducts = () => {
                                             <p className="text-xs text-gray-400 mt-1">Used for profit margin calculation</p>
                                         </div>
                                         <div>
-                                            <label className="block text-sm font-semibold text-gray-700 mb-2">Category *</label>
-                                            <select className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:border-brand">
-                                                <option value="">Select Category</option>
-                                                <option>T-Shirts</option>
-                                                <option>Shirts</option>
-                                                <option>Jeans</option>
-                                                <option>Jackets</option>
-                                                <option>Dresses</option>
-                                                <option>Accessories</option>
+                                            <label className="block text-sm font-semibold text-gray-700 mb-2">Main Category *</label>
+                                            <select 
+                                                value={selectedCategory}
+                                                onChange={(e) => {
+                                                    setSelectedCategory(e.target.value);
+                                                    setSelectedSubCategory("");
+                                                }}
+                                                className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:border-brand"
+                                            >
+                                                <option value="">Select Main Category</option>
+                                                {categories.filter(c => c !== "All").map((cat, i) => (
+                                                    <option key={i} value={cat}>{cat}</option>
+                                                ))}
                                             </select>
                                         </div>
                                         <div>
                                             <label className="block text-sm font-semibold text-gray-700 mb-2">Sub-Category</label>
-                                            <select className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:border-brand">
-                                                <option value="">Select Sub-Category</option>
-                                                <option>Casual Tees</option>
-                                                <option>Graphic Tees</option>
-                                                <option>Polo Tees</option>
-                                                <option>Henley</option>
+                                            <select 
+                                                value={selectedSubCategory}
+                                                onChange={(e) => setSelectedSubCategory(e.target.value)}
+                                                disabled={!selectedCategory}
+                                                className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:border-brand disabled:opacity-50 disabled:cursor-not-allowed"
+                                            >
+                                                <option value="">{selectedCategory ? "Select Sub-Category" : "Select Main Category First"}</option>
+                                                {selectedCategory && subCategories[selectedCategory]?.map((sub, i) => (
+                                                    <option key={i} value={sub}>{sub}</option>
+                                                ))}
                                             </select>
                                         </div>
                                         <div>

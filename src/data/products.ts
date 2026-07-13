@@ -39,6 +39,13 @@ export const products: Product[] = [
 ];
 
 export const categories = ["All", "Men", "Women", "Kids", "Shoes", "Bags"];
+export const subCategories: Record<string, string[]> = {
+    "Men": ["T-Shirts", "Shirts", "Jeans", "Jackets", "Suits"],
+    "Women": ["Dresses", "Tops & Tees", "Blazers", "Coats", "Skirts"],
+    "Kids": ["Hoodies", "Overalls", "T-Shirts", "Pants"],
+    "Shoes": ["Sneakers", "Heels", "Runners", "Boots"],
+    "Bags": ["Handbags", "Crossbody", "Backpacks", "Wallets"]
+};
 export const brands = [...new Set(products.map(p => p.brand))];
 
 export const getProductById = (id: number) => products.find(p => p.id === id);
