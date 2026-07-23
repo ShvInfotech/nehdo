@@ -1,0 +1,245 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Google & Facebook Login</title>
+
+    <style>
+
+        *{
+            margin:0;
+            padding:0;
+            box-sizing:border-box;
+            font-family:Arial, Helvetica, sans-serif;
+        }
+
+        body{
+            display:flex;
+            justify-content:center;
+            align-items:center;
+            height:100vh;
+            background:#f5f5f5;
+        }
+
+        .card{
+            width:380px;
+            background:#fff;
+            padding:20px;
+            border-radius:10px;
+            box-shadow:0 0 10px rgba(0,0,0,.2);
+            text-align:center;
+        }
+
+        button{
+            width:100%;
+            padding:12px;
+            margin-top:10px;
+            border:none;
+            border-radius:5px;
+            cursor:pointer;
+            color:#fff;
+            font-size:16px;
+        }
+
+        #googleLogin{
+            background:#4285F4;
+        }
+
+        #facebookLogin{
+            background:#1877F2;
+        }
+
+        img{
+            width:100px;
+            height:100px;
+            border-radius:50%;
+            margin-top:20px;
+        }
+
+        #user{
+            margin-top:20px;
+        }
+
+    </style>
+
+</head>
+<body>
+
+<div class="card">
+
+    <h2>Firebase Social Login</h2>
+
+    <button id="googleLogin">
+        Login With Google
+    </button>
+
+    <button id="facebookLogin">
+        Login With Facebook
+    </button>
+
+    <div id="user"></div>
+
+    <button id="getFcmToken" style="background:#ff9800">
+    Get FCM Token
+</button>
+
+<textarea
+id="fcmToken"
+rows="8"
+style="width:100%;margin-top:15px;padding:10px;"
+placeholder="FCM Token Here">
+</textarea>
+</div>
+
+
+<script type="module">
+
+import { initializeApp } from "https://www.gstatic.com/firebasejs/12.0.0/firebase-app.js";
+import {getMessaging,getToken} from "https://www.gstatic.com/firebasejs/12.0.0/firebase-messaging.js";
+const registration = await navigator.serviceWorker.register(
+    "./index.js"
+);
+import {
+    getAuth,
+    GoogleAuthProvider,
+    FacebookAuthProvider,
+    signInWithPopup
+} from "https://www.gstatic.com/firebasejs/12.0.0/firebase-auth.js";
+
+
+const firebaseConfig = {
+
+    apiKey: "AIzaSyDeH8SssDLeu5Ggbj8toClBq2zGE-6Ku-c",
+    authDomain: "nehdo-23bd4.firebaseapp.com",
+    projectId: "nehdo-23bd4",
+    storageBucket: "nehdo-23bd4.firebasestorage.app",
+    messagingSenderId: "784435496062",
+    appId: "1:784435496062:web:c50536275ff566ea93442f"
+
+};
+
+const app = initializeApp(firebaseConfig);
+
+const auth = getAuth(app);
+const messaging = getMessaging(app);
+const googleProvider = new GoogleAuthProvider();
+
+const facebookProvider = new FacebookAuthProvider();
+
+const vapidKey = "BJ9rA0mIYGOm2eoQIY5w3CX3iUf_jf8Hl_TU4BZYEtWCW6NSdITn5CRY0Bz25Fa1CYyfbTdt1xWEh7ylwru0BiY";
+// const vapidKey = "i-D9KCFZFe2EEV3zv_twlKAmLc9pAL0dTXjFC9Fusak"
+// ---------------- GOOGLE LOGIN ----------------
+
+document.getElementById("googleLogin").addEventListener("click", async () => {
+
+    try {
+
+        const result = await signInWithPopup(auth, googleProvider);
+
+        const user = result.user;
+
+        const idToken = await user.getIdToken();
+
+        console.log("========== GOOGLE ==========");
+        console.log("ID Token :", idToken);
+        console.log("UID :", user.uid);
+        console.log("Name :", user.displayName);
+        console.log("Email :", user.email);
+        console.log("Photo :", user.photoURL);
+
+        document.getElementById("user").innerHTML = `
+            <img src="${user.photoURL}">
+            <h3>${user.displayName}</h3>
+            <p>${user.email}</p>
+        `;
+
+    } catch (err) {
+
+        console.log(err);
+
+    }
+
+});
+
+
+// ---------------- FACEBOOK LOGIN ----------------
+
+document.getElementById("facebookLogin").addEventListener("click", async () => {
+
+    try {
+
+        const result = await signInWithPopup(auth, facebookProvider);
+
+        const user = result.user;
+
+        const idToken = await user.getIdToken();
+
+        console.log("========== FACEBOOK ==========");
+        console.log("ID Token :", idToken);
+        console.log("UID :", user.uid);
+        console.log("Name :", user.displayName);
+        console.log("Email :", user.email);
+        console.log("Photo :", user.photoURL);
+
+        document.getElementById("user").innerHTML = `
+            <img src="${user.photoURL}">
+            <h3>${user.displayName}</h3>
+            <p>${user.email}</p>
+        `;
+
+    } catch (err) {
+
+        console.log(err);
+
+    }
+
+});
+
+
+
+
+document.getElementById("getFcmToken").addEventListener("click", async () => {
+
+    try {
+
+        const permission = await Notification.requestPermission();
+
+        if (permission !== "granted") {
+
+            alert("Notification Permission Denied");
+
+            return;
+
+        }
+
+        const token = await getToken(messaging, {
+            vapidKey: vapidKey,
+            serviceWorkerRegistration: registration
+        });
+
+        if (token) {
+
+            console.log("FCM Token");
+
+            console.log(token);
+
+            document.getElementById("fcmToken").value = token;
+
+        } else {
+
+            alert("No Registration Token");
+
+        }
+
+    } catch (err) {
+
+        console.log(err);
+
+    }
+
+});
+</script>
+
+</body>
+</html>
