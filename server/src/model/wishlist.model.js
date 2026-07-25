@@ -1,6 +1,6 @@
 const mongoose = require('mongoose')
 
-const ratingSchema = mongoose.Schema({
+const wishlistSchema = mongoose.Schema({
     userId: {
         type: mongoose.Schema.Types.ObjectId,
         ref: 'users'
@@ -8,17 +8,6 @@ const ratingSchema = mongoose.Schema({
     productId: {
         type: mongoose.Schema.Types.ObjectId,
         ref: 'products'
-    },
-    rating: {
-        type: Number,
-        max: 5,
-        min: 0,
-        required: true
-    },
-    review: {
-        type: String,
-        trim: true,
-        default: ''
     }
 },
     {
@@ -27,5 +16,4 @@ const ratingSchema = mongoose.Schema({
     }
 )
 
-
-module.exports = mongoose.model('ratings', ratingSchema)
+module.exports = mongoose.model('wishlists',wishlistSchema)
