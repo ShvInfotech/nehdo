@@ -218,6 +218,31 @@ const userEligibility = checkUserCouponEligibility(coupon)
 }
 
 
+exports.FindPriceinProduct = (products) => {
+  let total = 0;
+
+  products.forEach((item) => {
+    const variantName = `${item.color}/${item.size}`;
+
+    const matchedVariant = item.variant?.variant?.find(
+      (v) => v.name === variantName
+    );
+
+    if (matchedVariant) {
+      total += matchedVariant.price * item.quantity;
+    } else {
+      // fallback: product salePrice અથવા price
+      const fallbackPrice =
+        item.product?.salePrice || item.product?.price || 0;
+
+      total += fallbackPrice * item.quantity;
+    }
+  });
+
+  return total;
+};
+
+
 
 
 

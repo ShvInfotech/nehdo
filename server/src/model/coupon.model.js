@@ -37,11 +37,11 @@ const couponSchema = mongoose.Schema({
         type: Number,
         default: 1
     },
-    StartDate: {
+    startDate: {
         type: Date,
         default: null
     },
-    EndDate: {
+    endDate: {
         type: Date,
         default: null
     },

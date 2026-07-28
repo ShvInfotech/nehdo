@@ -18,7 +18,10 @@ exports.AddCategory = async (req, res, next) => {
         let category = await categoryModel.find()
 
         category = await categoryModel.create({ ...req.body, logo: categorylogo, displayOrder: category.length + 1 })
-
+       
+        if (category.logo) {
+            category.logo = `http://${process.env.HOST}:${process.env.PORT}${category.logo}`;
+        }
         return res.status(200).json({ success: true, message: 'category added successfully', category })
 
 
@@ -30,13 +33,22 @@ exports.AddCategory = async (req, res, next) => {
 
 exports.GetCategory = async (req, res, next) => {
     try {
-        const categories = await categoryModel.find().select({ createdAt: 0, updatedAt: 0 })
 
-        return res.status(200).json({ success: true, message: 'categories get successfully', categories })
+        const categories = await categoryModel.aggregate([
+            {$project: {createdAt: 0,updatedAt: 0,}},
+            {$addFields: {logo: {$cond: [{$or: [{ $eq: ["$logo", null] },{ $eq: ["$logo", ""] }]},"",{$concat: [`http://${process.env.HOST}:${process.env.PORT}`,"$logo"]}]}}}
+        ]);
+
+        return res.status(200).json({
+            success: true,
+            message: "categories get successfully",
+            categories
+        });
+
     } catch (error) {
-        return next(error)
+        return next(error);
     }
-}
+};
 
 
 exports.Updatecategory = async (req, res, next) => {
@@ -63,6 +75,9 @@ exports.Updatecategory = async (req, res, next) => {
             await categoryModel.findOneAndUpdate({ displayOrder: req.body.displayOrder }, { displayOrder: category.displayOrder }, { returnDocument: 'after' })
         }
         category = await categoryModel.findByIdAndUpdate(id, { ...req.body, logo: categorylogo }, { returnDocument: 'after' }).select({ createdAt: 0, updatedAt: 0 })
+        if (category.logo) {
+            category.logo = `http://${process.env.HOST}:${process.env.PORT}${category.logo}`;
+        }
         return res.status(200).json({ success: true, message: 'category update successfully', category })
 
     } catch (error) {

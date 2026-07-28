@@ -46,7 +46,7 @@ exports.DeleteWishlist = async(req,res,next)=>{
         if(wishlist){
             return res.status(200).json({success:true,message:"product remove from wishlist"})
         }else{
-            return next(CustomeError(404,'product not found'))
+            return next(CustomeError(404,'wishlist not found'))
         }
     } catch (error) {
         return next(error)

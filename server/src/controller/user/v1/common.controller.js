@@ -4,8 +4,8 @@ const couponModel = require("../../../model/coupon.model")
 const cartModel = require("../../../model/cart.model")
 const addressModel = require('../../../model/address.model')
 const productModel = require("../../../model/product.model")
-const { GetProductCouponApplay, GetCartProductCouponApplay, GetCartProductShipingcharg } = require("../../../helper/aggretionpipeline")
-const { PercentageCoupenapplay, CartDiscountCoupenapplay } = require("../../../helper/helper")
+const { GetProductCouponApplay, GetCartProductCouponApplay, GetCartProductShipingcharg, GetCartProductPaymentOrder } = require("../../../helper/aggretionpipeline")
+const { PercentageCoupenapplay, CartDiscountCoupenapplay, FindPriceinProduct } = require("../../../helper/helper")
 const { getshippingcharg } = require("../../../services/shiproketapis")
 
 
@@ -25,6 +25,8 @@ exports.ApplyCoupon = async (req, res, next) => {
         if (!coupon) {
             return next(CustomeError(409, 'invalid coupon'))
         }
+
+
 
         if (coupon.startDate !== null && coupon.startDate > Date.now()) {
             return next(CustomeError(409, 'Coupon is not active yet.'));
@@ -98,16 +100,65 @@ exports.CheckShiping = async (req, res, next) => {
         }
 
 
-        const weight = products.reduce((total, product) => total + (product.shipping?.weight || 0),0);
-          const data = await getshippingcharg(address.postalCode,0,weight)
-         
-         if(data.status === 400){
-            return res.status(data.status).json({success:false,message:data.message})
-         }
-const bestCourier = data.data.available_courier_companies.reduce((best, current) =>
-  current.rate < best.rate ? current : best
-);
-         return res.status(200).json({success:true,message:'get charge',shipping:bestCourier.rate,estimated_delivery_days:bestCourier.estimated_delivery_days,courier_name:bestCourier.courier_name})
+        const weight = products.reduce((total, product) => total + (product.shipping?.weight || 0), 0);
+        const trakingdata = {
+            pincode: address.postalCode,
+            weight,
+            cod: 0,
+            length: products[0].shipping.dimensions.length,
+            breadth: products[0].shipping.dimensions.width,
+            height: products[0].shipping.dimensions.height
+        }
+        const data = await getshippingcharg(trakingdata)
+        if (data.status === 400 || data.status === 404) {
+            return res.status(data.status).json({ success: false, message: data.message })
+        }
+        const bestCourier = data.data.available_courier_companies.reduce((best, current) =>
+            current.rate < best.rate ? current : best
+        );
+        console.log(bestCourier)
+        return res.status(200).json({ success: true, message: 'get charge', shipping: bestCourier.rate, estimated_delivery_days: bestCourier.estimated_delivery_days, courier_name: bestCourier.courier_name, id: bestCourier.courier_company_id })
+
+    } catch (error) {
+        return next(error)
+    }
+}
+
+
+
+exports.PaymentOrder = async (req, res, next) => {
+    try {
+
+        if (!req.body?.cartIds && !req.body?.cartIds.length) {
+            return next(CustomeError(422, 'cart id required'))
+        }
+        const discountData = req.body?.discountData || null
+        const courierPatner = req.body.courierPatner || null
+        // const carts = await cartModel.find({_id: { $in: req.body.cartIds },userId:req.user._id});
+        const products = await cartModel.aggregate(GetCartProductPaymentOrder(req.body.cartIds));
+        let totalprice = FindPriceinProduct(products)
+        if (courierPatner) {
+            totalprice += courierPatner.shipping
+        }
+        if (discountData) {
+            totalprice -= discountData.discount
+        }
+
+        const options = {
+            amount: Math.round(totalprice * 100), // paise
+            currency: 'INR',
+            receipt: `rcpt_${Date.now()}`,
+            notes: {
+                userId: req.user._id,
+                cartIds: req.body.cartIds,
+                discountData: discountData,
+                courierPatner: courierPatner
+            }
+        };
+
+
+        return res.json(options)
+
 
     } catch (error) {
         return next(error)

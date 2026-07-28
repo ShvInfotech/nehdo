@@ -13,8 +13,8 @@ const shippingSchema = mongoose.Schema({
     },
     weight: {
         type: Number,
-        min:1,
-        default: 1
+        min:0.1,
+        default: 0.1
     },
     dimensions: {
         type: {

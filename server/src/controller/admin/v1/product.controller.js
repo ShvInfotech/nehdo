@@ -4,6 +4,9 @@ const productModel = require('../../../model/product.model')
 const productVariantModel = require('../../../model/productvariant.model')
 const productInventoryModel = require('../../../model/productinventory.model')
 const productShippingModel = require('../../../model/productshipping.model')
+const categoryModel = require('../../../model/category.model')
+const subcategoryModel = require('../../../model/subcategory.model')
+const brandModel = require('../../../model/brand.model')
 const { generateSKU, generateBarcode, generateSlug, DeleteImage } = require('../../../helper/helper')
 const { getproductspipeline, getproductslugpipeline } = require('../../../helper/aggretionpipeline')
 const { i } = require('framer-motion/client')
@@ -62,6 +65,21 @@ exports.AddProduct = async (req, res, next) => {
             return next(CustomeError(409, 'product image is required'))
         }
 
+        const category = await categoryModel.findById(req.body.categoryId)
+        if (!category) {
+            return next(CustomeError(404, 'category not found'))
+        }
+
+        const subcategory = await subcategoryModel.findById(req.body.subcategoryId)
+        if (!subcategory) {
+            return next(CustomeError(404, 'subcategory not found'))
+        }
+
+        const brand = await brandModel.findById(req.body.brandId)
+        if (!brand) {
+            return next(CustomeError(404, 'brand not found'))
+        }
+
         const productImage = []
         if (req.files?.length) {
             req.files?.forEach(file => {
@@ -71,7 +89,7 @@ exports.AddProduct = async (req, res, next) => {
         }
 
         const tags = req.body.tags ? req.body.tags.split(",").map(item => item.trim()) : [];
-
+        console.log(typeof req.body.flags)
         const productData = {
             ...req.body,
             sku: generateSKU(),
@@ -79,7 +97,7 @@ exports.AddProduct = async (req, res, next) => {
             tags,
             productImage,
             slug: generateSlug(req.body.name),
-            flags: JSON.parse(req.body.flags),
+            flags: typeof req.body.flags === "string" ? JSON.parse(req.body.flags) : req.body.flags,
         }
 
         const product = await productModel.create(productData)
@@ -98,12 +116,12 @@ exports.AddProduct = async (req, res, next) => {
         }
 
         if (req.body?.size) {
-            const size = JSON.parse(req.body?.size)
+            const size = typeof req.body.size === "string" ? JSON.parse(req.body?.size) : req.body?.size
             variantData.size = size || []
         }
 
         if (req.body?.colors) {
-            const colorOptions = JSON.parse(req.body?.colors)
+            const colorOptions = typeof req.body.colors === "string" ? JSON.parse(req.body?.colors) : req.body?.colors
 
             variantData.colorOptions = colorOptions || []
         }
@@ -113,8 +131,8 @@ exports.AddProduct = async (req, res, next) => {
         }
 
         if (req.body?.variant && req.body?.variant.length) {
-            const variant = JSON.parse(req.body?.variant)
-            console.log(typeof variant)
+            const variant = typeof req.body.variant === "string" ? JSON.parse(req.body?.variant) : req.body?.variant
+
             variant.forEach((v, i) => {
                 v.sku = `${product.sku}-${i + 1}`
                 variantData.variant.push(v)
@@ -122,7 +140,7 @@ exports.AddProduct = async (req, res, next) => {
         }
 
 
-        const v = await productVariantModel.create(variantData)
+        const variant = await productVariantModel.create(variantData)
 
 
         const inventoryData = {
@@ -154,13 +172,13 @@ exports.AddProduct = async (req, res, next) => {
             inventoryData.backorders = true
         }
 
-        const i = await productInventoryModel.create(inventoryData)
+        const inventory = await productInventoryModel.create(inventoryData)
 
 
         const shippingData = {
             productId: product._id,
             shipping: true,
-            weight: 1,
+            weight: 0.1,
             dimensions: {},
             HSCode: ''
         }
@@ -174,16 +192,17 @@ exports.AddProduct = async (req, res, next) => {
         }
 
         if (req.body?.dimensions) {
-            shippingData.dimensions = req.body?.dimensions
+            const dimensions = typeof req.body.dimensions === "string" ? JSON.parse(req.body.dimensions) : req.body.dimensions;
+            shippingData.dimensions = dimensions
         }
 
         if (req.body?.HSCode) {
             shippingData.HSCode = req.body?.HSCode
         }
 
-        const s = await productShippingModel.create(shippingData)
+        const shipping = await productShippingModel.create(shippingData)
 
-        return res.status(200).json({ success: true, message: 'peoduct added successfully', product, v, i, s })
+        return res.status(200).json({ success: true, message: 'peoduct added successfully', productData: { product, inventory, variant, shipping } })
 
 
     } catch (error) {
@@ -203,6 +222,28 @@ exports.GetProducts = async (req, res, next) => {
     }
 }
 
+
+exports.EditProducts = async (req, res, next) => {
+    try {
+        const id = req.params.id
+        const product = await productModel.findById(id)
+        if (product.productImage.length) {
+            product.productImage = product.productImage.map(
+                image => `http://${process.env.HOST}:${process.env.PORT}${image}`
+            );
+        }
+        if (!product) {
+            return next(CustomeError(404, "product not found"))
+        }
+        const variant = await productVariantModel.findOne({ productId: product._id })
+        const inventory = await productInventoryModel.findOne({ productId: product._id })
+        const shipping = await productShippingModel.findOne({ productId: product._id })
+
+        return res.status(200).json({ success: true, message: 'get product info', product, variant, inventory, shipping })
+    } catch (error) {
+        return next(error)
+    }
+}
 
 exports.UpdateProduct = async (req, res, next) => {
     try {
@@ -257,11 +298,8 @@ exports.UpdateProduct = async (req, res, next) => {
         }
 
         if (req.body?.flags) {
-            productData.flags = JSON.parse(req.body?.flags)
-        }
-
-        if (req.body?.flags) {
-            productData.flags = JSON.parse(req.body?.flags)
+            const flags = typeof req.body.flags === "string" ? JSON.parse(req.body?.flags) : req.body?.flags
+            productData.flags = flags
         }
 
         if (req.body?.metaTitle) {
@@ -369,7 +407,7 @@ exports.UpdateProduct = async (req, res, next) => {
             shippingData.shipping = false
         }
 
-        if (req.body?.weight && req.body?.weight > 1) {
+        if (req.body?.weight && req.body?.weight >= 0.1) {
             shippingData.weight = req.body?.weight
         }
 
@@ -386,7 +424,7 @@ exports.UpdateProduct = async (req, res, next) => {
         const variant = await productVariantModel.findByIdAndUpdate(variantData._id, variantData, { returnDocument: 'after' })
         const inventory = await productInventoryModel.findByIdAndUpdate(inventoryData._id, inventoryData, { returnDocument: 'after' })
         const shhiping = await productShippingModel.findByIdAndUpdate(shippingData._id, shippingData, { returnDocument: 'after' })
-        return res.status(200).json({success:true,message:"product update successfully"})
+        return res.status(200).json({ success: true, message: "product update successfully" })
     } catch (error) {
         return next(error)
     }
@@ -405,3 +443,8 @@ exports.GetProductUsingSlug = async (req, res, next) => {
         return next(error)
     }
 }
+
+
+
+
+// [{"name": "White/XS","price": 400,"stock": 20},{"name": "White/S","price": 400,"stock": 20},{"name": "Black/XS","price": 400,"stock": 20},{"name": "Black/S","price": 400,"stock": 20}]

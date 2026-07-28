@@ -1,6 +1,6 @@
 const axios = require("axios");
 
-exports.getshippingcharg = async (pincode, cod, weight) => {
+exports.getshippingcharg = async (data) => {
 
     const pickupPincode = process.env.PICKUP_PINCODE;
 
@@ -10,12 +10,12 @@ exports.getshippingcharg = async (pincode, cod, weight) => {
     const response = await axios.get(url, {
         params: {
             pickup_postcode: pickupPincode,
-            delivery_postcode: pincode,
-            weight: weight,
-            cod: cod,
-            length: 20,
-            breadth: 15,
-            height: 2
+            delivery_postcode: data.pincode,
+            weight: data.weight,
+            cod: data.cod,
+            length: data.length,
+            breadth: data.breadth,
+            height: data.height
         },
         headers: {
             Authorization: `Bearer ${process.env.SHIPROCKET_TOKEN}`

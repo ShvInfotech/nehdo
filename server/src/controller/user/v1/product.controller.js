@@ -2,12 +2,14 @@
 const { default: mongoose } = require("mongoose");
 const { userGetProductpipeline, userGetSingalsProductpipeline, userGetSingalsProductRatingpipeline } = require("../../../helper/aggretionpipeline");
 const productModel = require("../../../model/product.model");
+const productVariantModel = require('../../../model/productvariant.model')
+
 const ratingModel = require('../../../model/rating.model')
 const { CustomeError } = require("../../../middleware/globelError");
 
 exports.AllProduct = async (req, res, next) => {
     try {
-
+        const userId = req.body?.userId || null
         const currantpage = Number(req.query.page) || 1;
         const limit = Number(req.query.limit) || 10;
 
@@ -21,7 +23,8 @@ exports.AllProduct = async (req, res, next) => {
                 maxPrice: req.query.maxPrice,
                 rating: req.query.rating,
                 page:currantpage,
-                limit
+                limit,
+                userId
             })
         );
 
@@ -55,8 +58,9 @@ exports.GetSingalProduct = async (req, res, next) => {
         }
 
         const product = await productModel.aggregate(userGetSingalsProductpipeline(id))
+        const Variant = await productVariantModel.findOne({productId:product[0]._id})
         const reviews = await ratingModel.aggregate(userGetSingalsProductRatingpipeline(id))
-        return res.status(200).json({success:true,message:"get product",product,reviews})
+        return res.status(200).json({success:true,message:"get product",product,Variant,reviews})
 
 
     } catch (error) {

@@ -5,9 +5,12 @@ const bcrypt = require('bcrypt')
 const validator = require("validator");
 const firebaseadmin = require("../../../config/firebase");
 const { getAuth } = require("firebase-admin/auth");
-const  mongoose = require("mongoose");
+const mongoose = require("mongoose");
 const { DeleteImage } = require("../../../helper/helper");
-
+const jwt = require('jsonwebtoken');
+const sendEmail = require("../../../config/nodemailer.confing");
+const { ForgetPasswordMail } = require("../../../helper/emailTemplate");
+const addressModel = require("../../../model/address.model");
 
 exports.UserRegister = async (req, res, next) => {
     try {
@@ -48,7 +51,14 @@ exports.UserRegister = async (req, res, next) => {
         const hashToken = generatehashToken(accessToken)
 
         user = await userModel.findByIdAndUpdate(user._id, { $addToSet: { accessToken: hashToken, deviceToken: req.body.deviceToken } }).select(['name', 'email', 'phone', 'address', 'role', 'profile'])
-        return res.status(200).json({ success: true, message: 'user registered  successfully', user, accesstoken: accessToken })
+        if (user.profile !== "") {
+            user.profile = `http://${process.env.HOST}:${process.env.PORT}${user.profile}`;
+        }
+
+        const address = await addressModel.find({ userId: user._id })
+        const userData = user.toObject();
+        userData.address = address;
+        return res.status(200).json({ success: true, message: 'user registered  successfully', user:userData, accesstoken: accessToken })
     } catch (error) {
 
         return next(error)
@@ -58,7 +68,7 @@ exports.UserRegister = async (req, res, next) => {
 
 exports.UserLogin = async (req, res, next) => {
     try {
-        
+
         const { email, password } = req.body || {}
 
 
@@ -71,17 +81,17 @@ exports.UserLogin = async (req, res, next) => {
                 message: "Invalid Email"
             });
         }
-        
+
         if (!password) {
             return next(CustomeError(422, "password is required"))
         }
-        
-       
+
+
         let user = await userModel.findOne({ email: email })
         if (!user) {
             return next(CustomeError(404, "user not found"))
         }
-        
+
         const hashpassword = await bcrypt.compare(password, user.password)
 
         if (!hashpassword) {
@@ -91,8 +101,16 @@ exports.UserLogin = async (req, res, next) => {
         const accessToken = generateJwtToken(user)
         const hashToken = generatehashToken(accessToken)
 
-        user = await userModel.findByIdAndUpdate(user._id, { $addToSet: { accessToken: hashToken, deviceToken: req.body.deviceToken } }).select(['name', 'email', 'phone', 'address', 'role', 'profile'])
-        return res.status(200).json({ success: true, message: 'user login successfully', user, accesstoken: accessToken })
+        user = await userModel.findByIdAndUpdate(user._id, { $addToSet: { accessToken: hashToken, deviceToken: req.body.deviceToken } }).select(['name', 'email', 'phone', 'role', 'profile'])
+        if (user.profile) {
+            user.profile = `http://${process.env.HOST}:${process.env.PORT}${user.profile}`;
+        }
+
+        const address = await addressModel.find({ userId: user._id })
+        const userData = user.toObject();
+        userData.address = address;
+        
+        return res.status(200).json({ success: true, message: 'user login successfully', user: userData, accesstoken: accessToken })
     } catch (error) {
         return next(error)
     }
@@ -125,8 +143,13 @@ exports.GoogelLogin = async (req, res, next) => {
         const accessToken = generateJwtToken(user)
         const hashToken = generatehashToken(accessToken)
 
-        user = await userModel.findByIdAndUpdate(user._id, { $addToSet: { accessToken: hashToken, deviceToken: req.body.deviceToken } }).select(['name', 'email', 'phone', 'address', 'role', 'profile'])
-        return res.status(200).json({ success: true, message: 'user login successfully', user, accesstoken: accessToken })
+        user = await userModel.findByIdAndUpdate(user._id, { $addToSet: { accessToken: hashToken, deviceToken: req.body.deviceToken } }).select(['name', 'email', 'phone', 'role', 'profile'])
+       
+   const address = await addressModel.find({ userId: user._id })
+        const userData = user.toObject();
+        userData.address = address;
+
+        return res.status(200).json({ success: true, message: 'user login successfully', user:userData, accesstoken: accessToken })
     } catch (error) {
         return next(error)
     }
@@ -161,23 +184,100 @@ exports.UpdateUserProfile = async (req, res, next) => {
         }
 
 
-        if (req.body?.address) {
-            const address = user.address
-            address.push(req.body.address.trim())
-            UpdateData.address = address
+        user = await userModel.findByIdAndUpdate(id, UpdateData, { returnDocument: 'after' }).select(['name', 'email', 'phone','role', 'profile'])
+
+
+        if (user.profile !== "") {
+            user.profile = `http://${process.env.HOST}:${process.env.PORT}${user.profile}`;
         }
 
-        if (req.body?.addressdata) {
-            const updateAddress = JSON.parse(req.body.addressdata)
-            let setaddress = user.address[updateAddress.index] = updateAddress.value
-            UpdateData.address = user.address
-        }
-        user = await userModel.findByIdAndUpdate(id, UpdateData, { returnDocument: 'after' }).select(['name', 'email', 'phone', 'address', 'role', 'profile'])
-        return res.status(200).json({ success: true, message: "user profile update successfully", user })
+ const address = await addressModel.find({ userId: user._id })
+        const userData = user.toObject();
+        userData.address = address;
+        return res.status(200).json({ success: true, message: "user profile update successfully", user:userData })
     } catch (error) {
         return next(error)
     }
 }
+
+exports.ForgotPassword = async (req, res, next) => {
+    try {
+        if (!req.body?.email) {
+            return next(CustomeError(422, "email is required"))
+        }
+
+        const user = await userModel.findOne({ email: req.body.email })
+        if (!user) {
+            return next(CustomeError(404, "user not found"))
+        }
+
+        let token = jwt.sign({ userId: user._id }, process.env.PASSWORD_JWT_SECRET, { expiresIn: "10m" })
+        token = `http://${process.env.HOST}:${process.env.PORT}/user/api/v1/auth/reset-password/${token}`
+        sendEmail(ForgetPasswordMail(user.email, user.name, token))
+
+
+        return res.status(200).json({ success: true, message: "reset pssword link send your register email" })
+
+    } catch (error) {
+        return next(error)
+    }
+}
+
+exports.ResetPasswordpage = async (req, res, next) => {
+    try {
+        const token = req.params.token
+        res.render('reset-password', { token, message: "", type: "" })
+    } catch (error) {
+        return next(error)
+    }
+}
+
+
+exports.ResetPassword = async (req, res, next) => {
+
+    try {
+
+        const token = req.params.token;
+        const { password } = req.body;
+
+        const decoded = jwt.verify(token, process.env.PASSWORD_JWT_SECRET);
+
+        const userId = decoded.userId;
+
+        // 2. hash password
+        const hashPassword = await bcrypt.hash(password, 10);
+
+        await userModel.findByIdAndUpdate(userId, { password: hashPassword, accessToken: [] });
+        return res.render("reset-password", {
+            token,
+            message: "Password updated successfully",
+            type: "success"
+        });
+
+
+
+    } catch (error) {
+        console.log(error)
+        if (error.name === "TokenExpiredError") {
+            return res.render("reset-password", {
+                token: null,
+                message: "Your reset password link has expired. Please request a new one.",
+                type: "expired"
+            });
+        }
+
+        // ❌ INVALID TOKEN
+        if (error.name === "JsonWebTokenError") {
+            return res.render("reset-password", {
+                token: null,
+                message: "Invalid reset password link.",
+                type: "error"
+            });
+        }
+        return next(error);
+    }
+};
+
 
 
 

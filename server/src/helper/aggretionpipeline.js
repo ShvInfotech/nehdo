@@ -31,7 +31,6 @@ exports.getproductspipeline = () => {
                 preserveNullAndEmptyArrays: true
             }
         },
-
         {
             $lookup: {
                 from: "brands",
@@ -66,18 +65,31 @@ exports.getproductspipeline = () => {
                 price: 1,
                 salePrice: 1,
                 sku: 1,
-                productImage: 1,
-                // productImage: { $ifNull: [{ $arrayElemAt: ["$productImage", 0] }, ""] },
                 status: 1,
                 slug: 1,
                 stock: "$inventory.stock",
                 category: "$category.name",
                 subcategory: "$subcategory.name",
-                brand: "$brand.name"
+                brand: "$brand.name",
+
+                productImage: {
+                    $cond: [
+                        {
+                            $gt: [{ $size: "$productImage" }, 0]
+                        },
+                        {
+                            $concat: [
+                                `http://${process.env.HOST}:${process.env.PORT}`,
+                                { $arrayElemAt: ["$productImage", 0] }
+                            ]
+                        },
+                        ""
+                    ]
+                }
             }
         }
     ];
-}
+};
 
 
 exports.getproductslugpipeline = (slug) => {
@@ -185,6 +197,7 @@ exports.getproductslugpipeline = (slug) => {
 
 exports.userGetProductpipeline = ({
     search = "",
+    userId = null,
     categoryId = "",
     subcategoryId = "",
     brandId = "",
@@ -320,6 +333,101 @@ exports.userGetProductpipeline = ({
         }
     });
 
+    if (userId) {
+    pipeline.push({
+        $lookup: {
+            from: "wishlists",
+            let: {
+                productId: "$_id"
+            },
+            pipeline: [
+                {
+                    $match: {
+                        $expr: {
+                            $and: [
+                                {
+                                    $eq: ["$productId", "$$productId"]
+                                },
+                                {
+                                    $eq: [
+                                        "$userId",
+                                        new mongoose.Types.ObjectId(userId)
+                                    ]
+                                }
+                            ]
+                        }
+                    }
+                }
+            ],
+            as: "wishlist"
+        }
+    });
+
+    pipeline.push({
+        $addFields: {
+            wishlist: {
+                $gt: [
+                    {
+                        $size: "$wishlist"
+                    },
+                    0
+                ]
+            }
+        }
+    });
+} else {
+    pipeline.push({
+        $addFields: {
+            wishlist: false
+        }
+    });
+}
+
+//====================================
+// Cart
+//====================================
+
+if (userId) {
+    pipeline.push({
+        $lookup: {
+            from: "carts",
+            let: {
+                productId: "$_id"
+            },
+            pipeline: [
+                {
+                    $match: {
+                        $expr: {
+                            $and: [
+                                { $eq: ["$productId", "$$productId"] },
+                                { $eq: ["$userId", new mongoose.Types.ObjectId(userId)] }
+                            ]
+                        }
+                    }
+                }
+            ],
+            as: "cart"
+        }
+    });
+
+    pipeline.push({
+        $addFields: {
+            cart: {
+                $gt: [
+                    { $size: "$cart" },
+                    0
+                ]
+            }
+        }
+    });
+} else {
+    pipeline.push({
+        $addFields: {
+            cart: false
+        }
+    });
+}
+
     pipeline.push({
         $lookup: {
             from: "productvariants",
@@ -346,7 +454,8 @@ exports.userGetProductpipeline = ({
             price: 1,
             salePrice: 1,
             flags: 1,
-
+            wishlist: 1,
+            cart:1,
             productImage: {
                 $cond: {
                     if: {
@@ -767,6 +876,44 @@ exports.GetProductCouponApplay = (productId)=>{
             $lookup: {
                 from: "productvariants",
                 localField: "_id",
+                foreignField: "productId",
+                as: "variant"
+            }
+        },
+        {
+            $unwind: {
+                path: "$variant",
+                preserveNullAndEmptyArrays: true
+            }
+        },
+    ]
+}
+
+
+exports.GetCartProductPaymentOrder =(cartIds)=>{
+    return[
+         {
+        $match: {
+            _id: {
+                $in: cartIds.map(id => new mongoose.Types.ObjectId(id))
+            }
+        }
+    },
+    {
+        $lookup: {
+            from: "products",
+            localField: "productId",
+            foreignField: "_id",
+            as: "product"
+        }
+    },
+    {
+        $unwind: "$product"
+    },
+         {
+            $lookup: {
+                from: "productvariants",
+                localField: "product._id",
                 foreignField: "productId",
                 as: "variant"
             }

@@ -5,7 +5,7 @@ const { DeleteImage } = require('../../../helper/helper')
 
 exports.AddBrand = async (req, res, next) => {
     try {
-       
+
 
         if (!req.body?.name) {
             return next(CustomeError(422, "name is required"))
@@ -18,6 +18,10 @@ exports.AddBrand = async (req, res, next) => {
 
         const brand = await brandModel.create({ ...req.body, logo: brandlogo })
 
+        if (brand.logo) {
+            brand.logo = `http://${process.env.HOST}:${process.env.PORT}${brand.logo}`;
+        }
+
         return res.status(200).json({ success: true, message: 'brand added successfully', brand })
     } catch (error) {
         return next(error)
@@ -27,7 +31,11 @@ exports.AddBrand = async (req, res, next) => {
 
 exports.GetBrand = async (req, res, next) => {
     try {
-        const brand = await brandModel.find().select({ createdAt: 0, updatedAt: 0 })
+        const brand = await brandModel.aggregate([
+            { $project: { createdAt: 0, updatedAt: 0, }, },
+            { $addFields: { logo: { $cond: [{ $or: [{ $eq: ["$logo", null] }, { $eq: ["$logo", ""] }] }, "", { $concat: [`http://${process.env.HOST}:${process.env.PORT}`, "$logo"] }] } } }
+        ]);
+
         return res.status(200).json({ success: true, message: 'brand get successfully', brand })
     } catch (error) {
         return next(error)
@@ -54,6 +62,9 @@ exports.UpdateBrand = async (req, res, next) => {
         }
 
         brand = await brandModel.findByIdAndUpdate(id, { ...req.body, logo: brandlogo }, { returnDocument: 'after' }).select({ createdAt: 0, updatedAt: 0 })
+        if (brand.logo) {
+            brand.logo = `http://${process.env.HOST}:${process.env.PORT}${brand.logo}`;
+        }
         return res.status(200).json({ success: true, message: 'brand update successfully', brand })
 
     } catch (error) {
