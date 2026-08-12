@@ -27,7 +27,7 @@ const AdminLogin = () => {
         // Simulate network delay
         await new Promise(resolve => setTimeout(resolve, 800));
 
-        const result = adminLogin(email, password);
+        const result =await adminLogin(email, password);
         if (result.success) {
             navigate('/admin', { replace: true });
         } else {

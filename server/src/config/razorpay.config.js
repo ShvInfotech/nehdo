@@ -18,4 +18,4 @@ const razorpay_signature = (razorpay_order_id,razorpay_payment_id)=>{
       .digest("hex");
 }
 
-module.exports = {razorpay,generated_signature}
+module.exports = {razorpay,razorpay_signature}

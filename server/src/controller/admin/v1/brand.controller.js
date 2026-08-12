@@ -31,12 +31,59 @@ exports.AddBrand = async (req, res, next) => {
 
 exports.GetBrand = async (req, res, next) => {
     try {
-        const brand = await brandModel.aggregate([
-            { $project: { createdAt: 0, updatedAt: 0, }, },
-            { $addFields: { logo: { $cond: [{ $or: [{ $eq: ["$logo", null] }, { $eq: ["$logo", ""] }] }, "", { $concat: [`http://${process.env.HOST}:${process.env.PORT}`, "$logo"] }] } } }
+
+        const brands = await brandModel.aggregate([
+            // Products join
+            {
+                $lookup: {
+                    from: 'products',          // product collection name
+                    localField: '_id',         // brand _id
+                    foreignField: 'brandId',   // product.brandId
+                    as: 'products'
+                }
+            },
+
+            // Product count add
+            {
+                $addFields: {
+                    productCount: { $size: '$products' }
+                }
+            },
+
+            // Logo URL add
+            {
+                $addFields: {
+                    logo: {
+                        $cond: [
+                            {
+                                $or: [
+                                    { $eq: ['$logo', null] },
+                                    { $eq: ['$logo', ''] }
+                                ]
+                            },
+                            '',
+                            {
+                                $concat: [
+                                    `http://${process.env.HOST}:${process.env.PORT}`,
+                                    '$logo'
+                                ]
+                            }
+                        ]
+                    }
+                }
+            },
+
+            // Unwanted fields remove
+            {
+                $project: {
+                    createdAt: 0,
+                    updatedAt: 0,
+                    products: 0 // joined array hide
+                }
+            }
         ]);
 
-        return res.status(200).json({ success: true, message: 'brand get successfully', brand })
+        return res.status(200).json({ success: true, message: 'brand get successfully', brands })
     } catch (error) {
         return next(error)
     }

@@ -7,6 +7,7 @@ const productModel = require("../../../model/product.model")
 const { GetProductCouponApplay, GetCartProductCouponApplay, GetCartProductShipingcharg, GetCartProductPaymentOrder } = require("../../../helper/aggretionpipeline")
 const { PercentageCoupenapplay, CartDiscountCoupenapplay, FindPriceinProduct } = require("../../../helper/helper")
 const { getshippingcharg } = require("../../../services/shiproketapis")
+const { razorpay, razorpay_signature } = require("../../../config/razorpay.config")
 
 
 exports.ApplyCoupon = async (req, res, next) => {
@@ -152,14 +153,53 @@ exports.PaymentOrder = async (req, res, next) => {
                 userId: req.user._id,
                 cartIds: req.body.cartIds,
                 discountData: discountData,
-                courierPatner: courierPatner
+                courierPatner: courierPatner,
+                finalprice: totalprice
             }
         };
 
+        let order = await razorpay.orders.create(options)
+        const { id, ...rest } = order;
+        order = {
+            rzpOrderId: order.id,
+            ...rest,
+        }
 
-        return res.json(options)
+        return res.status(200).json({ success: true, message: 'payment order created', order })
 
 
+    } catch (error) {
+        return next(error)
+    }
+}
+
+
+exports.verifyPayment = async (req, res, next) => {
+    try {
+        if (!req.body?.razorpay_order_id) {
+            return next(CustomeError(422, "razorpay_order_id is required"))
+        }
+
+        if (!req.body?.razorpay_payment_id) {
+            return next(CustomeError(422, "razorpay_payment_id is required"))
+        }
+
+        if (!req.body?.razorpay_signature) {
+            return next(CustomeError(422, "razorpay_signature is required"))
+        }
+
+        if (!req.body?.cartIds && !req.body?.cartIds?.length) {
+            return next(CustomeError(422, 'cart id required'))
+        }
+
+        const discountData = req.body?.discountData || null
+        const courierPatner = req.body.courierPatner || null
+
+        const signature = razorpay_signature(req.body.razorpay_order_id, req.body.razorpay_payment_id)
+        if (signature !== req.body?.razorpay_signature) {  // chang after
+            
+            return res.status(200).json({success:true,message:"payment verify",signature})
+        }
     } catch (error) {
         return next(error)
     }

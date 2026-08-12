@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, useCallback, useEffect } from "react";
-
+import { apiRequest } from "../services/apiService"
 interface AdminUser {
     email: string;
     name: string;
@@ -18,7 +18,7 @@ const AdminAuthContext = createContext<AdminAuthContextType | undefined>(undefin
 // Default admin credentials
 const ADMIN_CREDENTIALS = {
     email: "admin@nehdo.com",
-    password: "admin123",
+    password: "Admin@123",
     name: "Admin User",
     role: "Super Admin",
 };
@@ -36,30 +36,38 @@ export const AdminAuthProvider: React.FC<{ children: React.ReactNode }> = ({ chi
         return null;
     });
 
+    const [accessToken, setAccessToken] = useState<string | null>(() => {
+        return localStorage.getItem('admin_token');
+    });
+
     useEffect(() => {
         if (adminUser) {
             localStorage.setItem("nehdo_admin", JSON.stringify(adminUser));
+            localStorage.setItem('admin_token', accessToken);
         } else {
             localStorage.removeItem("nehdo_admin");
+            localStorage.removeItem("admin_token");
         }
-    }, [adminUser]);
+    }, [adminUser, accessToken]);
 
-    const adminLogin = useCallback((email: string, password: string) => {
-        if (email === ADMIN_CREDENTIALS.email && password === ADMIN_CREDENTIALS.password) {
-            const user: AdminUser = {
-                email: ADMIN_CREDENTIALS.email,
-                name: ADMIN_CREDENTIALS.name,
-                role: ADMIN_CREDENTIALS.role,
-            };
-            setAdminUser(user);
-            return { success: true };
+    const adminLogin = useCallback(async (email: string, password: string) => {
+
+        const data = await apiRequest('/user/api/v1/auth/login', "POST", { email, password },{})
+
+        
+        if(data.user.role !== "admin"){
+            return { success: false, error: "Invalid email or password. Please try again."};
         }
-        return { success: false, error: "Invalid email or password. Please try again." };
+        setAdminUser(data.user);
+        setAccessToken(data.accesstoken)
     }, []);
 
     const adminLogout = useCallback(() => {
         setAdminUser(null);
+        setAccessToken(null)
         localStorage.removeItem("nehdo_admin");
+        localStorage.removeItem("admin_token");
+
     }, []);
 
     return (

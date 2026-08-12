@@ -8,7 +8,7 @@ const categoryModel = require('../../../model/category.model')
 const subcategoryModel = require('../../../model/subcategory.model')
 const brandModel = require('../../../model/brand.model')
 const { generateSKU, generateBarcode, generateSlug, DeleteImage } = require('../../../helper/helper')
-const { getproductspipeline, getproductslugpipeline } = require('../../../helper/aggretionpipeline')
+const { getproductspipeline, getproductslugpipeline, getproductpaginationpipeline } = require('../../../helper/aggretionpipeline')
 const { i } = require('framer-motion/client')
 
 
@@ -97,7 +97,9 @@ exports.AddProduct = async (req, res, next) => {
             tags,
             productImage,
             slug: generateSlug(req.body.name),
-            flags: typeof req.body.flags === "string" ? JSON.parse(req.body.flags) : req.body.flags,
+            flags: typeof req.body.flags === "string"
+                ? JSON.parse(req.body.flags)
+                : req.body.flags,
         }
 
         const product = await productModel.create(productData)
@@ -127,16 +129,26 @@ exports.AddProduct = async (req, res, next) => {
         }
 
         if (req.body.material) {
-            variantData.material = req.body.material || ''
+            variantData.material =
+                typeof req.body.material === "string"
+                    ? req.body.material
+                    : req.body.material[0] || "";
         }
 
-        if (req.body?.variant && req.body?.variant.length) {
-            const variant = typeof req.body.variant === "string" ? JSON.parse(req.body?.variant) : req.body?.variant
+        if (req.body.variant) {
+            const variant =
+                typeof req.body.variant === "string"
+                    ? JSON.parse(req.body.variant)
+                    : req.body.variant;
 
             variant.forEach((v, i) => {
-                v.sku = `${product.sku}-${i + 1}`
-                variantData.variant.push(v)
-            })
+                variantData.variant.push({
+                    name: v.name,
+                    price: Number(v.price) || 0,
+                    stock: Number(v.stock) || 0,
+                    sku: v.sku || `${product.sku}-${i + 1}`,
+                });
+            });
         }
 
 
@@ -187,8 +199,12 @@ exports.AddProduct = async (req, res, next) => {
             shippingData.shipping = false
         }
 
-        if (req.body?.weight && req.body?.weight > 1) {
-            shippingData.weight = req.body?.weight
+        if (req.body.weight !== undefined && req.body.weight !== "") {
+            const parsedWeight = parseFloat(req.body.weight);
+
+            if (!isNaN(parsedWeight) && parsedWeight >= 0.1) {
+                shippingData.weight = parsedWeight;
+            }
         }
 
         if (req.body?.dimensions) {
@@ -214,13 +230,38 @@ exports.AddProduct = async (req, res, next) => {
 exports.GetProducts = async (req, res, next) => {
     try {
 
-        const products = await productModel.aggregate(getproductspipeline());
+        const page = parseInt(req.query.page) || 1;
+        const limit = parseInt(req.query.limit) || 10;
 
-        return res.status(200).json({ success: true, message: "get product", products })
+        const pipeline = [
+            ...getproductspipeline(),
+            ...getproductpaginationpipeline(page, limit)
+        ];
+
+        const result = await productModel.aggregate(pipeline);
+
+        const products = result[0].data;
+        const total = result[0].totalCount[0]?.count || 0;
+        const totalPages = Math.ceil(total / limit);
+
+        return res.status(200).json({
+            success: true,
+            message: "get product",
+            products,
+            pagination: {
+                page,
+                limit,
+                total,
+                totalPages,
+                hasPrev: page > 1,
+                hasNext: page < totalPages
+            }
+        });
+
     } catch (error) {
-        return next(error)
+        return next(error);
     }
-}
+};
 
 
 exports.EditProducts = async (req, res, next) => {

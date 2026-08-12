@@ -74,9 +74,7 @@ exports.getproductspipeline = () => {
 
                 productImage: {
                     $cond: [
-                        {
-                            $gt: [{ $size: "$productImage" }, 0]
-                        },
+                        { $gt: [{ $size: "$productImage" }, 0] },
                         {
                             $concat: [
                                 `http://${process.env.HOST}:${process.env.PORT}`,
@@ -86,6 +84,25 @@ exports.getproductspipeline = () => {
                         ""
                     ]
                 }
+            }
+        }
+    ];
+};
+
+exports.getproductpaginationpipeline = (page = 1, limit = 10) => {
+    const skip = (page - 1) * limit;
+
+    return [
+        { $sort: { createdAt: -1 } },
+        {
+            $facet: {
+                data: [
+                    { $skip: skip },
+                    { $limit: limit }
+                ],
+                totalCount: [
+                    { $count: "count" }
+                ]
             }
         }
     ];
