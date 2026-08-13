@@ -497,6 +497,24 @@ if (userId) {
                     else: ""
                 }
             },
+            productImages: {
+  $cond: {
+    if: { $gt: [{ $size: "$productImage" }, 0] },
+    then: {
+      $map: {
+        input: "$productImage",
+        as: "img",
+        in: {
+          $concat: [
+            `http://${process.env.HOST}:${process.env.PORT}`,
+            "$$img"
+          ]
+        }
+      }
+    },
+    else: []
+  }
+},
             category: "$category.name",
             subcategory: "$subcategory.name",
             brand: "$brand.name",
@@ -791,15 +809,9 @@ exports.GetWishlistpipiline = (userId) => {
         },
         {
             $project: {
-                _id: 1,
+               
                 productId:"$product._id",
-                productname: "$product.name",
-                brandname: "$brand.name",
-                falgs:"$product.flags",
-                productImage: { $concat: [`http://${process.env.HOST}:${process.env.PORT}`, { $ifNull: [{ $arrayElemAt: ["$product.productImage", 0] }, ""] }] },
-                averageRating: {
-                    $cond: { if: { $gt: [{ $size: "$ratings" }, 0] }, then: { $round: [{ $avg: "$ratings.rating" }, 1] }, else: 0 }
-                }
+              
 
             }
         }

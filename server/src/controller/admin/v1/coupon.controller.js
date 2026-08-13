@@ -28,3 +28,26 @@ exports.GetCoupon = async(req,res,next)=>{
         return next(error)
     }
 }
+
+
+exports.UpdateCoupon = async (req, res, next) => {
+  try {
+    const coupon = await couponModel.findByIdAndUpdate(
+      req.params.id,
+      { ...req.body },
+      { new: true }
+    );
+
+    if (!coupon) {
+      return next(CustomeError(404, 'Coupon not found'));
+    }
+
+    return res.status(200).json({
+      success: true,
+      message: 'coupon updated',
+      coupon
+    });
+  } catch (error) {
+    return next(error);
+  }
+};

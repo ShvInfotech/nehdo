@@ -118,14 +118,21 @@ exports.AddProduct = async (req, res, next) => {
         }
 
         if (req.body?.size) {
-            const size = typeof req.body.size === "string" ? JSON.parse(req.body?.size) : req.body?.size
-            variantData.size = size || []
+            const size =
+                typeof req.body.size === "string"
+                    ? JSON.parse(req.body.size)
+                    : req.body.size;
+
+            variantData.size = size || [];
         }
 
         if (req.body?.colors) {
-            const colorOptions = typeof req.body.colors === "string" ? JSON.parse(req.body?.colors) : req.body?.colors
+            const colorOptions =
+                typeof req.body.colors === "string"
+                    ? JSON.parse(req.body.colors)
+                    : req.body.colors;
 
-            variantData.colorOptions = colorOptions || []
+            variantData.colorOptions = colorOptions || [];
         }
 
         if (req.body.material) {
@@ -350,7 +357,7 @@ exports.UpdateProduct = async (req, res, next) => {
         if (req.body?.metaDescription) {
             productData.metaDescription = req.body?.metaDescription
         }
-
+console.log(req.body?.deleteImage)
         if (req.body?.deleteImage) {
             const deleteIndex = Array.isArray(req.body.deleteImage) ? req.body.deleteImage : JSON.parse(req.body.deleteImage);
             if (deleteIndex.length) {
@@ -387,31 +394,51 @@ exports.UpdateProduct = async (req, res, next) => {
             variantData.material = req.body.material || ''
         }
 
-        if (req.body?.variant && req.body?.variant.length) {
-            for (const item of req.body.variant) {
+        // Existing variants update
+        let existingVariants = [];
+
+        if (req.body?.variant) {
+            existingVariants =
+                typeof req.body.variant === "string"
+                    ? JSON.parse(req.body.variant)
+                    : req.body.variant;
+        }
+
+        if (existingVariants.length) {
+            for (const item of existingVariants) {
                 variantData.variant.forEach((v) => {
-                    if (v._id == item._id) {
-                        v.stock = item.stock,
-                            v.price = item.price
+                    if (String(v._id) === String(item._id)) {
+                        v.stock = item.stock;
+                        v.price = item.price;
+                        v.sku = item.sku || v.sku;
                     }
-                })
+                });
             }
         }
 
-        if (req.body?.newvariant && req.body?.newvariant.length) {
-            const newvariant = []
-            let length = variantData.variant.length + 1
-            for (const item of req.body.newvariant) {
-                item.sku = `${product.sku}-${length}`
-                let check = false
-                variantData.variant.forEach((v) => {
-                    if (v.name === item.name) {
-                        check = true
-                    }
-                })
-                if (!check) {
-                    variantData.variant.push(item)
-                    length++
+        // New variants add
+        let newVariants = [];
+
+        if (req.body?.newvariant) {
+            newVariants =
+                typeof req.body.newvariant === "string"
+                    ? JSON.parse(req.body.newvariant)
+                    : req.body.newvariant;
+        }
+
+        if (newVariants.length) {
+            let length = variantData.variant.length + 1;
+
+            for (const item of newVariants) {
+                item.sku = item.sku || `${product.sku}-${length}`;
+
+                const exists = variantData.variant.some(
+                    (v) => v.name === item.name
+                );
+
+                if (!exists) {
+                    variantData.variant.push(item);
+                    length++;
                 }
             }
         }

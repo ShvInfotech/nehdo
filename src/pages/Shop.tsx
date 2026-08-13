@@ -2,7 +2,11 @@ import React, { useState, useMemo, useEffect } from "react";
 import { motion } from "framer-motion";
 import { useSearchParams } from "react-router-dom";
 import { IoGridOutline, IoListOutline, IoFunnelOutline, IoCloseOutline, IoChevronDown, IoStar } from "react-icons/io5";
-import { products, categories, brands } from "../data/products";
+import {
+  products,
+  getCategories,
+  getBrands
+} from '../data/products';
 import ProductCard from "../components/ProductCard";
 import Breadcrumb from "../components/Breadcrumb";
 
@@ -14,7 +18,8 @@ const Shop = () => {
     
     // Helper to format url param (e.g. "men" -> "Men")
     const formatParam = (p: string | null) => p ? p.charAt(0).toUpperCase() + p.slice(1).toLowerCase() : null;
-
+const categories = getCategories();
+const brands = getBrands();
     const initialCategory = categories.find(c => c.toLowerCase() === searchParams.get("category")?.toLowerCase()) || "All";
     const initialBrand = brands.find(b => b.toLowerCase() === searchParams.get("brand")?.toLowerCase()) || null;
 

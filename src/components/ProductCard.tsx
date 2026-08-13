@@ -23,10 +23,11 @@ const ProductCard: React.FC<{ product: Product; index?: number }> = ({ product, 
         setTimeout(() => setAddedToCart(false), 1200);
     };
 
-    const handleWishlist = (e: React.MouseEvent) => {
-        e.preventDefault();
-        toggle(product.id);
-    };
+   const handleWishlist = async (e: React.MouseEvent) => {
+  e.preventDefault();
+  await toggle(product.id);
+};
+
 
     return (
         <motion.div

@@ -9,9 +9,15 @@ import Breadcrumb from "../components/Breadcrumb";
 import { IoStar } from "react-icons/io5";
 
 const Wishlist = () => {
-    const { items: wishlistIds, toggle, count } = useWishlist();
+   const { items, toggle, count } = useWishlist();
+
+const wishlistIds = items.map(item => item.productId);
     const { addItem } = useCart();
-    const wishlistProducts = products.filter(p => wishlistIds.includes(p.id));
+    const wishlistProducts = products.filter(p =>
+  wishlistIds.includes(String(p.id))
+);
+
+ 
 
     const handleMoveToCart = (p: typeof products[0]) => {
         addItem({ productId: p.id, name: p.name, brand: p.brand, image: p.image, price: p.price, originalPrice: p.originalPrice, size: p.sizes[0], color: p.colors[0]?.name || "" });

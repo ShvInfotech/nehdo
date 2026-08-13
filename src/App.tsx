@@ -2,6 +2,8 @@ import React, { lazy, Suspense } from 'react';
 import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import Layout from './components/Layout';
 import Home from './pages/Home';
+import { useEffect } from 'react';
+import { loadProducts } from './data/products';
 
 const Shop = lazy(() => import('./pages/Shop'));
 const ProductDetail = lazy(() => import('./pages/Product'));
@@ -51,6 +53,9 @@ const PageLoader = () => (
 );
 
 function App() {
+      useEffect(() => {
+    loadProducts();
+  }, []);
     return (
         <BrowserRouter basename="/nehdo">
             <Suspense fallback={<PageLoader />}>

@@ -8,13 +8,13 @@ const AdminProducts = () => {
     const [totalPages, setTotalPages] = useState(1);
     const [totalProducts, setTotalProducts] = useState(0);
     const [editProductId, setEditProductId] = useState<string | null>(null);
-
+    const [isEditing, setIsEditing] = useState(false);
     const [isAddModalOpen, setIsAddModalOpen] = useState(false);
     const [productList, setProductList] = useState<any[]>([]);
     const [selectedCategory, setSelectedCategory] = useState("");
     const [selectedSubCategory, setSelectedSubCategory] = useState("");
     const [activeTab, setActiveTab] = useState<'general' | 'variants' | 'inventory' | 'shipping' | 'seo'>('general');
-
+    const [deletedImageIndexes, setDeletedImageIndexes] = useState<number[]>([]);
     // General
     const [productName, setProductName] = useState("");
     const [price, setPrice] = useState("");
@@ -29,7 +29,7 @@ const AdminProducts = () => {
     // Images
     const [productImages, setProductImages] = useState<File[]>([]);
     const [imagePreviews, setImagePreviews] = useState<string[]>([]);
-
+    const [visibility, setVisibility] = useState("visible");
     // Flags
     const [featured, setFeatured] = useState(false);
     const [newArrival, setNewArrival] = useState(false);
@@ -67,49 +67,77 @@ const AdminProducts = () => {
     const [loading, setLoading] = useState(false);
     const [variants, setVariants] = useState<any[]>([]);
 
+
     useEffect(() => {
+        if (isEditing) {
+            setVariants(prev => {
+                const generated: any[] = [];
+
+                if (selectedSizes.length && selectedColors.length) {
+                    selectedColors.forEach(color => {
+                        selectedSizes.forEach(size => {
+                            generated.push(`${color}/${size}`);
+                        });
+                    });
+                } else if (selectedSizes.length) {
+                    generated.push(...selectedSizes);
+                } else if (selectedColors.length) {
+                    generated.push(...selectedColors);
+                }
+
+                const existingNames = prev.map(v => v.name);
+
+                const newOnes = generated
+                    .filter(name => !existingNames.includes(name))
+                    .map(name => ({
+                        name,
+                        price: "",
+                        stock: "",
+                        sku: ""
+                    }));
+
+                return [...prev, ...newOnes];
+            });
+
+            return;
+        }
+
+        // add mode
         const generated: any[] = [];
 
-        // Jo size ane color banne select hoy
         if (selectedSizes.length && selectedColors.length) {
-            selectedColors.forEach((color) => {
-                selectedSizes.forEach((size) => {
+            selectedColors.forEach(color => {
+                selectedSizes.forEach(size => {
                     generated.push({
                         name: `${color}/${size}`,
                         price: "",
                         stock: "",
-                        sku: "",
+                        sku: ""
                     });
                 });
             });
-        }
-
-        // Jo size j select hoy
-        else if (selectedSizes.length) {
-            selectedSizes.forEach((size) => {
+        } else if (selectedSizes.length) {
+            selectedSizes.forEach(size => {
                 generated.push({
                     name: size,
                     price: "",
                     stock: "",
-                    sku: "",
+                    sku: ""
                 });
             });
-        }
-
-        // Jo color j select hoy
-        else if (selectedColors.length) {
-            selectedColors.forEach((color) => {
+        } else if (selectedColors.length) {
+            selectedColors.forEach(color => {
                 generated.push({
                     name: color,
                     price: "",
                     stock: "",
-                    sku: "",
+                    sku: ""
                 });
             });
         }
 
         setVariants(generated);
-    }, [selectedSizes, selectedColors]);
+    }, [selectedSizes, selectedColors, isEditing]);
     const tabs = [
         { key: 'general', label: 'General Info' },
         { key: 'variants', label: 'Variants' },
@@ -156,8 +184,6 @@ const AdminProducts = () => {
                 `/admin/api/v1/product/get?page=${currentPage}&limit=10`,
                 "GET"
             );
-            console.log(res)
-            // backend response પ્રમાણે adjust કર
             setProductList(res.products || []);
             setCurrentPage(res.pagination?.page || 1);
             setTotalPages(res.pagination?.totalPages || 1);
@@ -181,47 +207,50 @@ const AdminProducts = () => {
 
             if (editProductId) {
                 const flags: string[] = [];
-            const formData = new FormData();
-            formData.append("name", productName);
-            formData.append("categoryId", selectedCategory);
-            formData.append("subcategoryId", selectedSubCategory);
-            formData.append("brandId", brandId);
-            formData.append("price", price);
-            formData.append("salePrice", salePrice || "0");
-            formData.append("itemCost", costPrice || "0");
-            formData.append("tags", tags);
-            formData.append("shortDescription", shortDescription);
-            formData.append("longDescription", longDescription);
-            formData.append("status", status);
+                const formData = new FormData();
+                formData.append("name", productName);
+                formData.append("categoryId", selectedCategory);
+                formData.append("subcategoryId", selectedSubCategory);
+                formData.append("brandId", brandId);
+                formData.append("price", price);
+                formData.append("salePrice", salePrice || "0");
+                formData.append("itemCost", costPrice || "0");
+                formData.append("tags", tags);
+                formData.append("shortDescription", shortDescription);
+                formData.append("longDescription", longDescription);
+                formData.append("status", status);
+                formData.append("visibility", visibility);
+                if (deletedImageIndexes.length) {
+                    formData.append("deleteImage", JSON.stringify(deletedImageIndexes));
+                }
+                if (featured) flags.push("Featured");
+                if (newArrival) flags.push("New Arrival");
+                if (trending) flags.push("Trending");
+                formData.append("flags", JSON.stringify(flags));
+                formData.append("size", JSON.stringify(selectedSizes));
+                formData.append("colors", JSON.stringify(selectedColors));
+                formData.append("material", material);
+                formData.append("stock", stock);
+                formData.append("lowStock", lowStock);
+                formData.append("warehouseLocation", warehouseLocation);
+                formData.append("trackInventory", String(trackInventory));
+                formData.append("backorders", String(backorders));
+                formData.append("shipping", String(shippingRequired));
+                formData.append("weight", weight);
+                formData.append("metaTitle", metaTitle);
+                formData.append("metaDescription", metaDescription);
+                formData.append("weight", weight);
+                formData.append("dimensions", JSON.stringify({ length, width, height, }));
+                formData.append("HSCode", HSCode);
+                const existingVariants = variants.filter(v => v._id);
+                const newVariants = variants.filter(v => !v._id);
+                formData.append("variant", JSON.stringify(existingVariants));
+                formData.append("newvariant", JSON.stringify(newVariants));
 
 
-
-            if (featured) flags.push("Featured");
-            if (newArrival) flags.push("New Arrival");
-            if (trending) flags.push("Trending");
-            formData.append("flags", JSON.stringify(flags));
-            formData.append("size", JSON.stringify(selectedSizes));
-            formData.append("colors", JSON.stringify(selectedColors));
-            formData.append("material", material);
-            formData.append("stock", stock);
-            formData.append("lowStock", lowStock);
-            formData.append("warehouseLocation", warehouseLocation);
-            formData.append("trackInventory", String(trackInventory));
-            formData.append("backorders", String(backorders));
-            formData.append("shipping", String(shippingRequired));
-            formData.append("weight", weight);
-            formData.append("metaTitle", metaTitle);
-            formData.append("metaDescription", metaDescription);
-            formData.append("variant", JSON.stringify(variants));
-            formData.append("weight", weight);
-            formData.append("dimensions", JSON.stringify({ length, width, height, }));
-            formData.append("HSCode", HSCode);
-
-
-
-            productImages.forEach((file) => {
-                formData.append("productImage", file);
-            });
+                productImages.forEach((file) => {
+                    formData.append("productImage", file);
+                });
                 await apiRequest(
                     `/admin/api/v1/product/update/${editProductId}`,
                     "PATCH",
@@ -229,8 +258,11 @@ const AdminProducts = () => {
                 );
 
                 alert("Product updated successfully");
+            await fetchProducts();
+                setIsAddModalOpen(false);
                 resetForm()
-return      
+
+                return
             }
 
             const flags: string[] = [];
@@ -246,7 +278,7 @@ return
             formData.append("shortDescription", shortDescription);
             formData.append("longDescription", longDescription);
             formData.append("status", status);
-
+            formData.append("visibility", visibility);
 
 
             if (featured) flags.push("Featured");
@@ -285,7 +317,7 @@ return
             alert("Product added successfully");
             await fetchProducts();
             setIsAddModalOpen(false);
-            
+
         } catch (error) {
             console.log(error);
             alert("Failed to add product");
@@ -294,7 +326,40 @@ return
         }
     };
 
+    const parseArray = (val: any): string[] => {
+        if (!val) return [];
 
+        // jo direct array hoy
+        if (Array.isArray(val)) {
+            return val.flatMap((v: any) => {
+                try {
+                    // "[\"White\"]" jevi string hoy to parse karo
+                    if (typeof v === "string" && v.startsWith("[")) {
+                        const parsed = JSON.parse(v);
+
+                        return Array.isArray(parsed)
+                            ? parsed.map((item: any) => String(item))
+                            : [String(parsed)];
+                    }
+
+                    return [String(v)];
+                } catch {
+                    return [String(v)];
+                }
+            });
+        }
+
+        // jo single JSON string hoy
+        try {
+            const parsed = JSON.parse(val);
+
+            return Array.isArray(parsed)
+                ? parsed.map((v: any) => String(v))
+                : [String(parsed)];
+        } catch {
+            return [];
+        }
+    };
 
     const handleEditProduct = async (id: string) => {
         try {
@@ -307,7 +372,7 @@ return
 
             // edit mode
             setEditProductId(product._id);
-
+            setIsEditing(true);
             // ---------- Product ----------
             setProductName(product.name || "");
             setSelectedCategory(product.categoryId || "");
@@ -332,26 +397,27 @@ return
             // ---------- Images ----------
             setImagePreviews(product.productImage || []);
             setProductImages([]); // existing images only preview
-
+            setVisibility(product.visibility || "visible");
             // ---------- Flags ----------
             setFeatured(product.flags?.includes("Featured") || false);
             setNewArrival(product.flags?.includes("New Arrival") || false);
             setTrending(product.flags?.includes("Trending") || false);
 
             // ---------- Variant ----------
-            setSelectedSizes(variant?.size || []);
-            setSelectedColors(variant?.colorOptions || []);
+            setSelectedSizes(parseArray(variant?.size));
+            setSelectedColors(parseArray(variant?.colorOptions));
             setMaterial(variant?.material || "");
-
-            // existing variant rows
             setVariants(
                 (variant?.variant || []).map((v: any) => ({
+                    _id: v._id,
                     name: v.name,
                     price: String(v.price || ""),
                     stock: String(v.stock || ""),
                     sku: v.sku || ""
                 }))
             );
+
+
 
             // ---------- Inventory ----------
             setStock(String(inventory?.stock || 0));
@@ -384,12 +450,13 @@ return
 
     const resetForm = () => {
         setEditProductId(null);
+        setIsEditing(false);
 
         setProductName("");
         setSelectedCategory("");
         setSelectedSubCategory("");
         setBrandId("");
-
+        setVisibility("visible");
         setPrice("");
         setSalePrice("");
         setCostPrice("");
@@ -437,7 +504,11 @@ return
                     <p className="text-sm text-gray-500 mt-1">Manage your product inventory and listings.</p>
                 </div>
                 <button
-                    onClick={() => setIsAddModalOpen(true)}
+                    onClick={() => {
+                        resetForm();
+                        setIsEditing(false);
+                        setIsAddModalOpen(true);
+                    }}
                     className="flex items-center gap-2 px-4 py-2 bg-brand text-white text-sm font-semibold rounded-lg shadow-sm hover:bg-brand-light transition-colors"
                 >
                     <IoAddOutline size={20} />
@@ -639,8 +710,18 @@ return
                                                         <button
                                                             type="button"
                                                             onClick={() => {
-                                                                setProductImages(prev => prev.filter((_, index) => index !== i));
+                                                                // existing image delete mark
+                                                                if (
+                                                                    typeof imagePreviews[i] === "string" &&
+                                                                    imagePreviews[i].includes("/uploads/")
+                                                                ) {
+                                                                    setDeletedImageIndexes(prev => [...prev, i]);
+                                                                }
+
                                                                 setImagePreviews(prev => prev.filter((_, index) => index !== i));
+
+                                                                // only remove from productImages if it is a new file preview
+                                                                setProductImages(prev => prev.filter((_, index) => index !== i));
                                                             }}
                                                             className="absolute top-1 right-1 bg-red-500 text-white rounded-full p-1"
                                                         >
@@ -707,9 +788,13 @@ return
                                         </div>
                                         <div>
                                             <label className="block text-sm font-semibold text-gray-700 mb-2">Visibility</label>
-                                            <select className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:border-brand">
-                                                <option>Visible (Listed on store)</option>
-                                                <option>Hidden (Only via direct link)</option>
+                                            <select
+                                                value={visibility}
+                                                onChange={(e) => setVisibility(e.target.value)}
+                                                className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:border-brand"
+                                            >
+                                                <option value="visible">Visible (Listed on store)</option>
+                                                <option value="hidden">Hidden (Only via direct link)</option>
                                             </select>
                                         </div>
                                     </div>

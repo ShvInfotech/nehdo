@@ -12,7 +12,7 @@ const tabs = ["Description", "Reviews", "Shipping"];
 
 const ProductDetail = () => {
     const { id } = useParams();
-    const product = getProductById(Number(id));
+    const product = getProductById(id || "");
     const { addItem } = useCart();
     const { toggle, has } = useWishlist();
     const [selectedSize, setSelectedSize] = useState("");
