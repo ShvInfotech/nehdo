@@ -20,7 +20,7 @@ const Navbar = () => {
     const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
     const [searchOpen, setSearchOpen] = useState(false);
     const [searchQuery, setSearchQuery] = useState("");
-    const { itemCount } = useCart();
+    const { itemCount,cartCount } = useCart();
     const { count: wishlistCount } = useWishlist();
     const { isLoggedIn, openAuthModal } = useAuth();
     const navigate = useNavigate();
@@ -80,7 +80,7 @@ const Navbar = () => {
                         </Link>
                         <Link to="/cart" className="relative p-2.5 rounded-full hover:bg-brand/5 transition-colors" aria-label="Cart">
                             <IoBagHandleOutline size={20} className="text-gray-700" />
-                            {itemCount > 0 && <motion.span initial={{ scale: 0 }} animate={{ scale: 1 }} className="absolute -top-0.5 -right-0.5 w-5 h-5 bg-brand text-white text-[10px] font-bold rounded-full flex items-center justify-center">{itemCount}</motion.span>}
+                            {itemCount > 0 && <motion.span initial={{ scale: 0 }} animate={{ scale: 1 }} className="absolute -top-0.5 -right-0.5 w-5 h-5 bg-brand text-white text-[10px] font-bold rounded-full flex items-center justify-center">{cartCount}</motion.span>}
                         </Link>
                         <button onClick={() => setMobileMenuOpen(true)} className="lg:hidden p-2.5 rounded-full hover:bg-brand/5 transition-colors" aria-label="Open menu"><IoMenuOutline size={22} className="text-gray-700" /></button>
                     </div>

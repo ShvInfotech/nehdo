@@ -28,7 +28,9 @@ const AdminProducts = () => {
 
     // Images
     const [productImages, setProductImages] = useState<File[]>([]);
-    const [imagePreviews, setImagePreviews] = useState<string[]>([]);
+    const [imagePreviews, setImagePreviews] = useState<
+        { url: string; originalIndex: number | null; isNew: boolean }[]
+    >([]);
     const [visibility, setVisibility] = useState("visible");
     // Flags
     const [featured, setFeatured] = useState(false);
@@ -66,7 +68,7 @@ const AdminProducts = () => {
 
     const [loading, setLoading] = useState(false);
     const [variants, setVariants] = useState<any[]>([]);
-
+const [removedVariants, setRemovedVariants] = useState<string[]>([]);
 
     useEffect(() => {
         if (isEditing) {
@@ -88,13 +90,14 @@ const AdminProducts = () => {
                 const existingNames = prev.map(v => v.name);
 
                 const newOnes = generated
-                    .filter(name => !existingNames.includes(name))
-                    .map(name => ({
-                        name,
-                        price: "",
-                        stock: "",
-                        sku: ""
-                    }));
+    .filter(name => !existingNames.includes(name))
+    .filter(name => !removedVariants.includes(name))
+    .map(name => ({
+        name,
+        price: "",
+        stock: "",
+        sku: ""
+    }));
 
                 return [...prev, ...newOnes];
             });
@@ -136,8 +139,16 @@ const AdminProducts = () => {
             });
         }
 
-        setVariants(generated);
+       const filteredGenerated = generated.filter(
+    v => !removedVariants.includes(v.name)
+);
+
+setVariants(filteredGenerated);
     }, [selectedSizes, selectedColors, isEditing]);
+    const handleDeleteVariant = (name: string) => {
+    setRemovedVariants(prev => [...prev, name]);
+    setVariants(prev => prev.filter(v => v.name !== name));
+};
     const tabs = [
         { key: 'general', label: 'General Info' },
         { key: 'variants', label: 'Variants' },
@@ -258,7 +269,7 @@ const AdminProducts = () => {
                 );
 
                 alert("Product updated successfully");
-            await fetchProducts();
+                await fetchProducts();
                 setIsAddModalOpen(false);
                 resetForm()
 
@@ -395,7 +406,13 @@ const AdminProducts = () => {
             setStatus(product.status || "Draft");
 
             // ---------- Images ----------
-            setImagePreviews(product.productImage || []);
+            setImagePreviews(
+                (product.productImage || []).map((img: string, index: number) => ({
+                    url: img,
+                    originalIndex: index,
+                    isNew: false,
+                }))
+            );
             setProductImages([]); // existing images only preview
             setVisibility(product.visibility || "visible");
             // ---------- Flags ----------
@@ -470,7 +487,7 @@ const AdminProducts = () => {
 
         setProductImages([]);
         setImagePreviews([]);
-
+        setDeletedImageIndexes([]);
         setFeatured(false);
         setNewArrival(false);
         setTrending(false);
@@ -479,7 +496,7 @@ const AdminProducts = () => {
         setSelectedColors([]);
         setMaterial("");
         setVariants([]);
-
+setRemovedVariants([]);
         setStock("0");
         setLowStock("0");
         setWarehouseLocation("");
@@ -688,8 +705,15 @@ const AdminProducts = () => {
                                                     onChange={(e) => {
                                                         const files = Array.from(e.target.files || []);
 
-                                                        setProductImages(files);
-                                                        setImagePreviews(files.map(file => URL.createObjectURL(file)));
+                                                        setProductImages(prev => [...prev, ...files]);
+
+                                                        const newPreviews = files.map(file => ({
+                                                            url: URL.createObjectURL(file),
+                                                            originalIndex: null,
+                                                            isNew: true,
+                                                        }));
+
+                                                        setImagePreviews(prev => [...prev, ...newPreviews]);
                                                     }}
                                                 />
                                             </label>
@@ -702,7 +726,7 @@ const AdminProducts = () => {
                                                         className="relative w-20 h-20 rounded-lg overflow-hidden border border-gray-200"
                                                     >
                                                         <img
-                                                            src={img}
+                                                            src={img.url}
                                                             alt={`preview-${i}`}
                                                             className="w-full h-full object-cover"
                                                         />
@@ -710,18 +734,23 @@ const AdminProducts = () => {
                                                         <button
                                                             type="button"
                                                             onClick={() => {
-                                                                // existing image delete mark
-                                                                if (
-                                                                    typeof imagePreviews[i] === "string" &&
-                                                                    imagePreviews[i].includes("/uploads/")
-                                                                ) {
-                                                                    setDeletedImageIndexes(prev => [...prev, i]);
+                                                                const image = imagePreviews[i];
+
+                                                                // Existing image → save original index
+                                                                if (!image.isNew && image.originalIndex !== null) {
+                                                                    setDeletedImageIndexes(prev => [
+                                                                        ...prev,
+                                                                        image.originalIndex as number,
+                                                                    ]);
                                                                 }
 
+                                                                // Remove preview
                                                                 setImagePreviews(prev => prev.filter((_, index) => index !== i));
 
-                                                                // only remove from productImages if it is a new file preview
-                                                                setProductImages(prev => prev.filter((_, index) => index !== i));
+                                                                // Remove new uploaded file only
+                                                                if (image.isNew) {
+                                                                    setProductImages(prev => prev.filter((_, index) => index !== i));
+                                                                }
                                                             }}
                                                             className="absolute top-1 right-1 bg-red-500 text-white rounded-full p-1"
                                                         >
@@ -925,6 +954,7 @@ const AdminProducts = () => {
                                                         <th className="text-left py-2 pr-4">Price (₹)</th>
                                                         <th className="text-left py-2 pr-4">Stock</th>
                                                         <th className="text-left py-2">SKU</th>
+                                                        <th className="text-left py-2">Action</th>
                                                     </tr>
                                                 </thead>
                                                 <tbody className="divide-y divide-blue-100">
@@ -963,18 +993,28 @@ const AdminProducts = () => {
                                                             </td>
 
                                                             <td className="py-2">
-                                                                <input
-                                                                    type="text"
-                                                                    value={variant.sku}
-                                                                    onChange={(e) => {
-                                                                        const updated = [...variants];
-                                                                        updated[i].sku = e.target.value;
-                                                                        setVariants(updated);
-                                                                    }}
-                                                                    placeholder="Auto"
-                                                                    className="w-28 px-2 py-1 bg-white border border-gray-200 rounded text-sm"
-                                                                />
-                                                            </td>
+    <input
+        type="text"
+        value={variant.sku}
+        onChange={(e) => {
+            const updated = [...variants];
+            updated[i].sku = e.target.value;
+            setVariants(updated);
+        }}
+        placeholder="Auto"
+        className="w-28 px-2 py-1 bg-white border border-gray-200 rounded text-sm"
+    />
+</td>
+
+<td className="py-2">
+    <button
+        type="button"
+        onClick={() => handleDeleteVariant(variant.name)}
+        className="p-2 text-red-500 hover:bg-red-50 rounded-lg transition-colors"
+    >
+        <IoTrashOutline size={18} />
+    </button>
+</td>
                                                         </tr>
                                                     ))}
                                                 </tbody>

@@ -13,6 +13,7 @@ import { useAuth } from '../context/AuthContext';
 import { useNavigate } from 'react-router-dom';
 import { userapiRequest } from '../services/apiService';
 import { useWishlist } from '../context/WishlistContext';
+import { useCart } from '../context/CartContext';
 const AuthModal = () => {
   const {
     authModalMode,
@@ -40,6 +41,7 @@ const AuthModal = () => {
 
   const isLogin = authModalMode === 'login';
 const { refreshWishlist } = useWishlist();
+const { refreshCart } = useCart();
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
@@ -59,6 +61,7 @@ const { refreshWishlist } = useWishlist();
         setEmail('');
         setPassword('');
          await refreshWishlist();
+         await refreshCart()
         navigate('/account');
       }
     } catch (err: any) {

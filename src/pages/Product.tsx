@@ -15,13 +15,14 @@ const ProductDetail = () => {
     const product = getProductById(id || "");
     const { addItem } = useCart();
     const { toggle, has } = useWishlist();
-    const [selectedSize, setSelectedSize] = useState("");
-    const [selectedColor, setSelectedColor] = useState("");
+    const [selectedSize, setSelectedSize] = useState(product.sizes[0] || "");
+    const [selectedColor, setSelectedColor] = useState(product.colors[0]?.name || "");
     const [quantity, setQuantity] = useState(1);
     const [activeTab, setActiveTab] = useState("Description");
     const [mainImage, setMainImage] = useState(0);
     const [added, setAdded] = useState(false);
-    
+
+
     // Review form state
     const [reviewForm, setReviewForm] = useState({ rating: 5, name: "", title: "", text: "" });
     const [reviewSubmitted, setReviewSubmitted] = useState(false);
@@ -30,10 +31,24 @@ const ProductDetail = () => {
 
     const inWishlist = has(product.id);
     const related = products.filter(p => p.category === product.category && p.id !== product.id).slice(0, 4);
-    const discount = product.originalPrice ? Math.round((1 - product.price / product.originalPrice) * 100) : null;
+    // const discount = product.originalPrice ? Math.round((1 - product.price / product.originalPrice) * 100) : null;
 
+
+    const selectedVariant = product.variants?.find(
+  (v) => v.name === `${selectedColor}/${selectedSize}`
+);
+
+const displayPrice = selectedVariant?.price ?? product.price;
+
+// original/base price
+const originalPrice = product.originalPrice ?? product.price;
+
+const discount =
+  originalPrice > displayPrice
+    ? Math.round((1 - displayPrice / originalPrice) * 100)
+    : null;
     const handleAddToCart = () => {
-        addItem({ productId: product.id, name: product.name, brand: product.brand, image: product.image, price: product.price, originalPrice: product.originalPrice, size: selectedSize || product.sizes[0], color: selectedColor || product.colors[0]?.name || "" });
+        addItem({ productId: product.id, name: product.name, brand: product.brand, image: product.image, price: product.price, originalPrice: product.originalPrice, size: selectedSize || product.sizes[0], color: selectedColor || product.colors[0]?.name || "" ,shipping: product.shipping ?? true});
         setAdded(true);
         setTimeout(() => setAdded(false), 2000);
     };
@@ -74,10 +89,22 @@ const ProductDetail = () => {
                         <span className="text-sm text-muted">({product.reviews} reviews)</span>
                     </div>
                     <div className="flex items-center gap-3 mb-6">
-                        <span className="font-heading text-3xl font-bold text-accent">₹{product.price.toFixed(2)}</span>
-                        {product.originalPrice && <span className="text-lg text-muted line-through">₹{product.originalPrice.toFixed(2)}</span>}
-                        {discount && <span className="text-sm font-bold text-green-600 bg-green-50 px-2 py-1 rounded-lg">{discount}% OFF</span>}
-                    </div>
+  <span className="font-heading text-3xl font-bold text-accent">
+    ₹{displayPrice.toFixed(2)}
+  </span>
+
+  {originalPrice > displayPrice && (
+    <span className="text-lg text-muted line-through">
+      ₹{originalPrice.toFixed(2)}
+    </span>
+  )}
+
+  {discount && (
+    <span className="text-sm font-bold text-green-600 bg-green-50 px-2 py-1 rounded-lg">
+      {discount}% OFF
+    </span>
+  )}
+</div>
                     <p className="text-muted text-sm leading-relaxed mb-6">{product.description}</p>
                     <div className="h-px bg-gray-200 mb-6" />
 
@@ -158,7 +185,7 @@ const ProductDetail = () => {
                         {/* Write Review Form */}
                         <div className="bg-gray-50 rounded-[2rem] p-6 md:p-8 h-fit">
                             <h3 className="font-heading font-bold text-xl mb-6">Write a Review</h3>
-                            
+
                             {reviewSubmitted ? (
                                 <div className="text-center py-10">
                                     <div className="w-16 h-16 bg-green-100 text-green-500 rounded-full flex items-center justify-center mx-auto mb-4">
@@ -166,7 +193,7 @@ const ProductDetail = () => {
                                     </div>
                                     <h4 className="font-bold text-lg mb-2">Review Submitted!</h4>
                                     <p className="text-sm text-muted mb-6">Thank you for sharing your thoughts.</p>
-                                    <button 
+                                    <button
                                         onClick={() => { setReviewSubmitted(false); setReviewForm({ rating: 5, name: "", title: "", text: "" }); }}
                                         className="text-brand font-semibold text-sm hover:underline"
                                     >
@@ -193,8 +220,8 @@ const ProductDetail = () => {
 
                                     <div>
                                         <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Your Name</label>
-                                        <input 
-                                            type="text" 
+                                        <input
+                                            type="text"
                                             required
                                             value={reviewForm.name}
                                             onChange={e => setReviewForm({ ...reviewForm, name: e.target.value })}
@@ -205,8 +232,8 @@ const ProductDetail = () => {
 
                                     <div>
                                         <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Review Title</label>
-                                        <input 
-                                            type="text" 
+                                        <input
+                                            type="text"
                                             required
                                             value={reviewForm.title}
                                             onChange={e => setReviewForm({ ...reviewForm, title: e.target.value })}
@@ -217,7 +244,7 @@ const ProductDetail = () => {
 
                                     <div>
                                         <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Review</label>
-                                        <textarea 
+                                        <textarea
                                             required
                                             rows={4}
                                             value={reviewForm.text}
@@ -227,8 +254,8 @@ const ProductDetail = () => {
                                         ></textarea>
                                     </div>
 
-                                    <button 
-                                        type="submit" 
+                                    <button
+                                        type="submit"
                                         className="w-full py-3.5 bg-brand text-white font-bold rounded-xl shadow-button hover:bg-brand-light hover:shadow-button-hover transition-all text-sm"
                                     >
                                         Submit Review

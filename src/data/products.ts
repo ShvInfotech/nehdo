@@ -1,5 +1,34 @@
 import { userapiRequest } from '../services/apiService';
 
+export interface Variant {
+  _id: string;
+  name: string; // e.g. "White/XS"
+  price: number;
+  stock: number;
+  sku: string;
+}
+
+export interface Product {
+  id: string;
+  name: string;
+  brand: string;
+  price: number;
+  originalPrice: number | null;
+  image: string;
+  images: string[];
+  category: string;
+  subcategory: string;
+  description: string;
+  sizes: string[];
+  colors: { name: string; hex: string }[];
+  variants: Variant[]; // add this
+  rating: number;
+  reviews: number;
+  isNew: boolean;
+  isTrending: boolean;
+  tags: string[];
+}
+
 export interface Product {
   id: string;
   name: string;
@@ -27,7 +56,6 @@ export let products: Product[] = [];
 export const loadProducts = async () => {
   try {
     const res: any = await userapiRequest('/user/api/v1/product','GET');
-
     products = (res.products || []).map((p: any) => ({
       id: p._id,
 
@@ -53,12 +81,18 @@ export const loadProducts = async () => {
 
       description: p.description || '',
 
-      sizes: p.size || [],
+      sizes: Array.isArray(p.size)
+  ? p.size
+  : p.size
+    ? [p.size]
+    : [],
 
       colors: (p.colors || []).map((c: string) => ({
         name: c,
-        hex: '#000000', // temporary default color
+        hex: c.toLowerCase(), // temporary default color
       })),
+
+      variants: p.variants || [],
 
       rating: p.averageRating || 0,
 

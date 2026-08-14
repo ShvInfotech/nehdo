@@ -106,11 +106,12 @@ const matchProduct = (sku, carts) => {
 }
 
 const GetVariants = (products) => {
+    console.log(products)
     const variants = []
     products.forEach((product) => {
         product.variant.variant.forEach((v) => {
             if (v.name === `${product.color}/${product.size}`) {
-                variants.push(v)
+                variants.push({...v,price:v.price * product.quantity})
             }
         })
     })
@@ -181,6 +182,8 @@ const userEligibility = checkUserCouponEligibility(coupon)
         return { success: false, message: "coupon not apply this user" }
     }
 
+    
+
 
     const matchsku = checkProductCouponEligibility(coupon, carts)
 
@@ -195,7 +198,7 @@ const userEligibility = checkUserCouponEligibility(coupon)
 
 
     const variants = GetVariants(mproducts)
-
+console.log(variants)
 
     if (!variants.length) {
         return { success: false, message: "varinat not found" }
@@ -205,6 +208,7 @@ const userEligibility = checkUserCouponEligibility(coupon)
         return total + (variant.price || 0);
     }, 0);
 
+    console.log(totalPrice)
 
     const purchaseEligibility = checkPurchaseCouponEligibility(coupon.minimumPurchase, totalPrice)
     if (!purchaseEligibility) {

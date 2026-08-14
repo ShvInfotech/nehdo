@@ -159,46 +159,73 @@ exports.GoogelLogin = async (req, res, next) => {
 
 exports.UpdateUserProfile = async (req, res, next) => {
     try {
-        const id = req.params.id
+        const id = req.params.id;
 
         if (!mongoose.isValidObjectId(id)) {
-            return next(CustomeError(422, "User id Invalid"))
+            return next(CustomeError(422, 'User id Invalid'));
         }
-        let user = await userModel.findById(id)
+
+        let user = await userModel.findById(id);
 
         if (!user) {
-            return next(CustomeError(404, "user not found"))
+            return next(CustomeError(404, 'user not found'));
         }
 
-        let profile = user.profile
+        // 👇 add this block
+        if (req.body.email && req.body.email !== user.email) {
+
+            const existingUser = await userModel.findOne({
+                email: req.body.email,
+                _id: { $ne: id }
+            });
+
+            if (existingUser) {
+                return next(CustomeError(409, 'Email already exists'));
+            }
+        }
+
+        let profile = user.profile;
+
         const UpdateData = {
             ...req.body,
+        };
 
-        }
         if (req.file) {
-            if (profile !== "") {
-                DeleteImage(profile)
+            if (profile !== '') {
+                DeleteImage(profile);
             }
 
-            UpdateData.profile = `/uploads/${req.file.fieldname}/${req.file.filename}`
+            UpdateData.profile =
+                `/uploads/${req.file.fieldname}/${req.file.filename}`;
         }
 
+        user = await userModel
+            .findByIdAndUpdate(id, UpdateData, {
+                returnDocument: 'after',
+                runValidators: true
+            })
+            .select(['name', 'email', 'phone', 'role', 'profile']);
 
-        user = await userModel.findByIdAndUpdate(id, UpdateData, { returnDocument: 'after' }).select(['name', 'email', 'phone','role', 'profile'])
-
-
-        if (user.profile !== "") {
-            user.profile = `http://${process.env.HOST}:${process.env.PORT}${user.profile}`;
+        if (user.profile !== '') {
+            user.profile =
+                `http://${process.env.HOST}:${process.env.PORT}${user.profile}`;
         }
 
- const address = await addressModel.find({ userId: user._id })
+        const address = await addressModel.find({ userId: user._id });
+
         const userData = user.toObject();
         userData.address = address;
-        return res.status(200).json({ success: true, message: "user profile update successfully", user:userData })
+
+        return res.status(200).json({
+            success: true,
+            message: 'user profile update successfully',
+            user: userData
+        });
+
     } catch (error) {
-        return next(error)
+        return next(error);
     }
-}
+};
 
 exports.ForgotPassword = async (req, res, next) => {
     try {

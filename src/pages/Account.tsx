@@ -6,7 +6,7 @@ import { useAuth } from "../context/AuthContext";
 import Breadcrumb from "../components/Breadcrumb";
 import { userapiRequest } from '../services/apiService';
 import { useWishlist } from '../context/WishlistContext';
-
+import { useCart } from '../context/CartContext';
 const SidebarNav = ({
     active,
     onLogout
@@ -51,6 +51,7 @@ const Account = () => {
     const [isAddressEditMode, setIsAddressEditMode] = useState(false);
     const [editingAddressId, setEditingAddressId] = useState<string | null>(null);
     const { clear } = useWishlist();
+    const { clearCart } = useCart();
     const [addressForm, setAddressForm] = useState({
         addressline: '',
         landmark: '',
@@ -77,6 +78,7 @@ const Account = () => {
     const handleLogout = () => {
         logout();
         clear();
+        clearCart();
         navigate('/');
     };
     const handleSave = async (e: React.FormEvent) => {

@@ -357,16 +357,17 @@ exports.UpdateProduct = async (req, res, next) => {
         if (req.body?.metaDescription) {
             productData.metaDescription = req.body?.metaDescription
         }
-console.log(req.body?.deleteImage)
+
+        
+
         if (req.body?.deleteImage) {
             const deleteIndex = Array.isArray(req.body.deleteImage) ? req.body.deleteImage : JSON.parse(req.body.deleteImage);
             if (deleteIndex.length) {
-                console.log("delete image index", deleteIndex)
+               
                 deleteIndex.forEach((value, index) => {
                     DeleteImage(productData.productImage[value])
                 })
                 const newproductImage = productData.productImage.filter((_, index) => !deleteIndex.includes(index));
-                console.log("new product image", newproductImage)
                 productData.productImage = newproductImage
                 console.log("after fileter productimages", productData.productImage)
             }
@@ -383,12 +384,18 @@ console.log(req.body?.deleteImage)
 
         let variantData = await productVariantModel.findOne({ productId: product._id })
         if (req.body?.size) {
-            variantData.size = req.body?.size || []
-        }
+    variantData.size =
+        typeof req.body.size === 'string'
+            ? JSON.parse(req.body.size)
+            : req.body.size;
+}
 
-        if (req.body?.colors) {
-            variantData.colorOptions = req.body?.colors || []
-        }
+if (req.body?.colors) {
+    variantData.colorOptions =
+        typeof req.body.colors === 'string'
+            ? JSON.parse(req.body.colors)
+            : req.body.colors;
+}
 
         if (req.body.material) {
             variantData.material = req.body.material || ''

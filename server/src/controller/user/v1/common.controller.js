@@ -58,7 +58,7 @@ exports.ApplyCoupon = async (req, res, next) => {
         if (coupon.discountType === "Percentage") {
             const discount = await PercentageCoupenapplay(coupon, carts)
             if (discount.success === false) {
-                return next(CustomeError(401, discount.message))
+                return next(CustomeError(409, discount.message))
             }
             return res.json(discount)
         }
@@ -66,7 +66,7 @@ exports.ApplyCoupon = async (req, res, next) => {
         if (coupon.discountType === "CartDiscount") {
             const discount = await CartDiscountCoupenapplay(coupon, carts)
             if (discount.success === false) {
-                return next(CustomeError(401, discount.message))
+                return next(CustomeError(409, discount.message))
             }
             return res.json(discount)
         }
@@ -101,23 +101,55 @@ exports.CheckShiping = async (req, res, next) => {
         }
 
 
-        const weight = products.reduce((total, product) => total + (product.shipping?.weight || 0), 0);
-        const trakingdata = {
+
+
+        const weight = products.reduce(
+            (total, product) =>
+                total +
+                Number(product.shipping?.weight || 0) * Number(product.quantity || 1),
+            0
+        );
+
+        const length = Math.max(
+            ...products.map(
+                p => Number(p.shipping?.dimensions?.length || 0)
+            ),
+            0
+        );
+
+        const breadth = Math.max(
+            ...products.map(
+                p => Number(p.shipping?.dimensions?.width || 0)
+            ),
+            0
+        );
+
+        const height = products.reduce(
+            (total, product) =>
+                total +
+                Number(product.shipping?.dimensions?.height || 0) *
+                Number(product.quantity || 1),
+            0
+        );
+
+        const trackingData = {
             pincode: address.postalCode,
             weight,
             cod: 0,
-            length: products[0].shipping.dimensions.length,
-            breadth: products[0].shipping.dimensions.width,
-            height: products[0].shipping.dimensions.height
-        }
-        const data = await getshippingcharg(trakingdata)
+            length,
+            breadth,
+            height
+        };
+
+
+        const data = await getshippingcharg(trackingData)
         if (data.status === 400 || data.status === 404) {
             return res.status(data.status).json({ success: false, message: data.message })
         }
         const bestCourier = data.data.available_courier_companies.reduce((best, current) =>
             current.rate < best.rate ? current : best
         );
-        console.log(bestCourier)
+
         return res.status(200).json({ success: true, message: 'get charge', shipping: bestCourier.rate, estimated_delivery_days: bestCourier.estimated_delivery_days, courier_name: bestCourier.courier_name, id: bestCourier.courier_company_id })
 
     } catch (error) {
@@ -197,8 +229,8 @@ exports.verifyPayment = async (req, res, next) => {
 
         const signature = razorpay_signature(req.body.razorpay_order_id, req.body.razorpay_payment_id)
         if (signature !== req.body?.razorpay_signature) {  // chang after
-            
-            return res.status(200).json({success:true,message:"payment verify",signature})
+
+            return res.status(200).json({ success: true, message: "payment verify", signature })
         }
     } catch (error) {
         return next(error)

@@ -12,16 +12,23 @@ const ProductCard: React.FC<{ product: Product; index?: number }> = ({ product, 
     const [addedToCart, setAddedToCart] = useState(false);
     const inWishlist = has(product.id);
 
-    const handleAddToCart = (e: React.MouseEvent) => {
-        e.preventDefault();
-        addItem({
-            productId: product.id, name: product.name, brand: product.brand,
-            image: product.image, price: product.price, originalPrice: product.originalPrice,
-            size: product.sizes[0], color: product.colors[0]?.name || "Default",
-        });
-        setAddedToCart(true);
-        setTimeout(() => setAddedToCart(false), 1200);
-    };
+    const handleAddToCart = async (e: React.MouseEvent) => {
+  e.preventDefault();
+
+  await addItem({
+    productId: product.id,
+    name: product.name,
+    brand: product.brand,
+    image: product.image,
+    price: product.price,
+    originalPrice: product.originalPrice,
+    size: product.sizes[0],
+    color: product.colors[0]?.name || 'Default',
+  });
+
+  setAddedToCart(true);
+  setTimeout(() => setAddedToCart(false), 1200);
+};
 
    const handleWishlist = async (e: React.MouseEvent) => {
   e.preventDefault();
