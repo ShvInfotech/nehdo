@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import {
     IoTrashOutline,
@@ -15,44 +15,44 @@ import Breadcrumb from "../components/Breadcrumb";
 import { userapiRequest } from "../services/apiService";
 
 const Cart = () => {
-  const {
-    items,
-    removeItem,
-    updateQuantity,
-    subtotal,
-    shipping,
-    total,
-    itemCount,
-    setShippingCharge,
-    shippingInfo,
-    setShippingInfo
-} = useCart();
+    const {
+        items,
+        removeItem,
+        updateQuantity,
+        subtotal,
+        shipping,
+        total,
+        itemCount,
+        setShippingCharge,
+        shippingInfo,
+        setShippingInfo
+    } = useCart();
 
 
     // Only products that require shipping
-const shippingCartIds = items
-    .filter(item => item.shipping)
-    .map(item => item._id);
+    const shippingCartIds = items
+        .filter(item => item.shipping)
+        .map(item => item._id);
 
 
-const user = JSON.parse(localStorage.getItem("user") || "{}");
+    const user = JSON.parse(localStorage.getItem("user") || "{}");
 
-const defaultAddress = user.address?.find(
-    (a: any) => a.defaultaddress === true
-);
+    const defaultAddress = user.address?.find(
+        (a: any) => a.defaultaddress === true
+    );
 
-const addressId = defaultAddress?._id;
+    const addressId = defaultAddress?._id;
 
 
     const [coupon, setCoupon] = useState("");
     const [couponError, setCouponError] = useState("");
     const [couponLoading, setCouponLoading] = useState(false);
-
+    const [shippingError, setShippingError] = useState("");
     const [appliedCoupon, setAppliedCoupon] = useState<{
         couponId: string;
         discount: number;
     } | null>(null);
-
+    const navigate = useNavigate();
     // Apply coupon API
     const handleApplyCoupon = async () => {
         if (!coupon.trim()) return;
@@ -105,52 +105,83 @@ const addressId = defaultAddress?._id;
 
     const checkShipping = async () => {
 
-    // no shippable products
-    if (shippingCartIds.length === 0) {
-        console.log("No shipping required");
-        setShippingCharge(0);
-setShippingInfo(null);
-        return;
-    }
+        // no shippable products
+        sessionStorage.removeItem('shippingCharge',);
 
-    if (!addressId) {
-        console.log("Default address not found");
-        return;
-    }
+        if (shippingCartIds.length === 0) {
+            console.log("No shipping required");
+            setShippingCharge(0);
+            setShippingInfo(null);
+            return;
+        }
 
-    try {
+        if (!addressId) {
+            setShippingError(
+                "Default address not found. Please add a default address."
+            );
 
-        const res = await userapiRequest(
-            "/user/api/v1/common/checkshiping",
-            "POST",
-            {
-                addressId: addressId,
-                cartIds: shippingCartIds
+            setShippingCharge(0);
+            setShippingInfo(null);
+
+            setTimeout(() => {
+                navigate("/account");
+            }, 1000);
+
+            return;
+        }
+
+        try {
+
+            const res = await userapiRequest(
+                "/user/api/v1/common/checkshiping",
+                "POST",
+                {
+                    addressId: addressId,
+                    cartIds: shippingCartIds
+                }
+            );
+
+            if (res.success) {
+                setShippingCharge(res.shipping || 0);
+                setShippingInfo({
+                    estimated_delivery_days: res.estimated_delivery_days,
+                    courier_name: res.courier_name
+                });
+                sessionStorage.setItem("shippingCharge",JSON.stringify(res.shipping))
             }
-        );
+        } catch (error) {
+            console.log(error);
+            setShippingError(
+                error?.message || "Unable to calculate shipping charge."
+            );
 
-        if (res.success) {
-    setShippingCharge(res.shipping || 0);
-
-    setShippingInfo({
-        estimated_delivery_days: res.estimated_delivery_days,
-        courier_name: res.courier_name
-    });
-}
-    } catch (error) {
-        console.log(error);
-    }
-};
+            setTimeout(() => {
+                navigate("/account");
+            }, 1000);
+            
+        }
+    };
 
 
-useEffect(() => {
-  if (items.length > 0) {
-    checkShipping();
-  } else {
-    setShippingCharge(0);
-    setShippingInfo(null);
-  }
-}, [itemCount]);
+    useEffect(() => {
+        if (items.length > 0) {
+            checkShipping();
+            handleApplyCoupon()
+        } else {
+            setShippingCharge(0);
+            setShippingInfo(null);
+        }
+
+    }, [itemCount]);
+
+    useEffect(() => {
+        sessionStorage.removeItem('appliedCoupon');
+        sessionStorage.removeItem('shippingCharge');
+
+    }, [])
+
+
+
 
     const discountAmount = appliedCoupon?.discount || 0;
     const finalTotal = total - discountAmount;
@@ -307,9 +338,13 @@ useEffect(() => {
                                     )}
                                 </span>
                             </div>
+                            {shippingError && (
+                                <p className="text-xs text-red-500 mt-2">
+                                    {shippingError}
+                                </p>
+                            )}
 
-                           
-{/* {shippingInfo && (
+                            {/* {shippingInfo && (
     <div className="text-xs text-gray-500 mt-1">
         <p>Courier: {shippingInfo.courier_name}</p>
         <p>

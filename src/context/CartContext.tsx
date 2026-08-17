@@ -44,16 +44,16 @@ interface CartContextType {
   clearCart: () => void;
 
   itemCount: number;
-   cartCount: number;
+  cartCount: number;
 
   subtotal: number;
- shipping: number;
-setShippingCharge: (amount: number) => void;
-shippingInfo: {
-  estimated_delivery_days?: string;
-  courier_name?: string;
-} | null;
-setShippingInfo: (info: any) => void;
+  shipping: number;
+  setShippingCharge: (amount: number) => void;
+  shippingInfo: {
+    estimated_delivery_days?: string;
+    courier_name?: string;
+  } | null;
+  setShippingInfo: (info: any) => void;
   total: number;
 }
 
@@ -62,11 +62,11 @@ const CartContext = createContext<CartContextType | undefined>(undefined);
 export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
 
   const [items, setItems] = useState<CartItem[]>([]);
-const [shippingCharge, setShippingCharge] = useState(0);
-const [shippingInfo, setShippingInfo] = useState<{
-  estimated_delivery_days?: string;
-  courier_name?: string;
-} | null>(null);
+  const [shippingCharge, setShippingCharge] = useState(0);
+  const [shippingInfo, setShippingInfo] = useState<{
+    estimated_delivery_days?: string;
+    courier_name?: string;
+  } | null>(null);
   // Load cart from backend
   const refreshCart = useCallback(async () => {
 
@@ -227,10 +227,10 @@ const [shippingInfo, setShippingInfo] = useState<{
         cartCount,
         subtotal,
         shipping,
-setShippingCharge,
-shippingInfo,
-setShippingInfo,
-total
+        setShippingCharge,
+        shippingInfo,
+        setShippingInfo,
+        total
       }}
     >
       {children}

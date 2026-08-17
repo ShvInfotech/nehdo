@@ -4,10 +4,13 @@ const couponModel = require("../../../model/coupon.model")
 const cartModel = require("../../../model/cart.model")
 const addressModel = require('../../../model/address.model')
 const productModel = require("../../../model/product.model")
+const productvariantModel = require('../../../model/productvariant.model')
 const { GetProductCouponApplay, GetCartProductCouponApplay, GetCartProductShipingcharg, GetCartProductPaymentOrder } = require("../../../helper/aggretionpipeline")
-const { PercentageCoupenapplay, CartDiscountCoupenapplay, FindPriceinProduct } = require("../../../helper/helper")
+const { PercentageCoupenapplay, CartDiscountCoupenapplay, FindPriceinProduct, generateOrderNumber } = require("../../../helper/helper")
 const { getshippingcharg } = require("../../../services/shiproketapis")
-const { razorpay, razorpay_signature } = require("../../../config/razorpay.config")
+const { razorpay, razorpaySignature } = require("../../../config/razorpay.config")
+const orderModel = require("../../../model/order.model")
+
 
 
 exports.ApplyCoupon = async (req, res, next) => {
@@ -165,37 +168,26 @@ exports.PaymentOrder = async (req, res, next) => {
         if (!req.body?.cartIds && !req.body?.cartIds.length) {
             return next(CustomeError(422, 'cart id required'))
         }
-        const discountData = req.body?.discountData || null
-        const courierPatner = req.body.courierPatner || null
-        // const carts = await cartModel.find({_id: { $in: req.body.cartIds },userId:req.user._id});
+        const discount = req.body?.discount || null
+        const shippingcharge = req.body.shippingcharge || null
         const products = await cartModel.aggregate(GetCartProductPaymentOrder(req.body.cartIds));
         let totalprice = FindPriceinProduct(products)
-        if (courierPatner) {
-            totalprice += courierPatner.shipping
+        if (shippingcharge) {
+            totalprice += shippingcharge
         }
-        if (discountData) {
-            totalprice -= discountData.discount
+        if (discount) {
+            totalprice -= discount
         }
 
         const options = {
             amount: Math.round(totalprice * 100), // paise
             currency: 'INR',
-            receipt: `rcpt_${Date.now()}`,
-            notes: {
-                userId: req.user._id,
-                cartIds: req.body.cartIds,
-                discountData: discountData,
-                courierPatner: courierPatner,
-                finalprice: totalprice
-            }
+            receipt: `rcpt_${Date.now()}`
         };
 
         let order = await razorpay.orders.create(options)
-        const { id, ...rest } = order;
-        order = {
-            rzpOrderId: order.id,
-            ...rest,
-        }
+
+        console.log(order)
 
         return res.status(200).json({ success: true, message: 'payment order created', order })
 
@@ -224,14 +216,114 @@ exports.verifyPayment = async (req, res, next) => {
             return next(CustomeError(422, 'cart id required'))
         }
 
-        const discountData = req.body?.discountData || null
-        const courierPatner = req.body.courierPatner || null
 
-        const signature = razorpay_signature(req.body.razorpay_order_id, req.body.razorpay_payment_id)
+
+        const signature = razorpaySignature(req.body.razorpay_order_id, req.body.razorpay_payment_id)
         if (signature !== req.body?.razorpay_signature) {  // chang after
-
-            return res.status(200).json({ success: true, message: "payment verify", signature })
+            return res.status(409).json({ success: false, message: "payment not verify" })
         }
+
+
+
+
+
+        const address = await addressModel.findById(req.body?.addressId)
+        const carts = await cartModel.find({
+            _id: { $in: req.body?.cartIds },
+            userId: req.user._id
+        });
+
+        const orderItems = [];
+
+        for (const cartItem of carts) {
+
+            // 1. Product na variants find karo
+            const productVariant = await productvariantModel.findOne({
+                productId: cartItem.productId
+            });
+
+            if (!productVariant) {
+                return res.status(404).json({
+                    success: false,
+                    message: `Variant not found for product ${cartItem.productId}`
+                });
+            }
+
+            // 2. Size + Color combination
+            const variantName = `${cartItem.color}/${cartItem.size}`;
+
+            // 3. Actual variant find karo
+            const selectedVariant = productVariant.variant.find(
+                (variant) => variant.name === variantName
+            );
+
+            if (!selectedVariant) {
+                return res.status(404).json({
+                    success: false,
+                    message: `Variant ${variantName} not found`
+                });
+            }
+
+            console.log("Selected Variant:", selectedVariant);
+
+            // 4. Order item
+            orderItems.push({
+                productId: cartItem.productId,
+                variantId: selectedVariant._id,
+
+                size: cartItem.size,
+                color: cartItem.color,
+
+                quantity: cartItem.quantity,
+
+                price: selectedVariant.price,
+
+                total: selectedVariant.price * cartItem.quantity
+            });
+        }
+
+        const shippingAddress = {
+            addressline: address.addressline,
+            landmark: address.landmark,
+            city: address.city,
+            state: address.state,
+            postalCode: address.postalCode,
+        }
+
+        const subtotal = orderItems.reduce((sum, item) => sum + item.total, 0);
+        const discount = req.body?.discount || 0
+        const couponId = req.body?.coupenId || null
+        const shipping = req.body?.shipping || 0
+        
+        const totalAmount = subtotal + shipping - discount
+        const payment = {
+            orderId: req.body.razorpay_order_id,
+            paymentId: req.body.razorpay_payment_id,
+        }
+
+        const orderNumber = await generateOrderNumber()
+        const orderData = {
+            userId: req.user._id,
+            orderNumber,
+            items: orderItems,
+            shippingAddress,
+            subtotal,
+            shippingCharge: shipping,
+            discount,
+            couponId,
+            totalAmount,
+            payment,
+        }
+
+        const order = await orderModel.create(orderData)
+
+        if (order) {
+            await cartModel.deleteMany({
+                _id: { $in: req.body?.cartIds },
+                userId: req.user._id
+            });
+        }
+        return res.status(200).json({ success: true, message: 'order create successfullly', order })
     } catch (error) {
         return next(error)
     }

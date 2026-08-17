@@ -11,11 +11,11 @@ const razorpay = new Razorpay({
 
 
 
-const razorpay_signature = (razorpay_order_id,razorpay_payment_id)=>{
+const razorpaySignature = (razorpay_order_id,razorpay_payment_id)=>{
   return crypto
       .createHmac("sha256", process.env.RAZORPAY_API_SECRET)
       .update(razorpay_order_id + "|" + razorpay_payment_id)
       .digest("hex");
 }
 
-module.exports = {razorpay,razorpay_signature}
+module.exports = {razorpay,razorpaySignature}

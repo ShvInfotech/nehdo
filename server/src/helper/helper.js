@@ -1,6 +1,7 @@
 const crypto = require("crypto");
 const path = require('path')
-const fs = require('fs')
+const fs = require('fs');
+const orderModel = require("../model/order.model");
 
 
 exports.DeleteImage = (filepath) => {
@@ -246,6 +247,30 @@ exports.FindPriceinProduct = (products) => {
   return total;
 };
 
+
+
+exports.generateOrderNumber = async () => {
+    let orderNumber;
+    let exists = true;
+
+    while (exists) {
+        const date = new Date();
+
+        const year = date.getFullYear();
+        const month = String(date.getMonth() + 1).padStart(2, "0");
+        const day = String(date.getDate()).padStart(2, "0");
+
+        const random = Math.floor(1000 + Math.random() * 9000);
+
+        orderNumber = `NEHDO-${year}${month}${day}-${random}`;
+
+        exists = await orderModel.exists({
+            orderNumber
+        });
+    }
+
+    return orderNumber;
+};
 
 
 
