@@ -8,7 +8,7 @@ router.use('/cart',require('./cart.routes'))
 router.use('/wishlist',require('./wishlist.routes'))
 router.use('/common',require('./common.routes'))
 router.use('/address',require('./address.routes'))
-
+router.use('/orders',require('./order.routes'))
 
 
 

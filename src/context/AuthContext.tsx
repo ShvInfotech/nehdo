@@ -80,7 +80,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         address: res.user?.address || '',
       };
 
-      console.log(loggedInUser)
+  
 
       setUser(loggedInUser);
 
@@ -146,7 +146,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   }, []);
 
   const updateProfile = useCallback(async (data: FormData) => {
-    console.log("context data",data)
     const res = await userapiRequest(`/user/api/v1/auth/updateprofile/${user?._id}`,"POST",data)
   
     setUser({...res.user});

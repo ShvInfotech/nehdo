@@ -116,8 +116,6 @@ const Checkout = () => {
 
                 handler: async function (response: any) {
 
-                    console.log("Razorpay Response:", response);
-
                     try {
 
                         // 2. Verify Payment

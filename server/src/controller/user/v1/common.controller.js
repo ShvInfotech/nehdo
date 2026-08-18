@@ -5,6 +5,7 @@ const cartModel = require("../../../model/cart.model")
 const addressModel = require('../../../model/address.model')
 const productModel = require("../../../model/product.model")
 const productvariantModel = require('../../../model/productvariant.model')
+const productshippingModel = require('../../../model/productshipping.model')
 const { GetProductCouponApplay, GetCartProductCouponApplay, GetCartProductShipingcharg, GetCartProductPaymentOrder } = require("../../../helper/aggretionpipeline")
 const { PercentageCoupenapplay, CartDiscountCoupenapplay, FindPriceinProduct, generateOrderNumber } = require("../../../helper/helper")
 const { getshippingcharg } = require("../../../services/shiproketapis")
@@ -242,12 +243,16 @@ exports.verifyPayment = async (req, res, next) => {
                 productId: cartItem.productId
             });
 
+            const productShipping = await productshippingModel.findOne({productId: cartItem.productId})
+
             if (!productVariant) {
                 return res.status(404).json({
                     success: false,
                     message: `Variant not found for product ${cartItem.productId}`
                 });
             }
+
+            const product = await productModel.findById(cartItem.productId)
 
             // 2. Size + Color combination
             const variantName = `${cartItem.color}/${cartItem.size}`;
@@ -270,14 +275,16 @@ exports.verifyPayment = async (req, res, next) => {
             orderItems.push({
                 productId: cartItem.productId,
                 variantId: selectedVariant._id,
-
+                sku:selectedVariant.sku,
                 size: cartItem.size,
                 color: cartItem.color,
-
+                image:product.productImage[0] || '',
                 quantity: cartItem.quantity,
 
                 price: selectedVariant.price,
-
+                weight:productShipping.weight,
+                dimensions:productShipping.dimensions,
+                HSCode:productShipping.HSCode,
                 total: selectedVariant.price * cartItem.quantity
             });
         }

@@ -1,6 +1,6 @@
 const mongoose = require("mongoose");
 
-const orderSchema =  mongoose.Schema(
+const orderSchema = mongoose.Schema(
     {
         orderNumber: {
             type: String,
@@ -26,13 +26,16 @@ const orderSchema =  mongoose.Schema(
                     type: mongoose.Schema.Types.ObjectId,
                     default: null,
                 },
+                sku: String,
                 name: String,
                 size: String,
                 color: String,
+                HSCode: String,
                 quantity: {
                     type: Number,
                     required: true,
                 },
+                image:String,
 
                 price: {
                     type: Number,
@@ -42,6 +45,25 @@ const orderSchema =  mongoose.Schema(
                 total: {
                     type: Number,
                     required: true,
+                },
+                weight: {
+                    type: Number,
+                    default: 0,
+                },
+
+                dimensions: {
+                    length: {
+                        type: Number,
+                        default: 0,
+                    },
+                    width: {
+                        type: Number,
+                        default: 0,
+                    },
+                    height: {
+                        type: Number,
+                        default: 0,
+                    },
                 },
             },
         ],
@@ -63,10 +85,10 @@ const orderSchema =  mongoose.Schema(
             type: Number,
             default: 0,
         },
-        couponId:{
-            type:mongoose.Schema.Types.ObjectId,
-            ref:"coupons",
-            default:null
+        couponId: {
+            type: mongoose.Schema.Types.ObjectId,
+            ref: "coupons",
+            default: null
         },
 
         shippingCharge: {
@@ -82,7 +104,7 @@ const orderSchema =  mongoose.Schema(
         payment: {
             method: {
                 type: String,
-                enum:['cod','online'],
+                enum: ['cod', 'online'],
                 default: "online",
             },
             status: {
@@ -109,7 +131,12 @@ const orderSchema =  mongoose.Schema(
             default: "pending",
         },
 
-        shoprocketOrderId: {
+        shiprocketOrderId: {
+            type: String,
+            default: null,
+        },
+
+        shiprocketShipmentId: {
             type: String,
             default: null,
         },
