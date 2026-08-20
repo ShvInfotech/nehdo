@@ -6,7 +6,7 @@ const { getshippingcharg, CreatOrderINShiproket, AssignCourierAndAWB } = require
 
 exports.PendingOrder = async (req, res, next) => {
     try {
-      
+
         const orders = await orderModel.aggregate([
             {
                 $lookup: {
@@ -35,21 +35,21 @@ exports.PendingOrder = async (req, res, next) => {
                     subtotal: 1,
                     discount: 1,
                     shippingCharge: 1,
-                    trackingNumber:1,
-                    shiprocketOrderId:1,
-                    shiprocketShipmentId:1,
+                    trackingNumber: 1,
+                    shiprocketOrderId: 1,
+                    shiprocketShipmentId: 1,
                     totalAmount: 1,
                     status: 1,
                     createdAt: 1,
-                    updatedAt:1
+                    updatedAt: 1
 
                 }
             },
             {
-        $sort: {
-            createdAt: -1
-        }
-    }
+                $sort: {
+                    createdAt: -1
+                }
+            }
         ]);
 
         return res.status(200).json({ success: true, message: 'get pending order', orders })
@@ -136,7 +136,7 @@ exports.AccepteOrder = async (req, res, next) => {
                     Number(item.quantity || 1),
                 0
             );
-
+            console.log(length, breadth, height)
             const weight = order.items.reduce(
                 (total, item) =>
                     total +
@@ -230,28 +230,38 @@ exports.AccepteOrder = async (req, res, next) => {
 
             const confirmorderData = await CreatOrderINShiproket(createorderData)
             const awsData = {
-                shipment_id:confirmorderData.shipment_id ,
+                shipment_id: confirmorderData.shipment_id,
                 courier_id: courierDetails.courierId
             }
             // const awsNumber = await AssignCourierAndAWB(awsData)    // pending aws not provide by shiproket in test mode 
             // console.log(awsNumber.data.errors)
 
-            await orderModel.findByIdAndUpdate(order._id,{shiprocketOrderId:confirmorderData.order_id,shiprocketShipmentId:confirmorderData.shipment_id,trackingNumber:'123456',status:'accepted'})
+            await orderModel.findByIdAndUpdate(order._id, { shiprocketOrderId: confirmorderData.order_id, shiprocketShipmentId: confirmorderData.shipment_id, trackingNumber: '123456', status: 'accepted' })
         }
 
         return res.status(200).json({ success: true, message: "Order Accepted", orders })
     } catch (error) {
+
+        console.log(
+            "Shiprocket Error:",
+            JSON.stringify(error.response?.data, null, 2)
+        );
+
+        console.log(
+            "Shiprocket Errors:",
+            JSON.stringify(error.response?.data?.errors, null, 2)
+        );
         return next(error)
     }
 }
 
 
 
-exports.ShippingWebhook = async(req,res,next)=>{
+exports.ShippingWebhook = async (req, res, next) => {
     try {
         const apiKey = req.headers["x-api-key"];
 
-         if (apiKey !== "123456abc") {
+        if (apiKey !== "123456abc") {
             return res.status(401).json({
                 success: false,
                 message: "Unauthorized webhook"
@@ -275,10 +285,12 @@ exports.ShippingWebhook = async(req,res,next)=>{
             "CANCELED": "cancelled",
             "CANCELLED": "cancelled"
         };
-console.log(req.body)
+        console.log(req.body)
         const newStatus = statusMap[current_status?.toUpperCase()];
-        
-        const updateorder = await orderModel.findOneAndUpdate({trackingNumber:awb},{status:newStatus},{returnDocument:'after'})
+        const generateRandom6Digit = () => {
+            return Math.floor(100000 + Math.random() * 900000);
+        };
+        const updateorder = await orderModel.findOneAndUpdate({ trackingNumber: awb }, { status: newStatus, trackingNumber: generateRandom6Digit() }, { returnDocument: 'after' })
         console.log(updateorder)
         return res.json(true)
     } catch (error) {

@@ -5,11 +5,12 @@ import {
     IoPersonOutline,
     IoBagHandleOutline,
     IoHeartOutline,
-    IoLogOutOutline,
     IoChevronDown,
     IoLocationOutline,
     IoCubeOutline,
     IoCardOutline,
+    IoStar,
+    IoShieldCheckmarkOutline,
 } from "react-icons/io5";
 
 import Breadcrumb from "../components/Breadcrumb";
@@ -123,8 +124,8 @@ const SidebarNav = ({ active }: { active: string }) => {
                         key={n.id}
                         to={n.href}
                         className={`flex items-center gap-3 px-4 py-3 rounded-2xl text-sm font-semibold transition-all ${active === n.id
-                                ? "bg-brand text-white shadow-button"
-                                : "text-gray-600 hover:bg-gray-100"
+                            ? "bg-brand text-white shadow-button"
+                            : "text-gray-600 hover:bg-gray-100"
                             }`}
                     >
                         <n.icon size={20} />
@@ -222,7 +223,34 @@ interface OrderCardProps {
 
 const OrderCard = ({ order }: OrderCardProps) => {
     const [expanded, setExpanded] = useState(false);
+    const [reviewSubmitted, setReviewSubmitted] = useState(false);
 
+    const [reviewForm, setReviewForm] = useState({
+        rating: 5,
+        review: "",
+    });
+
+    const handleReviewSubmit = async (
+        e: React.FormEvent<HTMLFormElement>
+    ) => {
+        e.preventDefault();
+
+        try {
+            const payload = {
+                orderId:order._id,
+               productIds: [...new Set(order.items.map((item) => item.productId))],
+                rating: reviewForm.rating,
+                review: reviewForm.review,
+            };
+
+           
+             const respons = await userapiRequest('/user/api/v1/product/review/create',"POST",payload)
+
+            setReviewSubmitted(true);
+        } catch (error) {
+            console.error("REVIEW SUBMIT ERROR:", error);
+        }
+    };
     const displayStatus = getDisplayStatus(order.status);
 
     const handleExpand = () => {
@@ -619,6 +647,121 @@ const OrderCard = ({ order }: OrderCardProps) => {
                                         </div>
                                     </div>
                                 )}
+
+                            {/* Review */}
+                            {displayStatus === "Delivered" && (
+                                <div className="mt-8 pt-6 border-t border-gray-200">
+                                    <div className="bg-gray-50 rounded-[2rem] p-6 md:p-8">
+                                        {reviewSubmitted ? (
+                                            <div className="text-center py-8">
+                                                <div className="w-16 h-16 bg-green-100 text-green-500 rounded-full flex items-center justify-center mx-auto mb-4">
+                                                    <IoShieldCheckmarkOutline size={32} />
+                                                </div>
+
+                                                <h4 className="font-bold text-lg mb-2">
+                                                    Review Submitted!
+                                                </h4>
+
+                                                <p className="text-sm text-gray-500 mb-6">
+                                                    Thank you for sharing your thoughts.
+                                                </p>
+
+                                                <button
+                                                    type="button"
+                                                    onClick={() => {
+                                                        setReviewSubmitted(false);
+                                                        setReviewForm({
+                                                            rating: 5,
+                                                            review: "",
+                                                        });
+                                                    }}
+                                                    className="text-brand font-semibold text-sm hover:underline"
+                                                >
+                                                    Write another review
+                                                </button>
+                                            </div>
+                                        ) : (
+                                            <>
+                                                <h3 className="font-heading font-bold text-xl mb-6">
+                                                    Write a Review
+                                                </h3>
+
+                                                <form
+                                                    onSubmit={handleReviewSubmit}
+                                                    className="space-y-5"
+                                                >
+                                                    {/* Rating */}
+                                                    <div>
+                                                        <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">
+                                                            Rating
+                                                        </label>
+
+                                                        <div className="flex gap-1">
+                                                            {[1, 2, 3, 4, 5].map((star) => (
+                                                                <button
+                                                                    key={star}
+                                                                    type="button"
+                                                                    onClick={(e) => {
+                                                                        e.stopPropagation();
+
+                                                                        setReviewForm((prev) => ({
+                                                                            ...prev,
+                                                                            rating: star,
+                                                                        }));
+                                                                    }}
+                                                                    className="p-1 hover:scale-110 transition-transform"
+                                                                >
+                                                                    <IoStar
+                                                                        size={24}
+                                                                        className={
+                                                                            star <= reviewForm.rating
+                                                                                ? "text-gold"
+                                                                                : "text-gray-200"
+                                                                        }
+                                                                    />
+                                                                </button>
+                                                            ))}
+                                                        </div>
+                                                    </div>
+
+                                                    {/* Review */}
+                                                    <div>
+                                                        <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">
+                                                            Review
+                                                        </label>
+
+                                                        <textarea
+                                                            required
+                                                            rows={4}
+                                                            value={reviewForm.review}
+                                                            onChange={(e) => {
+                                                                e.stopPropagation();
+
+                                                                setReviewForm((prev) => ({
+                                                                    ...prev,
+                                                                    review: e.target.value,
+                                                                }));
+                                                            }}
+                                                            onClick={(e) => e.stopPropagation()}
+                                                            className="w-full px-4 py-3 bg-white border border-gray-200 rounded-xl focus:outline-none focus:border-brand resize-none text-sm"
+                                                            placeholder="What did you like or dislike?"
+                                                        />
+                                                    </div>
+
+                                                    {/* Submit */}
+                                                    <button
+                                                        type="submit"
+                                                        onClick={(e) => e.stopPropagation()}
+                                                        className="w-full py-3.5 bg-brand text-white font-bold rounded-xl shadow-button hover:bg-brand-light hover:shadow-button-hover transition-all text-sm"
+                                                    >
+                                                        Submit Review
+                                                    </button>
+                                                </form>
+                                            </>
+                                        )}
+                                    </div>
+                                </div>
+                            )}
                         </div>
                     </motion.div>
                 )}
@@ -648,7 +791,7 @@ const Orders = () => {
 
             const token = localStorage.getItem("accessToken");
 
-            const response = await userapiRequest('/user/api/v1/orders/get',"GET")
+            const response = await userapiRequest('/user/api/v1/orders/get', "GET")
             if (response.success) {
                 setOrders(response.orders || []);
             } else {
@@ -677,29 +820,29 @@ const Orders = () => {
     // Filter Orders
     // =========================
 
-   const filteredOrders = useMemo(() => {
-    if (activeTab === "All Orders") {
-        return orders;
-    }
+    const filteredOrders = useMemo(() => {
+        if (activeTab === "All Orders") {
+            return orders;
+        }
 
-    return orders.filter(
-        (order) =>
-            getDisplayStatus(order.status) === activeTab
-    );
-}, [orders, activeTab]);
+        return orders.filter(
+            (order) =>
+                getDisplayStatus(order.status) === activeTab
+        );
+    }, [orders, activeTab]);
 
     // =========================
     // Tabs
     // =========================
 
-   const tabs = [
-    "All Orders",
-    "Processing",
-    "Shipped",
-    "Out for Delivery",
-    "Delivered",
-    "Cancelled",
-];
+    const tabs = [
+        "All Orders",
+        "Processing",
+        "Shipped",
+        "Out for Delivery",
+        "Delivered",
+        "Cancelled",
+    ];
 
     // =========================
     // UI
@@ -753,8 +896,8 @@ const Orders = () => {
                                 type="button"
                                 onClick={() => setActiveTab(tab)}
                                 className={`px-5 py-2.5 rounded-full text-sm font-semibold whitespace-nowrap transition-colors ${activeTab === tab
-                                        ? "bg-gray-900 text-white"
-                                        : "bg-white border border-gray-200 text-gray-600 hover:border-gray-900 hover:text-gray-900"
+                                    ? "bg-gray-900 text-white"
+                                    : "bg-white border border-gray-200 text-gray-600 hover:border-gray-900 hover:text-gray-900"
                                     }`}
                             >
                                 {tab}

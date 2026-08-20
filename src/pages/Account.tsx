@@ -87,7 +87,11 @@ const Account = () => {
         const data = new FormData();
         data.append('name', formData.name);
         data.append('email', formData.email);
-        data.append('phone', formData.phone);
+
+        if(formData.phone){
+
+            data.append('phone', formData.phone);
+        }
 
         if (profileImage) {
             data.append('profile', profileImage); // backend field name
@@ -122,11 +126,7 @@ const Account = () => {
                     payload
                 );
 
-                updateProfile({
-                    address: user?.address.map((a: any) =>
-                        a._id === editingAddressId ? res.address : a
-                    ) || []
-                });
+                updateProfile({address: user?.address.map((a: any) =>a._id === editingAddressId ? res.address : a) || []});
 
                 alert('Address updated successfully');
 

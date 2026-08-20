@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { useParams, Link } from "react-router-dom";
 import { motion } from "framer-motion";
 import { IoStar, IoHeartOutline, IoHeart, IoRemoveOutline, IoAddOutline, IoArrowForward, IoShieldCheckmarkOutline, IoCarOutline, IoRefreshOutline } from "react-icons/io5";
@@ -7,9 +7,15 @@ import { useCart } from "../context/CartContext";
 import { useWishlist } from "../context/WishlistContext";
 import Breadcrumb from "../components/Breadcrumb";
 import ProductCard from "../components/ProductCard";
+import { userapiRequest } from "../services/apiService";
 
 const tabs = ["Description", "Reviews", "Shipping"];
-
+interface Review {
+    _id: string;
+    rating: number;
+    review: string;
+    userName: string;
+}
 const ProductDetail = () => {
     const { id } = useParams();
     const product = getProductById(id || "");
@@ -23,6 +29,8 @@ const ProductDetail = () => {
     const [added, setAdded] = useState(false);
 
 
+    const [reviews, setReviews] = useState<Review[]>([]);
+
     // Review form state
     const [reviewForm, setReviewForm] = useState({ rating: 5, name: "", title: "", text: "" });
     const [reviewSubmitted, setReviewSubmitted] = useState(false);
@@ -35,20 +43,20 @@ const ProductDetail = () => {
 
 
     const selectedVariant = product.variants?.find(
-  (v) => v.name === `${selectedColor}/${selectedSize}`
-);
+        (v) => v.name === `${selectedColor}/${selectedSize}`
+    );
 
-const displayPrice = selectedVariant?.price ?? product.price;
+    const displayPrice = selectedVariant?.price ?? product.price;
 
-// original/base price
-const originalPrice = product.originalPrice ?? product.price;
+    // original/base price
+    const originalPrice = product.originalPrice ?? product.price;
 
-const discount =
-  originalPrice > displayPrice
-    ? Math.round((1 - displayPrice / originalPrice) * 100)
-    : null;
+    const discount =
+        originalPrice > displayPrice
+            ? Math.round((1 - displayPrice / originalPrice) * 100)
+            : null;
     const handleAddToCart = () => {
-        addItem({ productId: product.id, name: product.name, brand: product.brand, image: product.image, price: product.price, originalPrice: product.originalPrice, size: selectedSize || product.sizes[0], color: selectedColor || product.colors[0]?.name || "" ,shipping: product.shipping ?? true});
+        addItem({ productId: product.id, name: product.name, brand: product.brand, image: product.image, price: product.price, originalPrice: product.originalPrice, size: selectedSize || product.sizes[0], color: selectedColor || product.colors[0]?.name || "", shipping: product.shipping ?? true });
         setAdded(true);
         setTimeout(() => setAdded(false), 2000);
     };
@@ -57,6 +65,17 @@ const discount =
         e.preventDefault();
         setReviewSubmitted(true);
     };
+
+
+    const getreview = async () => {
+        const respons = await userapiRequest(`/user/api/v1/product/reviews/${product.id}`, "GET")
+        setReviews(respons.reviews)
+
+    }
+
+    useEffect(() => {
+        getreview()
+    }, [])
 
     return (
         <div className="max-w-[1440px] mx-auto px-4 md:px-8 lg:px-16 py-8">
@@ -89,22 +108,22 @@ const discount =
                         <span className="text-sm text-muted">({product.reviews} reviews)</span>
                     </div>
                     <div className="flex items-center gap-3 mb-6">
-  <span className="font-heading text-3xl font-bold text-accent">
-    ₹{displayPrice.toFixed(2)}
-  </span>
+                        <span className="font-heading text-3xl font-bold text-accent">
+                            ₹{displayPrice.toFixed(2)}
+                        </span>
 
-  {originalPrice > displayPrice && (
-    <span className="text-lg text-muted line-through">
-      ₹{originalPrice.toFixed(2)}
-    </span>
-  )}
+                        {originalPrice > displayPrice && (
+                            <span className="text-lg text-muted line-through">
+                                ₹{originalPrice.toFixed(2)}
+                            </span>
+                        )}
 
-  {discount && (
-    <span className="text-sm font-bold text-green-600 bg-green-50 px-2 py-1 rounded-lg">
-      {discount}% OFF
-    </span>
-  )}
-</div>
+                        {discount && (
+                            <span className="text-sm font-bold text-green-600 bg-green-50 px-2 py-1 rounded-lg">
+                                {discount}% OFF
+                            </span>
+                        )}
+                    </div>
                     <p className="text-muted text-sm leading-relaxed mb-6">{product.description}</p>
                     <div className="h-px bg-gray-200 mb-6" />
 
@@ -171,97 +190,39 @@ const discount =
                         {/* Reviews List */}
                         <div className="lg:col-span-2 space-y-4">
                             <h3 className="font-heading font-bold text-xl mb-6">Customer Reviews</h3>
-                            {[{ name: "Priya M.", rating: 5, text: "Absolutely love it! Fits perfectly and quality is top-notch." }, { name: "Rahul K.", rating: 4, text: "Great product, fast delivery. Slightly different shade than expected." }].map((r, i) => (
-                                <div key={i} className="bg-white border border-gray-100 rounded-2xl p-5 shadow-sm">
+
+
+
+                            {reviews.map((r) => (
+                                <div
+                                    key={r._id}
+                                    className="bg-white border border-gray-100 rounded-2xl p-5 shadow-sm"
+                                >
                                     <div className="flex items-center gap-2 mb-2">
-                                        <div className="flex gap-0.5">{[...Array(5)].map((_, s) => <IoStar key={s} size={14} className={s < r.rating ? "text-gold" : "text-gray-200"} />)}</div>
-                                        <span className="font-semibold text-sm">{r.name}</span>
-                                    </div>
-                                    <p className="text-sm text-muted">{r.text}</p>
-                                </div>
-                            ))}
-                        </div>
-
-                        {/* Write Review Form */}
-                        <div className="bg-gray-50 rounded-[2rem] p-6 md:p-8 h-fit">
-                            <h3 className="font-heading font-bold text-xl mb-6">Write a Review</h3>
-
-                            {reviewSubmitted ? (
-                                <div className="text-center py-10">
-                                    <div className="w-16 h-16 bg-green-100 text-green-500 rounded-full flex items-center justify-center mx-auto mb-4">
-                                        <IoShieldCheckmarkOutline size={32} />
-                                    </div>
-                                    <h4 className="font-bold text-lg mb-2">Review Submitted!</h4>
-                                    <p className="text-sm text-muted mb-6">Thank you for sharing your thoughts.</p>
-                                    <button
-                                        onClick={() => { setReviewSubmitted(false); setReviewForm({ rating: 5, name: "", title: "", text: "" }); }}
-                                        className="text-brand font-semibold text-sm hover:underline"
-                                    >
-                                        Write another review
-                                    </button>
-                                </div>
-                            ) : (
-                                <form onSubmit={handleReviewSubmit} className="space-y-5">
-                                    <div>
-                                        <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Rating</label>
-                                        <div className="flex gap-1">
-                                            {[1, 2, 3, 4, 5].map(star => (
-                                                <button
-                                                    key={star}
-                                                    type="button"
-                                                    onClick={() => setReviewForm({ ...reviewForm, rating: star })}
-                                                    className="p-1 hover:scale-110 transition-transform"
-                                                >
-                                                    <IoStar size={24} className={star <= reviewForm.rating ? "text-gold" : "text-gray-200"} />
-                                                </button>
+                                        <div className="flex gap-0.5">
+                                            {[...Array(5)].map((_, s) => (
+                                                <IoStar
+                                                    key={s}
+                                                    size={14}
+                                                    className={
+                                                        s < r.rating
+                                                            ? "text-gold"
+                                                            : "text-gray-200"
+                                                    }
+                                                />
                                             ))}
                                         </div>
+
+                                        <span className="font-semibold text-sm">
+                                            {r.userName}
+                                        </span>
                                     </div>
 
-                                    <div>
-                                        <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Your Name</label>
-                                        <input
-                                            type="text"
-                                            required
-                                            value={reviewForm.name}
-                                            onChange={e => setReviewForm({ ...reviewForm, name: e.target.value })}
-                                            className="w-full px-4 py-3 bg-white border border-gray-200 rounded-xl focus:outline-none focus:border-brand text-sm"
-                                            placeholder="John Doe"
-                                        />
-                                    </div>
-
-                                    <div>
-                                        <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Review Title</label>
-                                        <input
-                                            type="text"
-                                            required
-                                            value={reviewForm.title}
-                                            onChange={e => setReviewForm({ ...reviewForm, title: e.target.value })}
-                                            className="w-full px-4 py-3 bg-white border border-gray-200 rounded-xl focus:outline-none focus:border-brand text-sm"
-                                            placeholder="Summarize your experience"
-                                        />
-                                    </div>
-
-                                    <div>
-                                        <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Review</label>
-                                        <textarea
-                                            required
-                                            rows={4}
-                                            value={reviewForm.text}
-                                            onChange={e => setReviewForm({ ...reviewForm, text: e.target.value })}
-                                            className="w-full px-4 py-3 bg-white border border-gray-200 rounded-xl focus:outline-none focus:border-brand resize-none text-sm"
-                                            placeholder="What did you like or dislike?"
-                                        ></textarea>
-                                    </div>
-
-                                    <button
-                                        type="submit"
-                                        className="w-full py-3.5 bg-brand text-white font-bold rounded-xl shadow-button hover:bg-brand-light hover:shadow-button-hover transition-all text-sm"
-                                    >
-                                        Submit Review
-                                    </button>
-                                </form>
-                            )}
+                                    <p className="text-sm text-muted">
+                                        {r.review}
+                                    </p>
+                                </div>
+                            ))}
                         </div>
                     </div>
                 )}

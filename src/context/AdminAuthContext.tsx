@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, useCallback, useEffect } from "react";
-import { apiRequest } from "../services/apiService"
+import { apiRequest, userapiRequest } from "../services/apiService"
 interface AdminUser {
     email: string;
     name: string;
@@ -9,7 +9,13 @@ interface AdminUser {
 interface AdminAuthContextType {
     adminUser: AdminUser | null;
     isAdminLoggedIn: boolean;
-    adminLogin: (email: string, password: string) => { success: boolean; error?: string };
+    adminLogin: (
+    email: string,
+    password: string
+) => Promise<{
+    success: boolean;
+    error?: string;
+}>;
     adminLogout: () => void;
 }
 
@@ -36,7 +42,7 @@ export const AdminAuthProvider: React.FC<{ children: React.ReactNode }> = ({ chi
         return null;
     });
 
-    const [accessToken, setAccessToken] = useState<string | null>(() => {
+    const [accessToken, setAccessToken] = useState<any | null>(() => {
         return localStorage.getItem('admin_token');
     });
 
@@ -60,9 +66,12 @@ export const AdminAuthProvider: React.FC<{ children: React.ReactNode }> = ({ chi
         }
         setAdminUser(data.user);
         setAccessToken(data.accesstoken)
+       return { success: true };
     }, []);
 
-    const adminLogout = useCallback(() => {
+    const adminLogout = useCallback(async() => {
+            const respons  = await apiRequest('/user/api/v1/auth/logout','POST')
+              console.log(respons)
         setAdminUser(null);
         setAccessToken(null)
         localStorage.removeItem("nehdo_admin");

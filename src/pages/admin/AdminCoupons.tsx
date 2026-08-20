@@ -27,7 +27,8 @@ const AdminCoupons = () => {
     const [isEditMode, setIsEditMode] = useState(false);
     const [editId, setEditId] = useState(null);
     const [formData, setFormData] = useState(initialFormData);
-
+    const [totalRedemptions, setTotalRedemptions] = useState(0);
+    const [totalRevenueLost, setTotalRevenueLost] = useState(0);
     const handleChange = (e) => {
         const { name, value } = e.target;
 
@@ -44,6 +45,8 @@ const AdminCoupons = () => {
             const res = await apiRequest('/admin/api/v1/coupon/get', 'GET');
 
             setCoupons(res?.coupons || []);
+            setTotalRevenueLost(res.totalRevenueLost)
+            setTotalRedemptions(res.totalRedemptions)
         } catch (error) {
             console.error(error);
         } finally {
@@ -145,6 +148,10 @@ const AdminCoupons = () => {
 
         setIsAddModalOpen(true);
     };
+
+    const activeCoupons = coupons.filter((coupon) => coupon.status === "active").length || 0;
+
+const expiredCoupons = coupons.filter((coupon) => coupon.status === "expired").length || 0;
     return (
         <div className="space-y-6">
             <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
@@ -346,10 +353,10 @@ const AdminCoupons = () => {
             {/* Stats */}
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                 {[
-                    { label: "Active Coupons", value: "5", color: "text-green-600" },
-                    { label: "Total Redemptions", value: "327", color: "text-blue-600" },
-                    { label: "Revenue Lost to Discounts", value: "₹48,350", color: "text-red-600" },
-                    { label: "Expired Coupons", value: "3", color: "text-gray-500" },
+                    { label: "Active Coupons", value: activeCoupons, color: "text-green-600" },
+                    { label: "Total Redemptions", value: totalRedemptions, color: "text-blue-600" },
+                    { label: "Revenue Lost to Discounts", value:totalRevenueLost, color: "text-red-600" },
+                    { label: "Expired Coupons", value: expiredCoupons, color: "text-gray-500" },
                 ].map((stat, i) => (
                     <div key={i} className="bg-white rounded-xl border border-gray-100 p-4">
                         <p className="text-sm font-semibold text-gray-500">{stat.label}</p>
@@ -406,7 +413,7 @@ const AdminCoupons = () => {
                                     </td>
 
                                     <td className="px-6 py-4 text-gray-600">
-                                        {coupon.limitUse || 0} / {coupon.maxLimit || '∞'}
+                                        {coupon.usedCount || 0} / {coupon.maxLimit || '∞'}
                                     </td>
 
                                     <td className="px-6 py-4 text-gray-500 text-xs">

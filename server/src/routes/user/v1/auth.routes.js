@@ -1,4 +1,4 @@
-const { UserRegister, UserLogin, GoogelLogin, UpdateUserProfile,ForgotPassword, ResetPasswordpage,ResetPassword } = require('../../../controller/user/v1/auth.controller')
+const { UserRegister, UserLogin, GoogelLogin, UpdateUserProfile,ForgotPassword, ResetPasswordpage,ResetPassword, LogOut } = require('../../../controller/user/v1/auth.controller')
 
 const UploadImage = require('../../../middleware/imageUploading')
 const { verifyjwtAccessToken } = require('../../../middleware/jwtToken')
@@ -14,9 +14,8 @@ router.post('/updateprofile/:id',verifyjwtAccessToken,UploadImage.single("profil
 
 router.post('/forgot-password',ForgotPassword)
 router.get('/reset-password/:token',ResetPasswordpage)
-
 router.post('/reset-password/:token',ResetPassword)
-
+router.post('/logout',verifyjwtAccessToken,LogOut)
 
 
 

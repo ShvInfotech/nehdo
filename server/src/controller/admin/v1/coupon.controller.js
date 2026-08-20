@@ -1,5 +1,6 @@
 const { CustomeError } = require("../../../middleware/globelError")
 const couponModel = require("../../../model/coupon.model")
+const orderModel = require("../../../model/order.model")
 
 
 exports.AddCoupon = async(req,res,next)=>{
@@ -19,15 +20,80 @@ exports.AddCoupon = async(req,res,next)=>{
 }
 
 
-exports.GetCoupon = async(req,res,next)=>{
+exports.GetCoupon = async (req, res, next) => {
     try {
-        const coupons = await couponModel.find()
+        const coupons = await couponModel.aggregate([
+            {
+                $lookup: {
+                    from: "orders",
+                    let: {
+                        couponId: "$_id"
+                    },
+                    pipeline: [
+                        {
+                            $match: {
+                                $expr: {
+                                    $eq: [
+                                        "$couponId",
+                                        "$$couponId"
+                                    ]
+                                }
+                            }
+                        },
+                        {
+                            $project: {
+                                _id: 1,
+                                discount: 1
+                            }
+                        }
+                    ],
+                    as: "couponOrders"
+                }
+            },
 
-        return res.status(200).json({success:true,message:'get coupon',coupons})
+            {
+                $addFields: {
+                    usedCount: {
+                        $size: "$couponOrders"
+                    },
+
+                    totalDiscount: {
+                        $sum: "$couponOrders.discount"
+                    }
+                }
+            },
+
+            {
+                $project: {
+                    couponOrders: 0
+                }
+            }
+        ]);
+
+        // Total Redemptions
+        const totalRedemptions = coupons.reduce(
+            (total, coupon) => total + coupon.usedCount,
+            0
+        );
+
+        // Total Revenue Lost
+        const totalRevenueLost = coupons.reduce(
+            (total, coupon) => total + coupon.totalDiscount,
+            0
+        );
+
+        return res.status(200).json({
+            success: true,
+            message: "get coupon",
+            coupons,
+            totalRedemptions,
+            totalRevenueLost
+        });
+
     } catch (error) {
-        return next(error)
+        return next(error);
     }
-}
+};
 
 
 exports.UpdateCoupon = async (req, res, next) => {

@@ -341,14 +341,29 @@ exports.userGetProductpipeline = ({
     // Ratings
     //====================================
 
-    pipeline.push({
-        $lookup: {
-            from: "ratings",
-            localField: "_id",
-            foreignField: "productId",
-            as: "ratings"
-        }
-    });
+    //====================================
+// Approved Ratings
+//====================================
+
+pipeline.push({
+    $lookup: {
+        from: "ratings",
+        let: {
+            productId: "$_id"
+        },
+        pipeline: [
+            {
+                $match: {
+                    $expr: {
+                        $eq: ["$productId", "$$productId"]
+                    },
+                    status: "approved"
+                }
+            }
+        ],
+        as: "ratings"
+    }
+});
 
     if (userId) {
         pipeline.push({
@@ -677,7 +692,8 @@ exports.userGetSingalsProductRatingpipeline = (id) => {
     return [
         {
             $match: {
-                productId: new mongoose.Types.ObjectId(id)
+                productId: new mongoose.Types.ObjectId(id),
+                status:'approved'
             }
         },
         {
@@ -762,19 +778,19 @@ exports.GetCartPipeline = (id) => {
             }
         },
         {
-  $lookup: {
-    from: "productshippings",
-    localField: "productId",
-    foreignField: "productId",
-    as: "shippingInfo"
-  }
-},
-{
-  $unwind: {
-    path: "$shippingInfo",
-    preserveNullAndEmptyArrays: true
-  }
-},
+            $lookup: {
+                from: "productshippings",
+                localField: "productId",
+                foreignField: "productId",
+                as: "shippingInfo"
+            }
+        },
+        {
+            $unwind: {
+                path: "$shippingInfo",
+                preserveNullAndEmptyArrays: true
+            }
+        },
         {
             $addFields: {
                 selectedVariant: {
@@ -1008,10 +1024,214 @@ exports.GetCartProductPaymentOrder = (cartIds) => {
                 preserveNullAndEmptyArrays: true
             }
         },
+
+        {
+            $lookup: {
+                from: "productinventorys",
+                localField: "product._id",
+                foreignField: "productId",
+                as: "inventory"
+            }
+        },
+        {
+            $unwind: {
+                path: "$inventory",
+                preserveNullAndEmptyArrays: true
+            }
+        },
     ]
 }
 
 
+
+exports.GetCustomersAdmin = () => {
+    return [
+        {
+            $project: {
+                _id: 1,
+                name: 1,
+                email: 1,
+                phone: 1,
+                status:1,
+                createdAt: 1,
+                 profile: {
+                    $cond: [
+                        {
+                            $and: [
+                                { $ne: ["$profile", null] },
+                                { $ne: ["$profile", ""] }
+                            ]
+                        },
+                        {
+                            $concat: [
+                                `http://${process.env.HOST}:${process.env.PORT}`,
+                                "$profile"
+                            ]
+                        },
+                        null
+                    ]
+                },
+            }
+        },
+
+        // Default Address
+        {
+            $lookup: {
+                from: "addresses",
+                let: {
+                    userId: "$_id"
+                },
+                pipeline: [
+                    {
+                        $match: {
+                            $expr: {
+                                $and: [
+                                    { $eq: ["$userId", "$$userId"] },
+                                    { $eq: ["$defaultaddress", true] }
+                                ]
+                            }
+                        }
+                    }
+                ],
+                as: "defaultAddress"
+            }
+        },
+
+        {
+            $unwind: {
+                path: "$defaultAddress",
+                preserveNullAndEmptyArrays: true
+            }
+        },
+
+        // User Orders
+        {
+            $lookup: {
+                from: "orders",
+                let: {
+                    userId: "$_id"
+                },
+                pipeline: [
+                    {
+                        $match: {
+                            $expr: {
+                                $eq: ["$userId", "$$userId"]
+                            }
+                        }
+                    },
+                    {
+                        $project: {
+                            _id: 1,
+                            orderNumber: 1,
+                            updatedAt: 1,
+                            itemsCount: {
+                                $sum: "$items.quantity"
+                            },
+                            totalAmount: 1,
+                            status: 1,
+                            payment: {
+                                status: 1
+                            }
+                        }
+                    },
+
+                    {
+                        $sort: {
+                            updatedAt: -1
+                        }
+                    }
+                ],
+                as: "orders"
+            }
+        },
+
+        {
+            $addFields: {
+                totalOrders: {
+                    $size: "$orders"
+                },
+
+                totalPaidAmount: {
+                    $sum: {
+                        $map: {
+                            input: {
+                                $filter: {
+                                    input: "$orders",
+                                    as: "order",
+                                    cond: {
+                                        $eq: ["$$order.payment.status", "paid"]
+                                    }
+                                }
+                            },
+                            as: "order",
+                            in: "$$order.totalAmount"
+                        }
+                    }
+                },
+
+                averageSpendPerPaidOrder: {
+                    $cond: [
+                        {
+                            $gt: [
+                                {
+                                    $size: {
+                                        $filter: {
+                                            input: "$orders",
+                                            as: "order",
+                                            cond: {
+                                                $eq: ["$$order.payment.status", "paid"]
+                                            }
+                                        }
+                                    }
+                                },
+                                0
+                            ]
+                        },
+                        {
+                            $divide: [
+                                {
+                                    $sum: {
+                                        $map: {
+                                            input: {
+                                                $filter: {
+                                                    input: "$orders",
+                                                    as: "order",
+                                                    cond: {
+                                                        $eq: ["$$order.payment.status", "paid"]
+                                                    }
+                                                }
+                                            },
+                                            as: "order",
+                                            in: "$$order.totalAmount"
+                                        }
+                                    }
+                                },
+                                {
+                                    $size: {
+                                        $filter: {
+                                            input: "$orders",
+                                            as: "order",
+                                            cond: {
+                                                $eq: ["$$order.payment.status", "paid"]
+                                            }
+                                        }
+                                    }
+                                }
+                            ]
+                        },
+                        0
+                    ]
+                }
+            }
+        },
+
+        {
+            $sort: {
+                createdAt: -1
+            }
+        }
+    ];
+};
 
 
 

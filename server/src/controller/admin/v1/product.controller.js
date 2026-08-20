@@ -486,8 +486,9 @@ if (req.body?.colors) {
             shippingData.weight = req.body?.weight
         }
 
+        console.log("print dimention",req.body?.dimensions)
         if (req.body?.dimensions) {
-            shippingData.dimensions = req.body?.dimensions
+            shippingData.dimensions = JSON.parse(req.body?.dimensions)
         }
 
         if (req.body?.HSCode) {

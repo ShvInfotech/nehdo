@@ -10,7 +10,7 @@ const TrendingProducts = () => {
     // First try to get trending ones, then pad with others if needed
     const trending = products.filter(p => p.isTrending);
     const others = products.filter(p => !p.isTrending);
-    const displayProducts = [...trending, ...others].slice(0, 10);
+    const displayProducts = [...trending].slice(0, 10);
 
     return (
         <section className="max-w-[1440px] mx-auto px-4 md:px-8 lg:px-16 mb-16 md:mb-28">

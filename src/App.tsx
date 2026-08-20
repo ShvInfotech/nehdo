@@ -1,4 +1,4 @@
-import React, { lazy, Suspense } from 'react';
+import React, { lazy, Suspense, useState } from 'react';
 import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import Layout from './components/Layout';
 import Home from './pages/Home';
@@ -53,9 +53,20 @@ const PageLoader = () => (
 );
 
 function App() {
-      useEffect(() => {
-    loadProducts();
-  }, []);
+       const [productsLoaded, setProductsLoaded] = useState(false);
+
+    useEffect(() => {
+        const fetchProducts = async () => {
+            await loadProducts();
+            setProductsLoaded(true);
+        };
+
+        fetchProducts();
+    }, []);
+
+    if (!productsLoaded) {
+        return <PageLoader />;
+    }
     return (
         <BrowserRouter basename="/nehdo">
             <Suspense fallback={<PageLoader />}>

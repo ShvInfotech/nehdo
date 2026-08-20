@@ -11,7 +11,7 @@ import ProductCard from "../components/ProductCard";
 import Breadcrumb from "../components/Breadcrumb";
 
 const sortOptions = ["Featured", "Price: Low to High", "Price: High to Low", "Newest", "Top Rated"];
-const priceRanges = [{ label: "Under ₹30", min: 0, max: 30 }, { label: "₹30 – ₹60", min: 30, max: 60 }, { label: "₹60 – ₹100", min: 60, max: 100 }, { label: "Over ₹100", min: 100, max: Infinity }];
+const priceRanges = [{ label: "Under ₹100", min: 0, max: 100 }, { label: "₹100 – 300", min: 100, max: 300 }, { label: "300 – ₹500", min: 300, max: 500 }, { label: "500 – ₹800", min: 500, max: 800 }, { label: "Over ₹900", min: 900, max: Infinity }];
 
 const Shop = () => {
     const [searchParams, setSearchParams] = useSearchParams();

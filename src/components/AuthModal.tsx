@@ -14,6 +14,11 @@ import { useNavigate } from 'react-router-dom';
 import { userapiRequest } from '../services/apiService';
 import { useWishlist } from '../context/WishlistContext';
 import { useCart } from '../context/CartContext';
+import { signInWithPopup } from "firebase/auth";
+import { auth, googleProvider, messaging } from "../services/firebase";
+import { getToken } from "firebase/messaging";
+// import {messaging} from "../../public/"
+
 const AuthModal = () => {
   const {
     authModalMode,
@@ -21,7 +26,7 @@ const AuthModal = () => {
     closeAuthModal,
     login,
     signup,
-  } = useAuth();
+  }:any = useAuth();
 
   const navigate = useNavigate();
 
@@ -42,6 +47,35 @@ const AuthModal = () => {
   const isLogin = authModalMode === 'login';
 const { refreshWishlist } = useWishlist();
 const { refreshCart } = useCart();
+
+
+
+const getDeviceToken = async () => {
+  try {
+    const permission = await Notification.requestPermission();
+
+    if (permission !== "granted") {
+      console.log("Notification permission denied");
+      return null;
+    }
+
+    const swPath = `${import.meta.env.BASE_URL}firebase-messaging-sw.js`;
+
+  
+
+    const registration = await navigator.serviceWorker.register(
+  "/nehdo/firebase-messaging-sw.js"
+);
+    const token = await getToken(messaging, {
+      vapidKey: "BJ9rA0mIYGOm2eoQIY5w3CX3iUf_jf8Hl_TU4BZYEtWCW6NSdITn5CRY0Bz25Fa1CYyfbTdt1xWEh7ylwru0BiY",
+      serviceWorkerRegistration: registration,
+    });
+    return token;
+  } catch (error) {
+    console.error("FCM Token Error:", error);
+    return null;
+  }
+};
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
@@ -49,11 +83,12 @@ const { refreshCart } = useCart();
       setError('');
 
       let res;
+    const deviceToken:any = await getDeviceToken();
 
       if (isLogin) {
-        res = await login(email, password);
+        res = await login(email, password,deviceToken);
       } else {
-        res = await signup(name, email, password);
+        res = await signup(name, email, password,deviceToken);
       }
 
       if (res) {
@@ -68,6 +103,29 @@ const { refreshCart } = useCart();
       setError(err.message || 'Something went wrong');
     }
   };
+
+  const handalgoogleLogin = async ()=>{
+    try {
+ const result = await signInWithPopup(auth, googleProvider);
+ const user = result.user;
+
+    // Real Firebase ID Token
+    const GoogleIdToken = await user.getIdToken();
+    const deviceToken:any = await getDeviceToken();
+     let res = await login("","",deviceToken,GoogleIdToken,'google')
+      if(res){
+        setName('');
+        setEmail('');
+        setPassword('');
+         await refreshWishlist();
+         await refreshCart()
+        navigate('/account');
+      }
+    } catch (error:any) {
+      setError(error.message || 'Something went wrong');
+      
+    }
+  }
 
   const handleForgotPassword = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -363,7 +421,7 @@ const { refreshCart } = useCart();
 
                     <div className="grid grid-cols-2 gap-4 mt-6">
 
-                      <button className="flex items-center justify-center gap-2 py-2.5 border border-gray-200 rounded-xl hover:bg-gray-50 transition-colors">
+                      <button className="flex items-center justify-center gap-2 py-2.5 border border-gray-200 rounded-xl hover:bg-gray-50 transition-colors" onClick={handalgoogleLogin}>
                         <IoLogoGoogle
                           size={18}
                           className="text-[#DB4437]"

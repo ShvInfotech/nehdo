@@ -1,269 +1,1304 @@
-import React, { useState } from "react";
-import { IoCloudDownloadOutline, IoCalendarOutline, IoStatsChartOutline, IoTrendingUpOutline, IoTrendingDownOutline } from "react-icons/io5";
+import React, { useEffect, useState } from "react";
+import {
+    IoCloudDownloadOutline,
+    IoStatsChartOutline,
+    IoBagCheckOutline,
+    IoTrendingUpOutline,
+    IoPeopleOutline,
+} from "react-icons/io5";
+import { apiRequest } from "../../services/apiService";
+
+// =====================================================
+// TYPES
+// =====================================================
+
+interface Overview {
+    totalRevenue: number;
+    totalOrders: number;
+    averageOrderValue: number;
+}
+
+interface SalesChart {
+    label: string;
+    revenue: number;
+    orders: number;
+}
+
+interface SalesTable {
+    date: string;
+    orders: number;
+    grossSales: number;
+    discounts: number;
+    shipping: number;
+    netRevenue: number;
+}
+
+interface ProductReport {
+    productId: string;
+    name: string | null;
+    image: string;
+    unitsSold: number;
+    revenue: number;
+    averageRating: number;
+}
+
+interface CustomerSegment {
+    segment: string;
+    count: number;
+    revenueShare: number;
+    averageOrders: number;
+}
+
+interface CustomerReport {
+    totalCustomers: number;
+    newCustomers: number;
+    repeatRate: number;
+    averageCLV: number;
+    segments: CustomerSegment[];
+}
+
+interface Reports {
+    overview: Overview;
+
+    sales: {
+        chart: SalesChart[];
+        table: SalesTable[];
+    };
+
+    products: ProductReport[];
+
+    customers: CustomerReport;
+}
+
+interface ReportResponse {
+    success: boolean;
+    message: string;
+    range: string;
+    startDate: string;
+    endDate: string;
+    reports: Reports;
+}
+
+// =====================================================
+// COMPONENT
+// =====================================================
 
 const AdminReports = () => {
-    const [dateRange, setDateRange] = useState('7d');
-    const [activeReport, setActiveReport] = useState('sales');
+    // =====================================================
+    // STATES
+    // =====================================================
+
+    const [dateRange, setDateRange] = useState("7d");
+    const [activeReport, setActiveReport] = useState("sales");
+
+    const [startDate, setStartDate] = useState("");
+    const [endDate, setEndDate] = useState("");
+
+    const [reports, setReports] = useState<Reports | null>(null);
+
+    const [loading, setLoading] = useState(false);
+
+    // =====================================================
+    // REPORT TABS
+    // =====================================================
 
     const reportTabs = [
-        { key: 'sales', label: 'Sales Report' },
-        { key: 'products', label: 'Product Performance' },
-        { key: 'customers', label: 'Customer Analytics' },
-        { key: 'traffic', label: 'Traffic & Conversions' },
+        {
+            key: "sales",
+            label: "Sales Report",
+        },
+        {
+            key: "products",
+            label: "Product Performance",
+        },
+        {
+            key: "customers",
+            label: "Customer Analytics",
+        },
     ];
+
+    // =====================================================
+    // FETCH REPORTS
+    // =====================================================
+
+    const fetchReports = async (
+        range: string = "7d",
+        customStartDate: string = "",
+        customEndDate: string = ""
+    ) => {
+        try {
+            setLoading(true);
+
+            let url = "/admin/api/v1/dashboard/get-eeports";
+
+            // =============================================
+            // CUSTOM DATE
+            // =============================================
+
+            if (customStartDate && customEndDate) {
+                url +=
+                    `?startDate=${customStartDate}` +
+                    `&endDate=${customEndDate}`;
+            }
+
+            // =============================================
+            // PREDEFINED RANGE
+            // =============================================
+
+            else {
+                url += `?range=${range}`;
+            }
+
+            const response: ReportResponse =
+                await apiRequest(url,"GET");
+
+            if (response?.success) {
+                setReports(response.reports);
+
+                // Backend થી actual range આવે તો પણ update
+                setDateRange(response.range);
+            }
+        } catch (error) {
+            console.error("Reports fetch error:", error);
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    // =====================================================
+    // INITIAL LOAD
+    // =====================================================
+
+    useEffect(() => {
+        fetchReports("7d");
+    }, []);
+
+    // =====================================================
+    // RANGE CHANGE
+    // =====================================================
+
+    const handleRangeChange = (selectedRange: string) => {
+        // Active range તરત update
+        setDateRange(selectedRange);
+
+        // Custom dates clear
+        setStartDate("");
+        setEndDate("");
+
+        // New range data fetch
+        fetchReports(selectedRange);
+    };
+
+    // =====================================================
+    // CUSTOM DATE APPLY
+    // =====================================================
+
+    const handleCustomDateApply = () => {
+        // Both required
+        if (!startDate || !endDate) {
+            alert("Please select start date and end date");
+            return;
+        }
+
+        // Validation
+        if (new Date(startDate) > new Date(endDate)) {
+            alert("Start date cannot be greater than end date");
+            return;
+        }
+
+        setDateRange("custom");
+
+        fetchReports(
+            "custom",
+            startDate,
+            endDate
+        );
+    };
+
+    // =====================================================
+    // FORMAT CURRENCY
+    // =====================================================
+
+    const formatCurrency = (amount: number = 0) => {
+        return new Intl.NumberFormat("en-IN", {
+            style: "currency",
+            currency: "INR",
+            minimumFractionDigits: 0,
+            maximumFractionDigits: 2,
+        }).format(Number(amount || 0));
+    };
+
+    // =====================================================
+    // FORMAT DATE
+    // =====================================================
+
+    const formatDate = (date: string) => {
+        if (!date) return "-";
+
+        return new Date(date).toLocaleDateString(
+            "en-IN",
+            {
+                day: "2-digit",
+                month: "short",
+                year: "numeric",
+            }
+        );
+    };
+
+    // =====================================================
+    // PRODUCT IMAGE URL
+    // =====================================================
+
+    const getImageUrl = (image: string) => {
+        if (!image) return "";
+
+        // Already full URL
+        if (
+            image.startsWith("http://") ||
+            image.startsWith("https://")
+        ) {
+            return image;
+        }
+
+        const backendUrl =
+            import.meta.env.VITE_BACKEND_URL || "";
+
+        return `${backendUrl}${image}`;
+    };
+
+    // =====================================================
+    // MAX REVENUE FOR CHART
+    // =====================================================
+
+    const maxRevenue = Math.max(
+        ...(
+            reports?.sales?.chart?.map(
+                (item) => item.revenue
+            ) || []
+        ),
+        1
+    );
+
+    // =====================================================
+    // LOADING SCREEN
+    // =====================================================
+
+    if (!reports && loading) {
+        return (
+            <div className="min-h-[400px] flex items-center justify-center">
+                <div className="text-center">
+                    <div className="w-8 h-8 border-4 border-brand border-t-transparent rounded-full animate-spin mx-auto" />
+
+                    <p className="mt-3 text-sm text-gray-500">
+                        Loading reports...
+                    </p>
+                </div>
+            </div>
+        );
+    }
+
+    // =====================================================
+    // MAIN UI
+    // =====================================================
 
     return (
         <div className="space-y-6">
+
+            {/* =============================================
+                HEADER
+            ============================================= */}
+
             <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+
                 <div>
-                    <h1 className="font-heading text-2xl font-bold text-gray-900">Reports & Analytics</h1>
-                    <p className="text-sm text-gray-500 mt-1">Track performance, sales, and growth insights.</p>
+                    <h1 className="font-heading text-2xl font-bold text-gray-900">
+                        Reports & Analytics
+                    </h1>
+
+                    <p className="text-sm text-gray-500 mt-1">
+                        Track your store performance and business insights.
+                    </p>
                 </div>
+
                 <div className="flex gap-2">
-                    <button className="flex items-center gap-2 px-4 py-2 bg-white border border-gray-200 text-sm font-semibold text-gray-700 rounded-lg hover:bg-gray-50">
-                        <IoCloudDownloadOutline size={18} /> Export CSV
-                    </button>
-                    <button className="flex items-center gap-2 px-4 py-2 bg-white border border-gray-200 text-sm font-semibold text-gray-700 rounded-lg hover:bg-gray-50">
-                        <IoCloudDownloadOutline size={18} /> Export PDF
+                    <button
+                        type="button"
+                        className="flex items-center gap-2 px-4 py-2 bg-white border border-gray-200 rounded-lg text-sm font-semibold text-gray-700 hover:bg-gray-50"
+                    >
+                        <IoCloudDownloadOutline size={18} />
+                        Export
                     </button>
                 </div>
+
             </div>
 
-            {/* Date Range */}
-            <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-4 flex flex-col sm:flex-row items-center justify-between gap-4">
-                <div className="flex gap-1">
-                    {[
-                        { key: 'today', label: 'Today' },
-                        { key: '7d', label: 'Last 7 Days' },
-                        { key: '30d', label: 'Last 30 Days' },
-                        { key: '90d', label: 'Last 90 Days' },
-                        { key: 'year', label: 'This Year' },
-                    ].map(range => (
-                        <button 
-                            key={range.key} 
-                            onClick={() => setDateRange(range.key)}
-                            className={`px-4 py-2 rounded-lg text-sm font-semibold transition-colors ${dateRange === range.key ? 'bg-brand text-white' : 'bg-gray-50 text-gray-600 hover:bg-gray-100'}`}
-                        >{range.label}</button>
-                    ))}
-                </div>
-                <div className="flex gap-2 items-center">
-                    <input type="date" className="px-3 py-2 bg-gray-50 border border-gray-200 text-sm rounded-xl focus:outline-none focus:border-brand" />
-                    <span className="text-gray-400">to</span>
-                    <input type="date" className="px-3 py-2 bg-gray-50 border border-gray-200 text-sm rounded-xl focus:outline-none focus:border-brand" />
-                </div>
-            </div>
 
-            {/* KPI Cards */}
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                {[
-                    { label: "Total Revenue", value: "₹3,45,280", change: "+12.5%", up: true, icon: IoStatsChartOutline },
-                    { label: "Total Orders", value: "456", change: "+8.2%", up: true, icon: IoCalendarOutline },
-                    { label: "Average Order Value", value: "₹757", change: "+3.1%", up: true, icon: IoTrendingUpOutline },
-                    { label: "Refund Rate", value: "2.3%", change: "-0.5%", up: false, icon: IoTrendingDownOutline },
-                ].map((kpi, i) => (
-                    <div key={i} className="bg-white rounded-xl border border-gray-100 p-5">
-                        <div className="flex items-center justify-between mb-2">
-                            <kpi.icon size={20} className="text-gray-400" />
-                            <span className={`text-xs font-bold px-2 py-0.5 rounded-full ${kpi.up ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-600'}`}>
-                                {kpi.change}
-                            </span>
-                        </div>
-                        <p className="text-2xl font-bold text-gray-900">{kpi.value}</p>
-                        <p className="text-xs text-gray-500 font-semibold mt-1">{kpi.label}</p>
+            {/* =============================================
+                DATE RANGE SECTION
+            ============================================= */}
+
+            <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-4">
+
+                <div className="flex flex-col xl:flex-row xl:items-center xl:justify-between gap-4">
+
+                    {/* PREDEFINED RANGE */}
+
+                    <div className="flex flex-wrap gap-2">
+
+                        <button
+                            type="button"
+                            disabled={loading}
+                            onClick={() =>
+                                handleRangeChange("today")
+                            }
+                            className={`px-4 py-2 rounded-lg text-sm font-semibold transition-colors ${
+                                dateRange === "today"
+                                    ? "bg-brand text-white"
+                                    : "bg-gray-50 text-gray-600 hover:bg-gray-100"
+                            }`}
+                        >
+                            Today
+                        </button>
+
+
+                        <button
+                            type="button"
+                            disabled={loading}
+                            onClick={() =>
+                                handleRangeChange("7d")
+                            }
+                            className={`px-4 py-2 rounded-lg text-sm font-semibold transition-colors ${
+                                dateRange === "7d"
+                                    ? "bg-brand text-white"
+                                    : "bg-gray-50 text-gray-600 hover:bg-gray-100"
+                            }`}
+                        >
+                            Last 7 Days
+                        </button>
+
+
+                        <button
+                            type="button"
+                            disabled={loading}
+                            onClick={() =>
+                                handleRangeChange("30d")
+                            }
+                            className={`px-4 py-2 rounded-lg text-sm font-semibold transition-colors ${
+                                dateRange === "30d"
+                                    ? "bg-brand text-white"
+                                    : "bg-gray-50 text-gray-600 hover:bg-gray-100"
+                            }`}
+                        >
+                            Last 30 Days
+                        </button>
+
+
+                        <button
+                            type="button"
+                            disabled={loading}
+                            onClick={() =>
+                                handleRangeChange("90d")
+                            }
+                            className={`px-4 py-2 rounded-lg text-sm font-semibold transition-colors ${
+                                dateRange === "90d"
+                                    ? "bg-brand text-white"
+                                    : "bg-gray-50 text-gray-600 hover:bg-gray-100"
+                            }`}
+                        >
+                            Last 90 Days
+                        </button>
+
+
+                        <button
+                            type="button"
+                            disabled={loading}
+                            onClick={() =>
+                                handleRangeChange("year")
+                            }
+                            className={`px-4 py-2 rounded-lg text-sm font-semibold transition-colors ${
+                                dateRange === "year"
+                                    ? "bg-brand text-white"
+                                    : "bg-gray-50 text-gray-600 hover:bg-gray-100"
+                            }`}
+                        >
+                            This Year
+                        </button>
+
                     </div>
-                ))}
+
+
+                    {/* CUSTOM DATE */}
+
+                    <div className="flex flex-wrap items-center gap-2">
+
+                        <input
+                            type="date"
+                            value={startDate}
+                            max={endDate || undefined}
+                            onChange={(e) => {
+                                setStartDate(e.target.value);
+                            }}
+                            className="px-3 py-2 bg-gray-50 border border-gray-200 text-sm rounded-lg focus:outline-none focus:border-brand"
+                        />
+
+
+                        <span className="text-sm text-gray-400">
+                            to
+                        </span>
+
+
+                        <input
+                            type="date"
+                            value={endDate}
+                            min={startDate || undefined}
+                            onChange={(e) => {
+                                setEndDate(e.target.value);
+                            }}
+                            className="px-3 py-2 bg-gray-50 border border-gray-200 text-sm rounded-lg focus:outline-none focus:border-brand"
+                        />
+
+
+                        <button
+                            type="button"
+                            onClick={handleCustomDateApply}
+                            disabled={
+                                loading ||
+                                !startDate ||
+                                !endDate
+                            }
+                            className="px-4 py-2 bg-brand text-white rounded-lg text-sm font-semibold hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed"
+                        >
+                            {loading
+                                ? "Loading..."
+                                : "Apply"}
+                        </button>
+
+                    </div>
+
+                </div>
+
             </div>
 
-            {/* Report Tabs */}
+
+            {/* =============================================
+                OVERVIEW CARDS
+            ============================================= */}
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+
+
+                {/* TOTAL REVENUE */}
+
+                <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-5">
+
+                    <div className="flex items-center justify-between mb-4">
+
+                        <div className="p-3 rounded-xl bg-green-100 text-green-600">
+                            <IoStatsChartOutline size={22} />
+                        </div>
+
+                    </div>
+
+                    <h3 className="text-2xl font-bold text-gray-900">
+
+                        {loading
+                            ? "..."
+                            : formatCurrency(
+                                reports?.overview
+                                    ?.totalRevenue || 0
+                            )}
+
+                    </h3>
+
+                    <p className="text-sm font-medium text-gray-500 mt-1">
+                        Total Revenue
+                    </p>
+
+                </div>
+
+
+                {/* TOTAL ORDERS */}
+
+                <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-5">
+
+                    <div className="flex items-center justify-between mb-4">
+
+                        <div className="p-3 rounded-xl bg-blue-100 text-blue-600">
+                            <IoBagCheckOutline size={22} />
+                        </div>
+
+                    </div>
+
+                    <h3 className="text-2xl font-bold text-gray-900">
+
+                        {loading
+                            ? "..."
+                            : (
+                                reports?.overview
+                                    ?.totalOrders || 0
+                            )}
+
+                    </h3>
+
+                    <p className="text-sm font-medium text-gray-500 mt-1">
+                        Total Orders
+                    </p>
+
+                </div>
+
+
+                {/* AVERAGE ORDER VALUE */}
+
+                <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-5">
+
+                    <div className="flex items-center justify-between mb-4">
+
+                        <div className="p-3 rounded-xl bg-purple-100 text-purple-600">
+                            <IoTrendingUpOutline size={22} />
+                        </div>
+
+                    </div>
+
+                    <h3 className="text-2xl font-bold text-gray-900">
+
+                        {loading
+                            ? "..."
+                            : formatCurrency(
+                                reports?.overview
+                                    ?.averageOrderValue || 0
+                            )}
+
+                    </h3>
+
+                    <p className="text-sm font-medium text-gray-500 mt-1">
+                        Average Order Value
+                    </p>
+
+                </div>
+
+            </div>
+
+
+            {/* =============================================
+                REPORT TABS
+            ============================================= */}
+
             <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
-                <div className="border-b border-gray-100 px-6 flex gap-1 overflow-x-auto">
-                    {reportTabs.map(tab => (
+
+                <div className="border-b border-gray-100 px-4 sm:px-6 flex gap-1 overflow-x-auto">
+
+                    {reportTabs.map((tab) => (
                         <button
                             key={tab.key}
-                            onClick={() => setActiveReport(tab.key)}
-                            className={`px-4 py-3 text-sm font-semibold whitespace-nowrap border-b-2 transition-colors ${
-                                activeReport === tab.key ? 'border-brand text-brand' : 'border-transparent text-gray-500 hover:text-gray-700'
+                            type="button"
+                            onClick={() =>
+                                setActiveReport(tab.key)
+                            }
+                            className={`px-4 py-4 text-sm font-semibold whitespace-nowrap border-b-2 transition-colors ${
+                                activeReport === tab.key
+                                    ? "border-brand text-brand"
+                                    : "border-transparent text-gray-500 hover:text-gray-700"
                             }`}
-                        >{tab.label}</button>
+                        >
+                            {tab.label}
+                        </button>
                     ))}
+
                 </div>
 
-                {activeReport === 'sales' && (
-                    <div className="p-6">
-                        {/* Sales Chart Placeholder */}
-                        <div className="bg-gray-50 border border-gray-200 rounded-xl p-8 text-center mb-6">
-                            <div className="flex items-end justify-center gap-2 h-40">
-                                {[40, 65, 45, 80, 55, 90, 70, 85, 60, 95, 75, 88].map((h, i) => (
-                                    <div key={i} className="flex flex-col items-center gap-1 flex-1">
-                                        <div className="w-full bg-brand/70 rounded-t-sm" style={{ height: `${h}%` }}></div>
-                                        <span className="text-[10px] text-gray-400">{['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'][i]}</span>
+
+                {/* =========================================
+                    SALES REPORT
+                ========================================= */}
+
+                {activeReport === "sales" && (
+                    <div className="p-4 sm:p-6 space-y-6">
+
+
+                        {/* SALES CHART */}
+
+                        <div>
+
+                            <div className="flex items-center justify-between mb-5">
+
+                                <div>
+                                    <h2 className="text-lg font-bold text-gray-900">
+                                        Revenue Overview
+                                    </h2>
+
+                                    <p className="text-sm text-gray-500 mt-1">
+                                        Revenue for selected date range
+                                    </p>
+                                </div>
+
+                            </div>
+
+
+                            <div className="h-72 bg-gray-50 rounded-xl border border-gray-100 p-4">
+
+                                {reports?.sales?.chart?.length ? (
+
+                                    <div className="h-full flex items-end gap-2">
+
+                                        {reports.sales.chart.map(
+                                            (item, index) => {
+
+                                                const height =
+                                                    maxRevenue > 0
+                                                        ? (
+                                                            item.revenue /
+                                                            maxRevenue
+                                                        ) * 100
+                                                        : 0;
+
+                                                return (
+                                                    <div
+                                                        key={`${item.label}-${index}`}
+                                                        className="h-full flex-1 min-w-0 flex flex-col items-center justify-end group relative"
+                                                    >
+
+                                                        {/* TOOLTIP */}
+
+                                                        <div className="absolute bottom-full mb-2 z-10 bg-gray-900 text-white text-xs px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none whitespace-nowrap">
+
+                                                            {formatCurrency(
+                                                                item.revenue
+                                                            )}
+
+                                                            {" • "}
+
+                                                            {item.orders} Orders
+
+                                                        </div>
+
+
+                                                        {/* BAR */}
+
+                                                        <div
+                                                            className="w-full max-w-12 bg-brand rounded-t-md hover:opacity-80 transition-all cursor-pointer"
+                                                            style={{
+                                                                height: `${Math.max(
+                                                                    height,
+                                                                    item.revenue > 0
+                                                                        ? 4
+                                                                        : 0
+                                                                )}%`,
+                                                            }}
+                                                        />
+
+
+                                                        {/* LABEL */}
+
+                                                        <p className="text-[10px] text-gray-400 mt-2 truncate w-full text-center">
+
+                                                            {new Date(
+                                                                item.label
+                                                            ).toLocaleDateString(
+                                                                "en-IN",
+                                                                {
+                                                                    day: "2-digit",
+                                                                    month: "short",
+                                                                }
+                                                            )}
+
+                                                        </p>
+
+                                                    </div>
+                                                );
+                                            }
+                                        )}
+
                                     </div>
-                                ))}
+
+                                ) : (
+
+                                    <div className="h-full flex items-center justify-center text-sm text-gray-400">
+                                        No sales data found
+                                    </div>
+
+                                )}
+
                             </div>
-                            <p className="text-sm text-gray-500 mt-4 font-semibold">Monthly Revenue (₹)</p>
+
                         </div>
 
-                        {/* Sales Table */}
-                        <div className="overflow-x-auto">
-                            <table className="w-full text-sm">
-                                <thead className="bg-gray-50 text-gray-500 font-semibold uppercase text-xs tracking-wider">
-                                    <tr>
-                                        <th className="px-6 py-3 text-left">Date</th>
-                                        <th className="px-6 py-3 text-left">Orders</th>
-                                        <th className="px-6 py-3 text-left">Gross Sales</th>
-                                        <th className="px-6 py-3 text-left">Discounts</th>
-                                        <th className="px-6 py-3 text-left">Shipping</th>
-                                        <th className="px-6 py-3 text-left">Tax</th>
-                                        <th className="px-6 py-3 text-left">Net Revenue</th>
-                                    </tr>
-                                </thead>
-                                <tbody className="divide-y divide-gray-100">
-                                    {[
-                                        { date: "13 Jul 2026", orders: 23, gross: "₹48,500", discounts: "₹3,200", shipping: "₹1,150", tax: "₹7,650", net: "₹53,100" },
-                                        { date: "12 Jul 2026", orders: 18, gross: "₹35,200", discounts: "₹2,100", shipping: "₹900", tax: "₹5,800", net: "₹39,800" },
-                                        { date: "11 Jul 2026", orders: 21, gross: "₹42,800", discounts: "₹4,500", shipping: "₹1,050", tax: "₹6,900", net: "₹46,250" },
-                                        { date: "10 Jul 2026", orders: 15, gross: "₹28,900", discounts: "₹1,800", shipping: "₹750", tax: "₹4,600", net: "₹32,450" },
-                                        { date: "09 Jul 2026", orders: 27, gross: "₹55,100", discounts: "₹5,200", shipping: "₹1,350", tax: "₹8,800", net: "₹60,050" },
-                                    ].map((row, i) => (
-                                        <tr key={i} className="hover:bg-gray-50">
-                                            <td className="px-6 py-3 font-medium">{row.date}</td>
-                                            <td className="px-6 py-3">{row.orders}</td>
-                                            <td className="px-6 py-3 font-medium">{row.gross}</td>
-                                            <td className="px-6 py-3 text-red-500">-{row.discounts}</td>
-                                            <td className="px-6 py-3">{row.shipping}</td>
-                                            <td className="px-6 py-3">{row.tax}</td>
-                                            <td className="px-6 py-3 font-bold text-green-600">{row.net}</td>
+
+                        {/* SALES TABLE */}
+
+                        <div>
+
+                            <h2 className="text-lg font-bold text-gray-900 mb-4">
+                                Sales Details
+                            </h2>
+
+
+                            <div className="overflow-x-auto border border-gray-100 rounded-xl">
+
+                                <table className="w-full text-sm text-left">
+
+                                    <thead className="bg-gray-50 text-gray-500 uppercase text-xs font-semibold">
+
+                                        <tr>
+
+                                            <th className="px-5 py-4">
+                                                Date
+                                            </th>
+
+                                            <th className="px-5 py-4">
+                                                Orders
+                                            </th>
+
+                                            <th className="px-5 py-4">
+                                                Gross Sales
+                                            </th>
+
+                                            <th className="px-5 py-4">
+                                                Discounts
+                                            </th>
+
+                                            <th className="px-5 py-4">
+                                                Shipping
+                                            </th>
+
+                                            <th className="px-5 py-4">
+                                                Net Revenue
+                                            </th>
+
                                         </tr>
-                                    ))}
-                                </tbody>
-                            </table>
+
+                                    </thead>
+
+
+                                    <tbody className="divide-y divide-gray-100">
+
+                                        {reports?.sales?.table?.length ? (
+
+                                            reports.sales.table.map(
+                                                (row, index) => (
+
+                                                    <tr
+                                                        key={`${row.date}-${index}`}
+                                                        className="hover:bg-gray-50 transition-colors"
+                                                    >
+
+                                                        <td className="px-5 py-4 font-medium text-gray-900">
+
+                                                            {formatDate(
+                                                                row.date
+                                                            )}
+
+                                                        </td>
+
+
+                                                        <td className="px-5 py-4 text-gray-700">
+
+                                                            {row.orders}
+
+                                                        </td>
+
+
+                                                        <td className="px-5 py-4 text-gray-700">
+
+                                                            {formatCurrency(
+                                                                row.grossSales
+                                                            )}
+
+                                                        </td>
+
+
+                                                        <td className="px-5 py-4 text-red-500">
+
+                                                            -
+                                                            {formatCurrency(
+                                                                row.discounts
+                                                            )}
+
+                                                        </td>
+
+
+                                                        <td className="px-5 py-4 text-gray-700">
+
+                                                            {formatCurrency(
+                                                                row.shipping
+                                                            )}
+
+                                                        </td>
+
+
+                                                        <td className="px-5 py-4 font-bold text-green-600">
+
+                                                            {formatCurrency(
+                                                                row.netRevenue
+                                                            )}
+
+                                                        </td>
+
+                                                    </tr>
+
+                                                )
+                                            )
+
+                                        ) : (
+
+                                            <tr>
+                                                <td
+                                                    colSpan={6}
+                                                    className="px-5 py-12 text-center text-gray-400"
+                                                >
+                                                    No sales data found
+                                                </td>
+                                            </tr>
+
+                                        )}
+
+                                    </tbody>
+
+                                </table>
+
+                            </div>
+
                         </div>
+
                     </div>
                 )}
 
-                {activeReport === 'products' && (
-                    <div className="p-6">
-                        <div className="overflow-x-auto">
-                            <table className="w-full text-sm">
-                                <thead className="bg-gray-50 text-gray-500 font-semibold uppercase text-xs tracking-wider">
+
+                {/* =========================================
+                    PRODUCT PERFORMANCE
+                ========================================= */}
+
+                {activeReport === "products" && (
+                    <div className="p-4 sm:p-6">
+
+                        <div className="flex items-center justify-between mb-5">
+
+                            <div>
+                                <h2 className="text-lg font-bold text-gray-900">
+                                    Product Performance
+                                </h2>
+
+                                <p className="text-sm text-gray-500 mt-1">
+                                    Product sales and ratings
+                                </p>
+                            </div>
+
+                        </div>
+
+
+                        <div className="overflow-x-auto border border-gray-100 rounded-xl">
+
+                            <table className="w-full text-sm text-left">
+
+                                <thead className="bg-gray-50 text-gray-500 uppercase text-xs font-semibold">
+
                                     <tr>
-                                        <th className="px-6 py-3 text-left">Product</th>
-                                        <th className="px-6 py-3 text-left">Units Sold</th>
-                                        <th className="px-6 py-3 text-left">Revenue</th>
-                                        <th className="px-6 py-3 text-left">Return Rate</th>
-                                        <th className="px-6 py-3 text-left">Avg Rating</th>
-                                        <th className="px-6 py-3 text-left">Views</th>
-                                        <th className="px-6 py-3 text-left">Conversion</th>
+
+                                        <th className="px-5 py-4">
+                                            Product
+                                        </th>
+
+                                        <th className="px-5 py-4">
+                                            Units Sold
+                                        </th>
+
+                                        <th className="px-5 py-4">
+                                            Revenue
+                                        </th>
+
+                                        <th className="px-5 py-4">
+                                            Avg Rating
+                                        </th>
+
                                     </tr>
+
                                 </thead>
+
+
                                 <tbody className="divide-y divide-gray-100">
-                                    {[
-                                        { name: "Yves Saint Laurent Tee", sold: 145, revenue: "₹2,89,000", returns: "1.4%", rating: "4.8", views: 3200, conversion: "4.5%" },
-                                        { name: "Gucci Classic Polo", sold: 98, revenue: "₹1,76,400", returns: "2.0%", rating: "4.5", views: 2100, conversion: "4.7%" },
-                                        { name: "Prada Elite Jacket", sold: 67, revenue: "₹3,01,500", returns: "3.0%", rating: "4.3", views: 1800, conversion: "3.7%" },
-                                        { name: "Dior Summer Dress", sold: 82, revenue: "₹2,05,000", returns: "1.2%", rating: "4.7", views: 2400, conversion: "3.4%" },
-                                        { name: "Versace Cotton Tee", sold: 120, revenue: "₹1,44,000", returns: "0.8%", rating: "4.6", views: 2800, conversion: "4.3%" },
-                                    ].map((row, i) => (
-                                        <tr key={i} className="hover:bg-gray-50">
-                                            <td className="px-6 py-3 font-medium text-gray-900">{row.name}</td>
-                                            <td className="px-6 py-3">{row.sold}</td>
-                                            <td className="px-6 py-3 font-medium">{row.revenue}</td>
-                                            <td className="px-6 py-3 text-gray-500">{row.returns}</td>
-                                            <td className="px-6 py-3 text-yellow-600 font-semibold">⭐ {row.rating}</td>
-                                            <td className="px-6 py-3 text-gray-500">{row.views.toLocaleString()}</td>
-                                            <td className="px-6 py-3 text-green-600 font-semibold">{row.conversion}</td>
+
+                                    {reports?.products?.length ? (
+
+                                        reports.products.map(
+                                            (product) => (
+
+                                                <tr
+                                                    key={product.productId}
+                                                    className="hover:bg-gray-50 transition-colors"
+                                                >
+
+                                                    {/* PRODUCT */}
+
+                                                    <td className="px-5 py-4">
+
+                                                        <div className="flex items-center gap-3">
+
+                                                            <div className="w-11 h-11 rounded-lg bg-gray-100 overflow-hidden flex-shrink-0">
+
+                                                                {product.image ? (
+
+                                                                    <img
+                                                                        src={getImageUrl(
+                                                                            product.image
+                                                                        )}
+                                                                        alt={
+                                                                            product.name ||
+                                                                            "Product"
+                                                                        }
+                                                                        className="w-full h-full object-cover"
+                                                                    />
+
+                                                                ) : (
+
+                                                                    <div className="w-full h-full flex items-center justify-center text-xs text-gray-400">
+                                                                        No Image
+                                                                    </div>
+
+                                                                )}
+
+                                                            </div>
+
+
+                                                            <div>
+
+                                                                <p className="font-semibold text-gray-900">
+
+                                                                    {product.name ||
+                                                                        "Unknown Product"}
+
+                                                                </p>
+
+                                                                <p className="text-xs text-gray-400">
+
+                                                                    ID:{" "}
+
+                                                                    {product.productId}
+
+                                                                </p>
+
+                                                            </div>
+
+                                                        </div>
+
+                                                    </td>
+
+
+                                                    {/* UNITS SOLD */}
+
+                                                    <td className="px-5 py-4 font-medium text-gray-700">
+
+                                                        {product.unitsSold}
+
+                                                    </td>
+
+
+                                                    {/* REVENUE */}
+
+                                                    <td className="px-5 py-4 font-semibold text-green-600">
+
+                                                        {formatCurrency(
+                                                            product.revenue
+                                                        )}
+
+                                                    </td>
+
+
+                                                    {/* RATING */}
+
+                                                    <td className="px-5 py-4">
+
+                                                        {product.averageRating >
+                                                        0 ? (
+
+                                                            <span className="font-semibold text-yellow-600">
+
+                                                                ⭐{" "}
+
+                                                                {
+                                                                    product.averageRating
+                                                                }
+
+                                                                /5
+
+                                                            </span>
+
+                                                        ) : (
+
+                                                            <span className="text-gray-400">
+                                                                No ratings
+                                                            </span>
+
+                                                        )}
+
+                                                    </td>
+
+                                                </tr>
+
+                                            )
+                                        )
+
+                                    ) : (
+
+                                        <tr>
+                                            <td
+                                                colSpan={4}
+                                                className="px-5 py-12 text-center text-gray-400"
+                                            >
+                                                No product data found
+                                            </td>
                                         </tr>
-                                    ))}
+
+                                    )}
+
                                 </tbody>
+
                             </table>
+
                         </div>
+
                     </div>
                 )}
 
-                {activeReport === 'customers' && (
-                    <div className="p-6 space-y-6">
-                        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                            <div className="bg-gray-50 rounded-xl p-4 text-center">
-                                <p className="text-2xl font-bold text-gray-900">2,456</p>
-                                <p className="text-xs text-gray-500 font-semibold mt-1">Total Customers</p>
+
+                {/* =========================================
+                    CUSTOMER ANALYTICS
+                ========================================= */}
+
+                {activeReport === "customers" && (
+                    <div className="p-4 sm:p-6 space-y-6">
+
+
+                        {/* CUSTOMER OVERVIEW */}
+
+                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+
+
+                            {/* TOTAL CUSTOMERS */}
+
+                            <div className="bg-gray-50 rounded-xl border border-gray-100 p-5">
+
+                                <div className="p-2.5 w-fit bg-blue-100 text-blue-600 rounded-lg mb-3">
+                                    <IoPeopleOutline size={20} />
+                                </div>
+
+                                <p className="text-2xl font-bold text-gray-900">
+
+                                    {reports?.customers
+                                        ?.totalCustomers || 0}
+
+                                </p>
+
+                                <p className="text-sm text-gray-500 mt-1">
+                                    Total Customers
+                                </p>
+
                             </div>
-                            <div className="bg-gray-50 rounded-xl p-4 text-center">
-                                <p className="text-2xl font-bold text-green-600">342</p>
-                                <p className="text-xs text-gray-500 font-semibold mt-1">New This Month</p>
+
+
+                            {/* NEW CUSTOMERS */}
+
+                            <div className="bg-gray-50 rounded-xl border border-gray-100 p-5">
+
+                                <div className="p-2.5 w-fit bg-green-100 text-green-600 rounded-lg mb-3">
+                                    <IoPeopleOutline size={20} />
+                                </div>
+
+                                <p className="text-2xl font-bold text-gray-900">
+
+                                    {reports?.customers
+                                        ?.newCustomers || 0}
+
+                                </p>
+
+                                <p className="text-sm text-gray-500 mt-1">
+                                    New Customers
+                                </p>
+
                             </div>
-                            <div className="bg-gray-50 rounded-xl p-4 text-center">
-                                <p className="text-2xl font-bold text-blue-600">38%</p>
-                                <p className="text-xs text-gray-500 font-semibold mt-1">Repeat Rate</p>
+
+
+                            {/* REPEAT RATE */}
+
+                            <div className="bg-gray-50 rounded-xl border border-gray-100 p-5">
+
+                                <div className="p-2.5 w-fit bg-purple-100 text-purple-600 rounded-lg mb-3">
+                                    <IoTrendingUpOutline size={20} />
+                                </div>
+
+                                <p className="text-2xl font-bold text-gray-900">
+
+                                    {reports?.customers
+                                        ?.repeatRate || 0}
+                                    %
+
+                                </p>
+
+                                <p className="text-sm text-gray-500 mt-1">
+                                    Repeat Rate
+                                </p>
+
                             </div>
-                            <div className="bg-gray-50 rounded-xl p-4 text-center">
-                                <p className="text-2xl font-bold text-purple-600">₹1,850</p>
-                                <p className="text-xs text-gray-500 font-semibold mt-1">Avg CLV</p>
+
+
+                            {/* AVERAGE CLV */}
+
+                            <div className="bg-gray-50 rounded-xl border border-gray-100 p-5">
+
+                                <div className="p-2.5 w-fit bg-orange-100 text-orange-600 rounded-lg mb-3">
+                                    <IoStatsChartOutline size={20} />
+                                </div>
+
+                                <p className="text-2xl font-bold text-gray-900">
+
+                                    {formatCurrency(
+                                        reports?.customers
+                                            ?.averageCLV || 0
+                                    )}
+
+                                </p>
+
+                                <p className="text-sm text-gray-500 mt-1">
+                                    Average CLV
+                                </p>
+
                             </div>
+
                         </div>
-                        <div className="overflow-x-auto">
-                            <table className="w-full text-sm">
-                                <thead className="bg-gray-50 text-gray-500 font-semibold uppercase text-xs tracking-wider">
-                                    <tr>
-                                        <th className="px-6 py-3 text-left">Customer Segment</th>
-                                        <th className="px-6 py-3 text-left">Count</th>
-                                        <th className="px-6 py-3 text-left">Revenue Share</th>
-                                        <th className="px-6 py-3 text-left">Avg Orders</th>
-                                    </tr>
-                                </thead>
-                                <tbody className="divide-y divide-gray-100">
-                                    <tr className="hover:bg-gray-50"><td className="px-6 py-3 font-medium">VIP (10+ orders)</td><td className="px-6 py-3">89</td><td className="px-6 py-3 text-green-600 font-semibold">42%</td><td className="px-6 py-3">14.2</td></tr>
-                                    <tr className="hover:bg-gray-50"><td className="px-6 py-3 font-medium">Regular (3-9 orders)</td><td className="px-6 py-3">456</td><td className="px-6 py-3 text-blue-600 font-semibold">35%</td><td className="px-6 py-3">5.1</td></tr>
-                                    <tr className="hover:bg-gray-50"><td className="px-6 py-3 font-medium">New (1-2 orders)</td><td className="px-6 py-3">1,234</td><td className="px-6 py-3 text-gray-600 font-semibold">18%</td><td className="px-6 py-3">1.3</td></tr>
-                                    <tr className="hover:bg-gray-50"><td className="px-6 py-3 font-medium">Dormant (no order 90d+)</td><td className="px-6 py-3">677</td><td className="px-6 py-3 text-red-500 font-semibold">5%</td><td className="px-6 py-3">2.1</td></tr>
-                                </tbody>
-                            </table>
+
+
+                        {/* CUSTOMER SEGMENTS */}
+
+                        <div>
+
+                            <div className="mb-5">
+
+                                <h2 className="text-lg font-bold text-gray-900">
+                                    Customer Segments
+                                </h2>
+
+                                <p className="text-sm text-gray-500 mt-1">
+                                    Customer segmentation based on orders
+                                </p>
+
+                            </div>
+
+
+                            <div className="overflow-x-auto border border-gray-100 rounded-xl">
+
+                                <table className="w-full text-sm text-left">
+
+                                    <thead className="bg-gray-50 text-gray-500 uppercase text-xs font-semibold">
+
+                                        <tr>
+
+                                            <th className="px-5 py-4">
+                                                Segment
+                                            </th>
+
+                                            <th className="px-5 py-4">
+                                                Customers
+                                            </th>
+
+                                            <th className="px-5 py-4">
+                                                Revenue Share
+                                            </th>
+
+                                            <th className="px-5 py-4">
+                                                Average Orders
+                                            </th>
+
+                                        </tr>
+
+                                    </thead>
+
+
+                                    <tbody className="divide-y divide-gray-100">
+
+                                        {reports?.customers
+                                            ?.segments?.length ? (
+
+                                            reports.customers.segments.map(
+                                                (
+                                                    segment,
+                                                    index
+                                                ) => (
+
+                                                    <tr
+                                                        key={`${segment.segment}-${index}`}
+                                                        className="hover:bg-gray-50 transition-colors"
+                                                    >
+
+                                                        <td className="px-5 py-4 font-semibold text-gray-900">
+
+                                                            {
+                                                                segment.segment
+                                                            }
+
+                                                        </td>
+
+
+                                                        <td className="px-5 py-4 text-gray-700">
+
+                                                            {
+                                                                segment.count
+                                                            }
+
+                                                        </td>
+
+
+                                                        <td className="px-5 py-4">
+
+                                                            <span className="font-semibold text-green-600">
+
+                                                                {
+                                                                    segment.revenueShare
+                                                                }
+
+                                                                %
+
+                                                            </span>
+
+                                                        </td>
+
+
+                                                        <td className="px-5 py-4 text-gray-700">
+
+                                                            {
+                                                                segment.averageOrders
+                                                            }
+
+                                                        </td>
+
+                                                    </tr>
+
+                                                )
+                                            )
+
+                                        ) : (
+
+                                            <tr>
+                                                <td
+                                                    colSpan={4}
+                                                    className="px-5 py-12 text-center text-gray-400"
+                                                >
+                                                    No customer data found
+                                                </td>
+                                            </tr>
+
+                                        )}
+
+                                    </tbody>
+
+                                </table>
+
+                            </div>
+
                         </div>
+
                     </div>
                 )}
 
-                {activeReport === 'traffic' && (
-                    <div className="p-6 space-y-6">
-                        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                            <div className="bg-gray-50 rounded-xl p-4 text-center">
-                                <p className="text-2xl font-bold text-gray-900">24,500</p>
-                                <p className="text-xs text-gray-500 font-semibold mt-1">Total Visitors</p>
-                            </div>
-                            <div className="bg-gray-50 rounded-xl p-4 text-center">
-                                <p className="text-2xl font-bold text-green-600">3.2%</p>
-                                <p className="text-xs text-gray-500 font-semibold mt-1">Conversion Rate</p>
-                            </div>
-                            <div className="bg-gray-50 rounded-xl p-4 text-center">
-                                <p className="text-2xl font-bold text-blue-600">45%</p>
-                                <p className="text-xs text-gray-500 font-semibold mt-1">Cart Abandonment</p>
-                            </div>
-                            <div className="bg-gray-50 rounded-xl p-4 text-center">
-                                <p className="text-2xl font-bold text-purple-600">3:42</p>
-                                <p className="text-xs text-gray-500 font-semibold mt-1">Avg Session Time</p>
-                            </div>
-                        </div>
-                        <div className="overflow-x-auto">
-                            <table className="w-full text-sm">
-                                <thead className="bg-gray-50 text-gray-500 font-semibold uppercase text-xs tracking-wider">
-                                    <tr>
-                                        <th className="px-6 py-3 text-left">Traffic Source</th>
-                                        <th className="px-6 py-3 text-left">Visitors</th>
-                                        <th className="px-6 py-3 text-left">Orders</th>
-                                        <th className="px-6 py-3 text-left">Revenue</th>
-                                        <th className="px-6 py-3 text-left">Conversion</th>
-                                    </tr>
-                                </thead>
-                                <tbody className="divide-y divide-gray-100">
-                                    <tr className="hover:bg-gray-50"><td className="px-6 py-3 font-medium">Direct</td><td className="px-6 py-3">8,200</td><td className="px-6 py-3">180</td><td className="px-6 py-3">₹1,35,400</td><td className="px-6 py-3 text-green-600 font-semibold">2.2%</td></tr>
-                                    <tr className="hover:bg-gray-50"><td className="px-6 py-3 font-medium">Google Organic</td><td className="px-6 py-3">6,500</td><td className="px-6 py-3">120</td><td className="px-6 py-3">₹95,600</td><td className="px-6 py-3 text-green-600 font-semibold">1.8%</td></tr>
-                                    <tr className="hover:bg-gray-50"><td className="px-6 py-3 font-medium">Instagram</td><td className="px-6 py-3">4,800</td><td className="px-6 py-3">95</td><td className="px-6 py-3">₹68,200</td><td className="px-6 py-3 text-green-600 font-semibold">2.0%</td></tr>
-                                    <tr className="hover:bg-gray-50"><td className="px-6 py-3 font-medium">Google Ads</td><td className="px-6 py-3">3,200</td><td className="px-6 py-3">85</td><td className="px-6 py-3">₹64,800</td><td className="px-6 py-3 text-green-600 font-semibold">2.7%</td></tr>
-                                    <tr className="hover:bg-gray-50"><td className="px-6 py-3 font-medium">Facebook</td><td className="px-6 py-3">1,800</td><td className="px-6 py-3">28</td><td className="px-6 py-3">₹21,200</td><td className="px-6 py-3 text-green-600 font-semibold">1.6%</td></tr>
-                                </tbody>
-                            </table>
-                        </div>
-                    </div>
-                )}
             </div>
+
         </div>
     );
 };

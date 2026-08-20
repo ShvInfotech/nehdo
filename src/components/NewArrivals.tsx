@@ -14,6 +14,9 @@ import {
 import { useCart } from "../context/CartContext";
 import { useWishlist } from "../context/WishlistContext";
 
+
+
+
 const products = [
     { id: 1, image: "https://storage.googleapis.com/tagjs-prod.appspot.com/v1/hurs0BoZOo/bkt7vcv1_expires_30_days.png", name: "Yves Saint", brand: "YSL", price: "₹39.99", originalPrice: "₹59.99", reviews: 128, rating: 4.8, isNew: true },
     { id: 2, image: "https://storage.googleapis.com/tagjs-prod.appspot.com/v1/hurs0BoZOo/gw9whifd_expires_30_days.png", name: "Gucci Classic", brand: "Gucci", price: "₹45.99", originalPrice: null, reviews: 210, rating: 4.9, isNew: true },
@@ -79,11 +82,10 @@ const NewArrivals = () => {
                             <button
                                 key={tab}
                                 onClick={() => setActiveTab(tab)}
-                                className={`px-3 md:px-4 py-2 rounded-lg text-xs md:text-sm font-medium transition-all ${
-                                    activeTab === tab
+                                className={`px-3 md:px-4 py-2 rounded-lg text-xs md:text-sm font-medium transition-all ${activeTab === tab
                                         ? "bg-brand text-white shadow-button"
                                         : "text-gray-600 hover:text-gray-900"
-                                }`}
+                                    }`}
                             >
                                 {tab}
                             </button>
@@ -196,11 +198,10 @@ const NewArrivals = () => {
                                         </div>
                                         <button
                                             onClick={(e) => { e.preventDefault(); handleAddToCart(product); }}
-                                            className={`p-2 rounded-xl transition-all ${
-                                                addedToCart === product.id
+                                            className={`p-2 rounded-xl transition-all ${addedToCart === product.id
                                                     ? "bg-green-500 text-white scale-110"
                                                     : "bg-brand/10 text-brand hover:bg-brand hover:text-white"
-                                            }`}
+                                                }`}
                                         >
                                             <IoBagAddOutline size={16} />
                                         </button>

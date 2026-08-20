@@ -6,7 +6,7 @@ import React, {
   useEffect
 } from 'react';
 
-import { userapiRequest,setUnauthorizedHandler } from '../services/apiService';
+import { userapiRequest, setUnauthorizedHandler } from '../services/apiService';
 
 export interface User {
   _id: string;
@@ -20,10 +20,10 @@ export interface User {
 interface AuthContextType {
   user: User | null;
   isLoggedIn: boolean;
-  login: (email: string, password: string) => Promise<boolean>;
-  signup: (name: string, email: string, password: string) => Promise<boolean>;
+  login: (email: string, password: string,deviceToken:string, GoogleIdToken: string, key: string) => Promise<boolean>;
+  signup: (name: string, email: string, password: string,deviceToken:string) => Promise<boolean>;
   logout: () => void;
-  updateProfile: (data: FormData) => Promise<void>
+  updateProfile: (data: any) => Promise<void>
   authModalMode: 'login' | 'signup' | null;
   openAuthModal: (mode?: 'login' | 'signup') => void;
   closeAuthModal: () => void;
@@ -51,28 +51,45 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   }, [user]);
 
   useEffect(() => {
-  setUnauthorizedHandler(() => {
-    setUser(null);
-    setAuthModalMode('login');
-  });
-}, []);
+    setUnauthorizedHandler(() => {
+      setUser(null);
+      setAuthModalMode('login');
+    });
+  }, []);
 
-  const login = useCallback(async (email: string, _password: string) => {
+  const login = useCallback(async (email: string, _password: string,deviceToken:string, GoogleIdToken: String, key: String) => {
     try {
-      const payload = {
-        email,
-        password: _password,
-      };
+      let res: any
 
-      const res: any = await userapiRequest(
-        '/user/api/v1/auth/login',
-        'POST',
-        payload
-      );
+      if (key === 'google') {
+        const payload = {
+          deviceToken,
+          GoogleIdToken,
+        };
+
+        res = await userapiRequest(
+          '/user/api/v1/auth/googlelogin',
+          'POST',
+          payload
+        );
+      } else {
+        const payload = {
+          email,
+          password: _password,
+          deviceToken
+        };
+
+        res = await userapiRequest(
+          '/user/api/v1/auth/login',
+          'POST',
+          payload
+        );
+      }
+
 
 
       const loggedInUser: User = {
-        _id:res.user?._id || "",
+        _id: res.user?._id || "",
         name: res.user?.name || '',
         email: res.user?.email || '',
         phone: res.user?.phone || '',
@@ -80,7 +97,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         address: res.user?.address || '',
       };
 
-  
+
 
       setUser(loggedInUser);
 
@@ -93,18 +110,18 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
       return true;
     } catch (error: any) {
-       console.error(error);
-  throw error;
+      console.error(error);
+      throw error;
     }
   }, []);
 
-  const signup = useCallback(async (name: string, email: string, _password: string) => {
+  const signup = useCallback(async (name: string, email: string, _password: string,deviceToken:string) => {
     try {
       const payload = {
         name,
         email,
         password: _password,
-        deviceToken: ''
+        deviceToken
       };
 
       const res: any = await userapiRequest(
@@ -116,7 +133,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       console.log('signup call', res);
 
       const registeredUser: User = {
-         _id: res.user?._id || '',
+        _id: res.user?._id || '',
         name: res.user?.name || name,
         email: res.user?.email || email,
         phone: res.user?.phone || '',
@@ -134,21 +151,22 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
       return true;
     } catch (error: any) {
-       console.error(error);
-  throw error;
+      console.error(error);
+      throw error;
     }
   }, []);
 
-  const logout = useCallback(() => {
+  const logout = useCallback(async () => {
+    const respons = await userapiRequest('/user/api/v1/auth/logout', 'POST')
     setUser(null);
     localStorage.removeItem('user');
     localStorage.removeItem('accessToken');
   }, []);
 
-  const updateProfile = useCallback(async (data: FormData) => {
-    const res = await userapiRequest(`/user/api/v1/auth/updateprofile/${user?._id}`,"POST",data)
-  
-    setUser({...res.user});
+  const updateProfile:any = useCallback(async (data: FormData) => {
+    const res = await userapiRequest(`/user/api/v1/auth/updateprofile/${user?._id}`, "POST", data)
+
+    setUser({ ...res.user });
   }, []);
 
   const openAuthModal = useCallback((mode: 'login' | 'signup' = 'login') => {

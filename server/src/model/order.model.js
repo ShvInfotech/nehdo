@@ -54,15 +54,15 @@ const orderSchema = mongoose.Schema(
                 dimensions: {
                     length: {
                         type: Number,
-                        default: 0,
+                        default: 0.5,
                     },
                     width: {
                         type: Number,
-                        default: 0,
+                        default: 0.5,
                     },
                     height: {
                         type: Number,
-                        default: 0,
+                        default: 0.5,
                     },
                 },
             },

@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { IoAddOutline, IoSearchOutline, IoFilterOutline, IoEllipsisVertical, IoCloseOutline, IoCloudUploadOutline, IoTrashOutline, IoImageOutline } from "react-icons/io5";
-import { products, brands, categories, subCategories } from "../../data/products";
+
 import { apiRequest } from "../../services/apiService";
 const AdminProducts = () => {
 

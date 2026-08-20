@@ -50,7 +50,23 @@ exports.UserRegister = async (req, res, next) => {
         const accessToken = generateJwtToken(user)
         const hashToken = generatehashToken(accessToken)
 
-        user = await userModel.findByIdAndUpdate(user._id, { $addToSet: { accessToken: hashToken, deviceToken: req.body.deviceToken } }).select(['name', 'email', 'phone', 'address', 'role', 'profile'])
+        const addToSetData = {
+            accessToken: hashToken,
+        };
+
+        if (req.body.deviceToken) {
+            addToSetData.deviceToken = req.body.deviceToken;
+        }
+
+        user = await userModel
+            .findByIdAndUpdate(
+                user._id,
+                {
+                    $addToSet: addToSetData,
+                },
+                { new: true }
+            )
+            .select(['name', 'email', 'phone', 'role', 'profile']);
         if (user.profile !== "") {
             user.profile = `http://${process.env.HOST}:${process.env.PORT}${user.profile}`;
         }
@@ -58,7 +74,7 @@ exports.UserRegister = async (req, res, next) => {
         const address = await addressModel.find({ userId: user._id })
         const userData = user.toObject();
         userData.address = address;
-        return res.status(200).json({ success: true, message: 'user registered  successfully', user:userData, accesstoken: accessToken })
+        return res.status(200).json({ success: true, message: 'user registered  successfully', user: userData, accesstoken: accessToken })
     } catch (error) {
 
         return next(error)
@@ -92,6 +108,14 @@ exports.UserLogin = async (req, res, next) => {
             return next(CustomeError(404, "user not found"))
         }
 
+        if (!user.provider.includes('local')) {
+    return next(CustomeError(404, "user not found"))
+}
+
+        if(user.status !== "active"){
+            return next(CustomeError(404, "your account is blocked by admin"))
+
+        }
         const hashpassword = await bcrypt.compare(password, user.password)
 
         if (!hashpassword) {
@@ -101,7 +125,23 @@ exports.UserLogin = async (req, res, next) => {
         const accessToken = generateJwtToken(user)
         const hashToken = generatehashToken(accessToken)
 
-        user = await userModel.findByIdAndUpdate(user._id, { $addToSet: { accessToken: hashToken, deviceToken: req.body.deviceToken } }).select(['name', 'email', 'phone', 'role', 'profile'])
+        const addToSetData = {
+            accessToken: hashToken,
+        };
+
+        if (req.body.deviceToken) {
+            addToSetData.deviceToken = req.body.deviceToken;
+        }
+
+        user = await userModel
+            .findByIdAndUpdate(
+                user._id,
+                {
+                    $addToSet: addToSetData,
+                },
+                { new: true }
+            )
+            .select(['name', 'email', 'phone', 'role', 'profile']);
         if (user.profile) {
             user.profile = `http://${process.env.HOST}:${process.env.PORT}${user.profile}`;
         }
@@ -109,7 +149,7 @@ exports.UserLogin = async (req, res, next) => {
         const address = await addressModel.find({ userId: user._id })
         const userData = user.toObject();
         userData.address = address;
-        
+
         return res.status(200).json({ success: true, message: 'user login successfully', user: userData, accesstoken: accessToken })
     } catch (error) {
         return next(error)
@@ -120,6 +160,8 @@ exports.UserLogin = async (req, res, next) => {
 
 exports.GoogelLogin = async (req, res, next) => {
     try {
+
+        console.log(req.body)
 
         if (!req.body?.GoogleIdToken) {
             return next(CustomeError(422, "GoogleIdToken is required"))
@@ -133,23 +175,47 @@ exports.GoogelLogin = async (req, res, next) => {
         let user = await userModel.findOne({ email: decoded.email })
 
         if (!user) {
-            user = await userModel.create({ name: decoded.name, email: decoded.email, profile: decoded.picture, provider: ['google'], googleId: decoded.sub })
+            user = await userModel.create({ name: decoded.name, email: decoded.email, provider: ['google'], googleId: decoded.sub })
+        }
+
+        if(user.status !== "active"){
+            return next(CustomeError(404, "your account is blocked by admin"))
+
         }
 
         if (user && (user.provider.includes("local") || user.provider.includes("facebook"))) {
-            user = await userModel.findByIdAndUpdate(user._id, { $addToSet: { provider: 'google', googleId: decoded.sub } })
+            user = await userModel.findByIdAndUpdate(user._id, { $addToSet: { provider: 'google' }, googleId: decoded.sub })
         }
 
         const accessToken = generateJwtToken(user)
         const hashToken = generatehashToken(accessToken)
 
-        user = await userModel.findByIdAndUpdate(user._id, { $addToSet: { accessToken: hashToken, deviceToken: req.body.deviceToken } }).select(['name', 'email', 'phone', 'role', 'profile'])
-       
-   const address = await addressModel.find({ userId: user._id })
+        const addToSetData = {
+            accessToken: hashToken,
+        };
+
+        if (req.body.deviceToken) {
+            addToSetData.deviceToken = req.body.deviceToken;
+        }
+
+        user = await userModel
+            .findByIdAndUpdate(
+                user._id,
+                {
+                    $addToSet: addToSetData,
+                },
+                { new: true }
+            )
+            .select(['name', 'email', 'phone', 'role', 'profile']);
+
+        const address = await addressModel.find({ userId: user._id })
         const userData = user.toObject();
+        if (userData.profile) {
+            userData.profile = `http://${process.env.HOST}:${process.env.PORT}${userData.profile}`;
+        }
         userData.address = address;
 
-        return res.status(200).json({ success: true, message: 'user login successfully', user:userData, accesstoken: accessToken })
+        return res.status(200).json({ success: true, message: 'user login successfully', user: userData, accesstoken: accessToken })
     } catch (error) {
         return next(error)
     }
@@ -304,6 +370,29 @@ exports.ResetPassword = async (req, res, next) => {
         return next(error);
     }
 };
+
+
+exports.LogOut = async (req, res, next) => {
+    try {
+        const token = req.token
+
+        if (token) {
+            await userModel.findByIdAndUpdate(
+                req.user._id,
+                {
+                    $pull: {
+                        accessToken: token
+                    }
+                },
+                { returnDocument: 'after' }
+            );
+        }
+
+        return res.status(200).json({ success: true, message: 'logout' })
+    } catch (error) {
+        return next(error)
+    }
+}
 
 
 

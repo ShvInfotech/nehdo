@@ -58,7 +58,7 @@ export const apiRequest = async (
   }
 
   if (response.status >= 500) {
-    window.location.href = '/server-error';
+    alert('Server Error')
     return Promise.reject(new Error('Server error'));
   }
 
@@ -142,7 +142,7 @@ export const userapiRequest = async (
   }
 
   if (response.status >= 500) {
-    window.location.href = '/server-error';
+    // window.location.href = '/server-error';
     return Promise.reject(new Error('Server error'));
   }
 
@@ -153,6 +153,8 @@ export const userapiRequest = async (
   if (response.status === 404) {
     return Promise.reject(new Error(data?.message || 'not found'));
   }
+
+ 
 
   if (!response.ok) {
     throw new Error(data?.message || 'Something went wrong');

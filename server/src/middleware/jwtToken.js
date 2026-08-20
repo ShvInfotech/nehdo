@@ -41,6 +41,11 @@ const verifyjwtAccessToken = async (req, res, next) => {
             return next(CustomeError(401, "invalid token"));
         }
 
+        if(user.status == "block" || user.status == "inactive"){
+            await userModel.findByIdAndUpdate(user._id,{accessToken:[]})
+            return next(CustomeError(401, "invalid token"));
+        }
+
       
 
         const hashaccessToken = generatehashToken(token)

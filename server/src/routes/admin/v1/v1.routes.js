@@ -8,4 +8,10 @@ router.use('/subCategory',require("./subcategory.routes"))
 router.use('/product',require('./product.routes'))
 router.use('/coupon',require('./coupon.routes'))
 router.use('/order',require('./order.routes'))
+
+router.use('/customers',require('./customers.routes'))
+router.use('/reviews',require('./reviews.routes'))
+
+router.use('/dashboard',require('./dashboard.routes'))
+
 module.exports= router

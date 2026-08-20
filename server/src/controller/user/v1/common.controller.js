@@ -6,6 +6,7 @@ const addressModel = require('../../../model/address.model')
 const productModel = require("../../../model/product.model")
 const productvariantModel = require('../../../model/productvariant.model')
 const productshippingModel = require('../../../model/productshipping.model')
+const productinventoryModel = require('../../../model/productinventory.model')
 const { GetProductCouponApplay, GetCartProductCouponApplay, GetCartProductShipingcharg, GetCartProductPaymentOrder } = require("../../../helper/aggretionpipeline")
 const { PercentageCoupenapplay, CartDiscountCoupenapplay, FindPriceinProduct, generateOrderNumber } = require("../../../helper/helper")
 const { getshippingcharg } = require("../../../services/shiproketapis")
@@ -172,6 +173,100 @@ exports.PaymentOrder = async (req, res, next) => {
         const discount = req.body?.discount || null
         const shippingcharge = req.body.shippingcharge || null
         const products = await cartModel.aggregate(GetCartProductPaymentOrder(req.body.cartIds));
+        console.log(products)
+
+        const outOfStockProducts = [];
+
+        for (const cartItem of products) {
+
+            const requiredQuantity = Number(cartItem.quantity || 0);
+
+            // =========================
+            // 1. PRODUCT INVENTORY STOCK
+            // =========================
+            const availableStock = Number(
+                cartItem.inventory?.stock || 0
+            );
+
+            if (availableStock < requiredQuantity) {
+                outOfStockProducts.push({
+                    productId: cartItem.productId,
+                    productName: cartItem.product?.name,
+                    size: cartItem.size,
+                    color: cartItem.color,
+                    requiredQuantity,
+                    availableStock,
+                    type: "product"
+                });
+
+                continue;
+            }
+
+
+            // =========================
+            // 2. SELECTED VARIANT STOCK
+            // =========================
+            const selectedVariant = cartItem.variant?.variant?.find(
+                (variant) => {
+                    const variantName =
+                        variant.name?.toLowerCase().trim();
+
+                    const cartSize =
+                        cartItem.size?.toLowerCase().trim();
+
+                    const cartColor =
+                        cartItem.color?.toLowerCase().trim();
+
+                    return (
+                        variantName === `${cartColor}/${cartSize}`
+                    );
+                }
+            );
+
+
+            // Variant na male
+            if (!selectedVariant) {
+                outOfStockProducts.push({
+                    productId: cartItem.productId,
+                    productName: cartItem.product?.name,
+                    size: cartItem.size,
+                    color: cartItem.color,
+                    requiredQuantity,
+                    availableStock: 0,
+                    type: "variant",
+                    message: "Selected variant not found"
+                });
+
+                continue;
+            }
+
+
+            // Variant stock check
+            const variantStock = Number(selectedVariant.stock || 0);
+
+            if (variantStock < requiredQuantity) {
+                outOfStockProducts.push({
+                    productId: cartItem.productId,
+                    productName: cartItem.product?.name,
+                    size: cartItem.size,
+                    color: cartItem.color,
+                    requiredQuantity,
+                    availableStock: variantStock,
+                    type: "variant"
+                });
+            }
+        }
+
+        console.log(outOfStockProducts)
+        if (outOfStockProducts.length > 0) {
+            return next(
+                CustomeError(
+                    409,
+                    "Some products or variants do not have sufficient stock"
+                )
+            );
+        }
+        console.log(products)
         let totalprice = FindPriceinProduct(products)
         if (shippingcharge) {
             totalprice += shippingcharge
@@ -243,7 +338,7 @@ exports.verifyPayment = async (req, res, next) => {
                 productId: cartItem.productId
             });
 
-            const productShipping = await productshippingModel.findOne({productId: cartItem.productId})
+            const productShipping = await productshippingModel.findOne({ productId: cartItem.productId })
 
             if (!productVariant) {
                 return res.status(404).json({
@@ -275,18 +370,50 @@ exports.verifyPayment = async (req, res, next) => {
             orderItems.push({
                 productId: cartItem.productId,
                 variantId: selectedVariant._id,
-                sku:selectedVariant.sku,
+                sku: selectedVariant.sku,
                 size: cartItem.size,
                 color: cartItem.color,
-                image:product.productImage[0] || '',
+                image: product.productImage[0] || '',
                 quantity: cartItem.quantity,
 
                 price: selectedVariant.price,
-                weight:productShipping.weight,
-                dimensions:productShipping.dimensions,
-                HSCode:productShipping.HSCode,
+                weight: productShipping.weight,
+                dimensions: productShipping.dimensions,
+                HSCode: productShipping.HSCode,
                 total: selectedVariant.price * cartItem.quantity
             });
+
+            const updatedVariant = await productvariantModel.findOneAndUpdate(
+                {
+                    variant: {
+                        $elemMatch: {
+                            _id: selectedVariant._id,
+                            stock: { $gte: cartItem.quantity }
+                        }
+                    }
+                },
+                {
+                    $inc: {
+                        "variant.$.stock": -Number(cartItem.quantity)
+                    }
+                },
+                {
+
+                    returnDocument: "after"
+                }
+            );
+
+            await productinventoryModel.findOneAndUpdate(
+                { productId: cartItem.productId },
+                {
+                    $inc: {
+                        stock: -Number(cartItem.quantity)
+                    }
+                },
+                {
+                    returnDocument: "after"
+                }
+            );
         }
 
         const shippingAddress = {
@@ -301,7 +428,7 @@ exports.verifyPayment = async (req, res, next) => {
         const discount = req.body?.discount || 0
         const couponId = req.body?.coupenId || null
         const shipping = req.body?.shipping || 0
-        
+
         const totalAmount = subtotal + shipping - discount
         const payment = {
             orderId: req.body.razorpay_order_id,
