@@ -1,9 +1,10 @@
-import React from "react";
+import React, { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { motion } from "framer-motion";
 import { IoArrowForward } from "react-icons/io5";
+import { userapiRequest } from "../services/apiService";
 
-const categories = [
+const initialcategories = [
     {
         name: "Men",
         desc: "Shirts, Pants & More",
@@ -36,7 +37,21 @@ const categories = [
     },
 ];
 
+
 const ShopByCategory = () => {
+const [categories ,setcategories] = useState(initialcategories)
+
+    const getcategories = async () =>{
+    try {
+       const res = await userapiRequest('/user/api/v1/common/category',"GET")
+       setcategories(res.categories)
+    } catch (error) {
+        console.log(error)
+    }
+}
+useEffect(()=>{
+getcategories()
+},[])
     return (
         <section className="max-w-[1440px] mx-auto px-4 md:px-8 lg:px-16 mb-16 md:mb-28">
             {/* Section Header */}

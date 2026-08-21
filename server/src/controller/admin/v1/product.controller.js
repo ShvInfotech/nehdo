@@ -312,7 +312,17 @@ exports.UpdateProduct = async (req, res, next) => {
         if (req.body?.name) {
             productData.name = req.body?.name
         }
+        if (req.body?.brandId) {
+            productData.brandId = req.body.brandId
+        }
 
+        if (req.body?.subcategoryId) {
+            productData.subcategoryId = req.body.subcategoryId
+        }
+
+        if (req.body?.categoryId) {
+            productData.categoryId = req.body.categoryId
+        }
         if (req.body?.price) {
             productData.price = req.body?.price
         }
@@ -320,6 +330,7 @@ exports.UpdateProduct = async (req, res, next) => {
         if (req.body?.salePrice && req.body?.salePrice < req.body?.price) {
             productData.salePrice = req.body?.salePrice
         }
+
 
         if (req.body?.itemCost) {
             productData.price = req.body?.itemCost
@@ -358,12 +369,12 @@ exports.UpdateProduct = async (req, res, next) => {
             productData.metaDescription = req.body?.metaDescription
         }
 
-        
+
 
         if (req.body?.deleteImage) {
             const deleteIndex = Array.isArray(req.body.deleteImage) ? req.body.deleteImage : JSON.parse(req.body.deleteImage);
             if (deleteIndex.length) {
-               
+
                 deleteIndex.forEach((value, index) => {
                     DeleteImage(productData.productImage[value])
                 })
@@ -384,18 +395,18 @@ exports.UpdateProduct = async (req, res, next) => {
 
         let variantData = await productVariantModel.findOne({ productId: product._id })
         if (req.body?.size) {
-    variantData.size =
-        typeof req.body.size === 'string'
-            ? JSON.parse(req.body.size)
-            : req.body.size;
-}
+            variantData.size =
+                typeof req.body.size === 'string'
+                    ? JSON.parse(req.body.size)
+                    : req.body.size;
+        }
 
-if (req.body?.colors) {
-    variantData.colorOptions =
-        typeof req.body.colors === 'string'
-            ? JSON.parse(req.body.colors)
-            : req.body.colors;
-}
+        if (req.body?.colors) {
+            variantData.colorOptions =
+                typeof req.body.colors === 'string'
+                    ? JSON.parse(req.body.colors)
+                    : req.body.colors;
+        }
 
         if (req.body.material) {
             variantData.material = req.body.material || ''
@@ -486,7 +497,7 @@ if (req.body?.colors) {
             shippingData.weight = req.body?.weight
         }
 
-        console.log("print dimention",req.body?.dimensions)
+        console.log("print dimention", req.body?.dimensions)
         if (req.body?.dimensions) {
             shippingData.dimensions = JSON.parse(req.body?.dimensions)
         }

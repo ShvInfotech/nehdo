@@ -7,14 +7,15 @@ const productModel = require("../../../model/product.model")
 const productvariantModel = require('../../../model/productvariant.model')
 const productshippingModel = require('../../../model/productshipping.model')
 const productinventoryModel = require('../../../model/productinventory.model')
-const { GetProductCouponApplay, GetCartProductCouponApplay, GetCartProductShipingcharg, GetCartProductPaymentOrder } = require("../../../helper/aggretionpipeline")
+const { GetProductCouponApplay, GetCartProductCouponApplay, GetCartProductShipingcharg, GetCartProductPaymentOrder, GetHeroBanners } = require("../../../helper/aggretionpipeline")
 const { PercentageCoupenapplay, CartDiscountCoupenapplay, FindPriceinProduct, generateOrderNumber } = require("../../../helper/helper")
 const { getshippingcharg } = require("../../../services/shiproketapis")
 const { razorpay, razorpaySignature } = require("../../../config/razorpay.config")
 const orderModel = require("../../../model/order.model")
-
-
-
+const categoryModel = require('../../../model/category.model')
+const brandModel = require('../../../model/brand.model')
+const bannerModel = require('../../../model/banner.model')
+const ratingModel = require("../../../model/rating.model")
 exports.ApplyCoupon = async (req, res, next) => {
     try {
         if (!req.body?.couponCode) {
@@ -106,6 +107,13 @@ exports.CheckShiping = async (req, res, next) => {
         }
 
 
+        let cod = 0
+
+        if(req.body?.cod){
+            cod = 1
+        }
+
+
 
 
         const weight = products.reduce(
@@ -140,7 +148,7 @@ exports.CheckShiping = async (req, res, next) => {
         const trackingData = {
             pincode: address.postalCode,
             weight,
-            cod: 0,
+            cod,
             length,
             breadth,
             height
@@ -458,6 +466,261 @@ exports.verifyPayment = async (req, res, next) => {
             });
         }
         return res.status(200).json({ success: true, message: 'order create successfullly', order })
+    } catch (error) {
+        return next(error)
+    }
+}
+
+
+exports.GetCategory = async (req, res, next) => {
+    try {
+        const DOMAIN = process.env.BACKEND_URL;
+
+        const categories = await categoryModel.aggregate([
+            {
+                $match: {
+                    status: "active",
+                    homepageDisplay: true,
+                },
+            },
+            {
+                $sort: {
+                    displayOrder: 1,
+                },
+            },
+            {
+                $project: {
+                    _id: 0,
+                    name: 1,
+                    desc: "$description",
+
+                    image: {
+                        $concat: [`http://${process.env.HOST}:${process.env.PORT}`, "$logo"],
+                    },
+
+                    gradient: {
+                        $let: {
+                            vars: {
+                                gradients: [
+                                    "from-brand/70 to-brand-dark/80",
+                                    "from-stone-700/70 to-stone-900/80",
+                                    "from-sky-700/70 to-indigo-800/80",
+                                    "from-rose-800/70 to-brand/80",
+                                    "from-amber-800/70 to-brand-dark/80",
+                                    //   "from-orange-700/70 to-orange-900/80",
+                                ],
+                            },
+                            in: {
+                                $arrayElemAt: [
+                                    "$$gradients",
+                                    {
+                                        $floor: {
+                                            $multiply: [
+                                                { $rand: {} },
+                                                { $size: "$$gradients" },
+                                            ],
+                                        },
+                                    },
+                                ],
+                            },
+                        },
+                    },
+                },
+            },
+        ]);
+        return res.status(200).json({ success: true, message: 'get categories', categories })
+    } catch (error) {
+        return next(error)
+    }
+}
+
+exports.GetBrands = async (req, res, next) => {
+    try {
+        const brands = await brandModel.aggregate([
+            {
+                $match: {
+                    status: "active",
+                    homepageDisplay: true,
+                },
+            },
+            {
+                $project: {
+                    _id: 0,
+
+                    name: 1,
+
+                    src: {
+                        $concat: [
+                            `http://${process.env.HOST}:${process.env.PORT}`,
+                            "$logo",
+                        ],
+                    },
+
+                    width: {
+                        $literal: 140,
+                    },
+                },
+            },
+        ]);
+        return res.status(200).json({ success: true, message: "get brands", brands })
+    } catch (error) {
+        return next(error)
+    }
+}
+
+
+exports.GetBanners = async (req, res, next) => {
+    try {
+        const category = req.query.category
+        console.log("banner", category)
+        if (category === "Promotional Strip") {
+
+           const now = new Date();
+
+        const baseUrl = `${req.protocol}://${req.get("host")}`;
+
+        const banners = await bannerModel.aggregate([
+            // -----------------------------------------
+            // FILTER ACTIVE PROMOTIONAL STRIP BANNERS
+            // -----------------------------------------
+            {
+                $match: {
+                    isDeleted: false,
+                    status: "Active",
+                    placement: "Promotional Strip",
+
+                    $or: [
+                        // Start date and end date both null
+                        {
+                            startDate: null,
+                            endDate: null,
+                        },
+
+                        // Only start date exists
+                        {
+                            startDate: {
+                                $ne: null,
+                                $lte: now,
+                            },
+                            endDate: null,
+                        },
+
+                        // Only end date exists
+                        {
+                            startDate: null,
+                            endDate: {
+                                $ne: null,
+                                $gte: now,
+                            },
+                        },
+
+                        // Both dates exist
+                        {
+                            startDate: {
+                                $ne: null,
+                                $lte: now,
+                            },
+                            endDate: {
+                                $ne: null,
+                                $gte: now,
+                            },
+                        },
+                    ],
+                },
+            },
+
+            // -----------------------------------------
+            // SORT BY PRIORITY
+            // -----------------------------------------
+            {
+                $sort: {
+                    priority: 1,
+                    createdAt: -1,
+                },
+            },
+
+            // -----------------------------------------
+            // ONLY REQUIRED FIELDS
+            // -----------------------------------------
+            {
+                $project: {
+                    _id: 1,
+                    title: 1,
+                    subtitle: 1,
+                    ctaButtonText: 1,
+                    priority: 1,
+
+                    desktopImage: {
+                        $cond: [
+                            {
+                                $and: [
+                                    {
+                                        $ne: [
+                                            "$desktopImage",
+                                            null,
+                                        ],
+                                    },
+                                    {
+                                        $ne: [
+                                            "$desktopImage",
+                                            "",
+                                        ],
+                                    },
+                                ],
+                            },
+                            {
+                                $concat: [
+                                    baseUrl,
+                                    "$desktopImage",
+                                ],
+                            },
+                            null,
+                        ],
+                    },
+
+                    mobileImage: {
+                        $cond: [
+                            {
+                                $and: [
+                                    {
+                                        $ne: [
+                                            "$mobileImage",
+                                            null,
+                                        ],
+                                    },
+                                    {
+                                        $ne: [
+                                            "$mobileImage",
+                                            "",
+                                        ],
+                                    },
+                                ],
+                            },
+                            {
+                                $concat: [
+                                    baseUrl,
+                                    "$mobileImage",
+                                ],
+                            },
+                            null,
+                        ],
+                    },
+                },
+            },
+        ]);
+            return res.status(200).json({ success: true, message: 'get banners', banners })
+
+        }
+
+        if (category == "Hero Slider") {
+
+
+            const domain = process.env.BACKEND_URL ||
+                `${req.protocol}://${req.get("host")}`;
+
+            const banners = await bannerModel.aggregate(GetHeroBanners());
+            return res.status(200).json({ success: true, message: 'get banners', banners })
+        }
     } catch (error) {
         return next(error)
     }

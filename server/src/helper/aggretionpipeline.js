@@ -1,4 +1,6 @@
 const mongoose = require("mongoose");
+const productModel = require("../model/product.model");
+const ratingModel = require("../model/rating.model");
 
 
 exports.getproductspipeline = () => {
@@ -1232,6 +1234,318 @@ exports.GetCustomersAdmin = () => {
         }
     ];
 };
+
+
+
+exports.GetHeroBanners = () =>{
+    const now = new Date();
+    return[
+            // =====================================================
+            // BANNER FILTER
+            // =====================================================
+            {
+                $match: {
+                    isDeleted: false,
+                    status: "Active",
+                    placement: "Hero Slider",
+
+                    $or: [
+                        // No start date and no end date
+                        {
+                            startDate: null,
+                            endDate: null,
+                        },
+
+                        // Only start date
+                        {
+                            startDate: {
+                                $ne: null,
+                                $lte: now,
+                            },
+                            endDate: null,
+                        },
+
+                        // Only end date
+                        {
+                            startDate: null,
+                            endDate: {
+                                $ne: null,
+                                $gte: now,
+                            },
+                        },
+
+                        // Both start and end date
+                        {
+                            startDate: {
+                                $ne: null,
+                                $lte: now,
+                            },
+                            endDate: {
+                                $ne: null,
+                                $gte: now,
+                            },
+                        },
+                    ],
+                },
+            },
+
+            // =====================================================
+            // PRIORITY SORT
+            // =====================================================
+            {
+                $sort: {
+                    priority: 1,
+                },
+            },
+
+            // =====================================================
+            // PRODUCT LOOKUP USING SKU
+            // =====================================================
+            {
+                $lookup: {
+                    from: productModel.collection.name,
+                    let: {
+                        bannerSku: "$productSku",
+                    },
+                    pipeline: [
+                        {
+                            $match: {
+                                $expr: {
+                                    $eq: [
+                                        "$sku",
+                                        "$$bannerSku",
+                                    ],
+                                },
+                            },
+                        },
+
+                        // =============================================
+                        // RATING LOOKUP
+                        // =============================================
+                        {
+                            $lookup: {
+                                from: ratingModel.collection.name,
+                                let: {
+                                    productId: "$_id",
+                                },
+                                pipeline: [
+                                    {
+                                        $match: {
+                                            $expr: {
+                                                $eq: [
+                                                    "$productId",
+                                                    "$$productId",
+                                                ],
+                                            },
+                                        },
+                                    },
+
+                                    // Average rating calculate
+                                    {
+                                        $group: {
+                                            _id: null,
+                                            avgRating: {
+                                                $avg: "$rating",
+                                            },
+                                        },
+                                    },
+
+                                    {
+                                        $project: {
+                                            _id: 0,
+                                            avgRating: {
+                                                $round: [
+                                                    "$avgRating",
+                                                    1,
+                                                ],
+                                            },
+                                        },
+                                    },
+                                ],
+                                as: "ratingData",
+                            },
+                        },
+
+                        // =============================================
+                        // PRODUCT RESPONSE FORMAT
+                        // =============================================
+                        {
+                            $project: {
+                                _id: 1,
+                                name: 1,
+                                salePrice: 1,
+
+                                // First image only
+                                image: {
+                                    $arrayElemAt: [
+                                        "$productImage",
+                                        0,
+                                    ],
+                                },
+
+                                avgRating: {
+                                    $ifNull: [
+                                        {
+                                            $arrayElemAt: [
+                                                "$ratingData.avgRating",
+                                                0,
+                                            ],
+                                        },
+                                        0,
+                                    ],
+                                },
+                            },
+                        },
+                    ],
+                    as: "product",
+                },
+            },
+
+            // =====================================================
+            // PRODUCT ARRAY -> OBJECT
+            // =====================================================
+            {
+                $unwind: {
+                    path: "$product",
+                    preserveNullAndEmptyArrays: true,
+                },
+            },
+
+            // =====================================================
+            // FINAL RESPONSE
+            // =====================================================
+            {
+                $project: {
+                    _id: 1,
+
+                    title: 1,
+                    subtitle: 1,
+
+                   
+                   
+                   
+
+                    
+
+                    // =============================================
+                    // DESKTOP IMAGE WITH DOMAIN
+                    // =============================================
+                    desktopImage: {
+                        $cond: [
+                            {
+                                $and: [
+                                    {
+                                        $ne: [
+                                            "$desktopImage",
+                                            null,
+                                        ],
+                                    },
+                                    {
+                                        $ne: [
+                                            "$desktopImage",
+                                            "",
+                                        ],
+                                    },
+                                ],
+                            },
+                            {
+                                $concat: [
+                                    `http://${process.env.HOST}:${process.env.PORT}`,"$desktopImage",
+                                ],
+                            },
+                            "",
+                        ],
+                    },
+
+                    // =============================================
+                    // MOBILE IMAGE WITH DOMAIN
+                    // =============================================
+                    mobileImage: {
+                        $cond: [
+                            {
+                                $and: [
+                                    {
+                                        $ne: [
+                                            "$mobileImage",
+                                            null,
+                                        ],
+                                    },
+                                    {
+                                        $ne: [
+                                            "$mobileImage",
+                                            "",
+                                        ],
+                                    },
+                                ],
+                            },
+                            {
+                                $concat: [
+                                    `http://${process.env.HOST}:${process.env.PORT}`,
+                                    "$mobileImage",
+                                ],
+                            },
+                            "",
+                        ],
+                    },
+
+                    // =============================================
+                    // PRODUCT DATA
+                    // =============================================
+                    product: {
+                        $cond: [
+                            {
+                                $ne: [
+                                    "$product",
+                                    null,
+                                ],
+                            },
+                            {
+                                _id: "$product._id",
+
+                                name: "$product.name",
+
+                                salePrice:
+                                    "$product.salePrice",
+
+                                avgRating:
+                                    "$product.avgRating",
+
+                                // Product first image with domain
+                                image: {
+                                    $cond: [
+                                        {
+                                            $and: [
+                                                {
+                                                    $ne: [
+                                                        "$product.image",
+                                                        null,
+                                                    ],
+                                                },
+                                                {
+                                                    $ne: [
+                                                        "$product.image",
+                                                        "",
+                                                    ],
+                                                },
+                                            ],
+                                        },
+                                        {
+                                            $concat: [
+                                                `http://${process.env.HOST}:${process.env.PORT}`,
+                                                "$product.image",
+                                            ],
+                                        },
+                                        "",
+                                    ],
+                                },
+                            },
+                            null,
+                        ],
+                    },
+                },
+            },
+        ]
+}
 
 
 

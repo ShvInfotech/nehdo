@@ -13,5 +13,6 @@ router.use('/customers',require('./customers.routes'))
 router.use('/reviews',require('./reviews.routes'))
 
 router.use('/dashboard',require('./dashboard.routes'))
+router.use('/banner',require('./banner.routes'))
 
 module.exports= router

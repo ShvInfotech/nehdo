@@ -157,7 +157,7 @@ const AdminLogin = () => {
 
                         <div className="mt-6 pt-6 border-t border-white/10">
                             <p className="text-xs text-gray-500 text-center">
-                                Demo: admin@nehdo.com / admin123
+                                Demo: admin@nehdo.com / Admin@123
                             </p>
                         </div>
                     </div>

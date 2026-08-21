@@ -533,8 +533,8 @@ const Checkout = () => {
                         <div
                             key={s}
                             className={`relative z-10 w-8 h-8 rounded-full flex items-center justify-center font-bold text-sm transition-colors ${step >= s
-                                    ? "bg-brand text-white"
-                                    : "bg-gray-200 text-gray-500"
+                                ? "bg-brand text-white"
+                                : "bg-gray-200 text-gray-500"
                                 }`}
                         >
                             {step > s ? (
@@ -707,8 +707,8 @@ const Checkout = () => {
                                                 setPaymentMethod("upi")
                                             }
                                             className={`w-full p-4 rounded-xl border-2 flex items-center justify-between transition-all ${paymentMethod === "upi"
-                                                    ? "border-brand bg-brand/5"
-                                                    : "border-gray-200"
+                                                ? "border-brand bg-brand/5"
+                                                : "border-gray-200"
                                                 }`}
                                         >
                                             <div className="flex items-center gap-4">
@@ -729,8 +729,8 @@ const Checkout = () => {
 
                                             <div
                                                 className={`w-5 h-5 rounded-full border-2 flex items-center justify-center ${paymentMethod === "upi"
-                                                        ? "border-brand"
-                                                        : "border-gray-300"
+                                                    ? "border-brand"
+                                                    : "border-gray-300"
                                                     }`}
                                             >
                                                 {paymentMethod === "upi" && (
@@ -745,8 +745,8 @@ const Checkout = () => {
                                                 setPaymentMethod("card")
                                             }
                                             className={`w-full p-4 rounded-xl border-2 flex items-center justify-between transition-all ${paymentMethod === "card"
-                                                    ? "border-brand bg-brand/5"
-                                                    : "border-gray-200"
+                                                ? "border-brand bg-brand/5"
+                                                : "border-gray-200"
                                                 }`}
                                         >
                                             <div className="flex items-center gap-4">
@@ -769,8 +769,8 @@ const Checkout = () => {
 
                                             <div
                                                 className={`w-5 h-5 rounded-full border-2 flex items-center justify-center ${paymentMethod === "card"
-                                                        ? "border-brand"
-                                                        : "border-gray-300"
+                                                    ? "border-brand"
+                                                    : "border-gray-300"
                                                     }`}
                                             >
                                                 {paymentMethod === "card" && (
@@ -786,8 +786,8 @@ const Checkout = () => {
                                                 setPaymentMethod("netbanking")
                                             }
                                             className={`w-full p-4 rounded-xl border-2 flex items-center justify-between transition-all ${paymentMethod === "netbanking"
-                                                    ? "border-brand bg-brand/5"
-                                                    : "border-gray-200"
+                                                ? "border-brand bg-brand/5"
+                                                : "border-gray-200"
                                                 }`}
                                         >
 
@@ -811,8 +811,8 @@ const Checkout = () => {
 
                                             <div
                                                 className={`w-5 h-5 rounded-full border-2 flex items-center justify-center ${paymentMethod === "netbanking"
-                                                        ? "border-brand"
-                                                        : "border-gray-300"
+                                                    ? "border-brand"
+                                                    : "border-gray-300"
                                                     }`}
                                             >
                                                 {paymentMethod === "netbanking" && (

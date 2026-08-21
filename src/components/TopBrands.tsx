@@ -1,19 +1,35 @@
-import React from "react";
+import React, { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { motion } from "framer-motion";
 import { IoArrowForward } from "react-icons/io5";
+import { userapiRequest } from "../services/apiService";
 
 const brandLogos = [
     { name: "Gucci", src: "https://storage.googleapis.com/tagjs-prod.appspot.com/v1/hurs0BoZOo/yd39t1mo_expires_30_days.png", width: 140 },
-    { name: "Prada", src: "https://storage.googleapis.com/tagjs-prod.appspot.com/v1/hurs0BoZOo/lhon3qi1_expires_30_days.png", width: 110 },
+    { name: "Prada", src: "https://images.unsplash.com/photo-1649734927719-9ce8abaf042c?w=500&auto=format&fit=crop&q=60&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxzZWFyY2h8MTF8fGJybmFkJTIwbG9nb3xlbnwwfHwwfHx8MA%3D%3D", width: 110 },
     { name: "Versace", src: "https://storage.googleapis.com/tagjs-prod.appspot.com/v1/hurs0BoZOo/vajq1vdc_expires_30_days.png", width: 140 },
     { name: "Dior", src: "https://storage.googleapis.com/tagjs-prod.appspot.com/v1/hurs0BoZOo/f3tqar1o_expires_30_days.png", width: 110 },
     { name: "Chanel", src: "https://storage.googleapis.com/tagjs-prod.appspot.com/v1/hurs0BoZOo/d8wsg97x_expires_30_days.png", width: 90 },
 ];
 
 const TopBrands = () => {
-    // Duplicate for infinite marquee
-    const allLogos = [...brandLogos, ...brandLogos];
+   
+    const [brands,setbrands] = useState(brandLogos)
+  const GetBrands = async()=>{
+    try {
+      const respons = await  userapiRequest('/user/api/v1/common/brands')
+      setbrands(respons.brands)
+    } catch (error) {
+        console.log(error)
+    }
+  }
+
+  useEffect(()=>{
+GetBrands()
+  },[])
+
+    const allLogos = [...brands, ...brands];
+   
 
     return (
         <section className="max-w-[1440px] mx-auto px-4 md:px-8 lg:px-16 mb-16 md:mb-28">
@@ -55,17 +71,17 @@ const TopBrands = () => {
                     <div className="overflow-hidden">
                         <div className="flex items-center gap-12 md:gap-20 animate-marquee hover:[animation-play-state:paused]">
                             {allLogos.map((logo, i) => (
-                                <div
-                                    key={`${logo.name}-${i}`}
-                                    className="flex-shrink-0 opacity-60 hover:opacity-100 transition-opacity cursor-pointer grayscale hover:grayscale-0 duration-300"
-                                >
-                                    <img
-                                        src={logo.src}
-                                        alt={logo.name}
-                                        style={{ width: logo.width }}
-                                        className="h-auto object-contain brightness-0 invert"
-                                    />
-                                </div>
+                                <div 
+    key={`${logo.name}-${i}`} 
+    className="flex-shrink-0 opacity-60 hover:opacity-100 transition-opacity cursor-pointer grayscale hover:grayscale-0 duration-300" 
+> 
+    <img 
+        src={logo.src} 
+        alt={logo.name} 
+        style={{ width: logo.width }} 
+        className="h-auto object-contain" 
+    /> 
+</div>
                             ))}
                         </div>
                     </div>
