@@ -487,6 +487,8 @@ pipeline.push({
             name: 1,
             price: 1,
             salePrice: 1,
+            longDescription:1,
+            shortDescription:1,
             flags: 1,
             wishlist: 1,
             cart: 1,

@@ -40,6 +40,7 @@ export interface Product {
   category: string;
   subcategory: string;
   description: string;
+  sortdescription:string;
   sizes: string[];
   colors: { name: string; hex: string }[];
   rating: number;
@@ -74,34 +75,17 @@ export const loadProducts = async () => {
 
       // currently backend sends single image
       images: p.productImages  || [],
-
       category: p.category || 'All',
-
       subcategory: p.subcategory || '',
-
-      description: p.description || '',
-
-      sizes: Array.isArray(p.size)
-  ? p.size
-  : p.size
-    ? [p.size]
-    : [],
-
-      colors: (p.colors || []).map((c: string) => ({
-        name: c,
-        hex: c.toLowerCase(), // temporary default color
-      })),
-
+      description: p.longDescription || '',
+      sortdescription:p.shortDescription || '',
+      sizes: Array.isArray(p.size)? p.size: p.size? [p.size]: [],
+      colors: (p.colors || []).map((c: string) => ({name: c,hex: c.toLowerCase()})),
       variants: p.variants || [],
-
       rating: p.averageRating || 0,
-
       reviews: p.totalCustomerRating || 0,
-
       isNew: (p.flags || []).includes('New Arrival'),
-
       isTrending: (p.flags || []).includes('Trending'),
-
       tags: p.flags || [],
     }));
 
@@ -126,8 +110,7 @@ export const getBrands = () => [
 ];
 
 // Product by id
-export const getProductById = (id: string) =>
-  products.find(p => p.id === id);
+export const getProductById = (id: string) => products.find(p => p.id === id);
 
 // Products by category
 export const getProductsByCategory = (cat: string) =>

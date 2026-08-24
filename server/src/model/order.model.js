@@ -113,8 +113,14 @@ const orderSchema = mongoose.Schema(
                 default: "paid",
             },
 
-            orderId: String,
-            paymentId: String,
+            orderId: {
+                type:String,
+                default:''
+            },
+            paymentId: {
+                type:String,
+                default:''
+            },
         },
 
         status: {

@@ -151,7 +151,6 @@ const AdminReports = () => {
 
             const response: ReportResponse =
                 await apiRequest(url,"GET");
-
             if (response?.success) {
                 setReports(response.reports);
 

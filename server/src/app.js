@@ -1,4 +1,5 @@
 require('dotenv').config()
+require('./services/cron.job')
 const express = require('express')
 const cors = require('cors')
 const morgan = require('morgan')

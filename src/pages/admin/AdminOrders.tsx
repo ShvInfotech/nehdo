@@ -9,11 +9,15 @@ import {
 } from "react-icons/io5";
 import Barcode from "react-barcode";
 import QRCode from "react-qr-code";
-import { apiRequest, userapiRequest } from "../../services/apiService";
+import { apiRequest } from "../../services/apiService";
 
 interface OrderItem {
+    _id?: string;
     productId: string;
     variantId: string | null;
+    sku?: string;
+    name?: string;
+    image?: string;
     size: string;
     color: string;
     quantity: number;
@@ -68,6 +72,12 @@ interface Order {
         email: string;
         phone: string;
     };
+
+    shiprocketShipmentId?: string | null;
+    trackingNumber?: string | null;
+    trackingUrl?: string | null;
+    updatedAt?: string;
+    createdAt?: string;
 }
 
 const statusFlow = [
@@ -113,15 +123,15 @@ const getStatusColor = (status: string) => {
 
 const AdminOrders = () => {
     const [orders, setOrders] = useState<Order[]>([]);
-
     const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
-
     const [selectedIds, setSelectedIds] = useState<string[]>([]);
-
     const [activeStatus, setActiveStatus] = useState("all");
-
     const [printModalData, setPrintModalData] = useState<Order[] | null>(null);
 
+    // ============================
+    // SEARCH STATE
+    // ============================
+    const [searchTerm, setSearchTerm] = useState("");
 
     useEffect(() => {
         fetchOrders();
@@ -129,7 +139,11 @@ const AdminOrders = () => {
 
     const fetchOrders = async () => {
         try {
-            const response = await apiRequest("/admin/api/v1/order/get", "GET");
+            const response = await apiRequest(
+                "/admin/api/v1/order/get",
+                "GET"
+            );
+
 
             if (response?.success) {
                 setOrders(response.orders || []);
@@ -140,68 +154,199 @@ const AdminOrders = () => {
     };
 
     const toggleSelection = (_id: string) => {
-        setSelectedIds(prev =>
+        setSelectedIds((prev) =>
             prev.includes(_id)
-                ? prev.filter(x => x !== _id)
+                ? prev.filter((x) => x !== _id)
                 : [...prev, _id]
         );
     };
 
-    /*
-     * Active tab પ્રમાણે orders
-     */
-    const filteredOrders = orders.filter(order => {
-        if (activeStatus === "all") {
+    // =====================================================
+    // FILTER + SEARCH
+    // =====================================================
+    const filteredOrders = orders.filter((order) => {
+        // -----------------------------
+        // STATUS FILTER
+        // -----------------------------
+        const matchesStatus =
+            activeStatus === "all" ||
+            order.status === activeStatus;
+
+        if (!matchesStatus) {
+            return false;
+        }
+
+        // -----------------------------
+        // SEARCH FILTER
+        // -----------------------------
+        const search = searchTerm.trim().toLowerCase();
+
+        // Empty search => show all
+        if (!search) {
             return true;
         }
 
-        return order.status === activeStatus;
+        const orderNumber =
+            order.orderNumber?.toLowerCase() || "";
+
+        const customerName =
+            order.user?.name?.toLowerCase() || "";
+
+        const customerEmail =
+            order.user?.email?.toLowerCase() || "";
+
+        const customerPhone =
+            order.user?.phone?.toLowerCase() || "";
+
+        const orderId =
+            order._id?.toLowerCase() || "";
+
+        const trackingNumber =
+            order.trackingNumber?.toLowerCase() || "";
+
+        const shipmentId =
+            order.shiprocketShipmentId?.toLowerCase() || "";
+
+        // Product SKU / Name search
+        const productMatch = order.items?.some((item) => {
+            const sku =
+                item.sku?.toLowerCase() || "";
+
+            const productName =
+                item.name?.toLowerCase() || "";
+
+            const productId =
+                item.productId?.toLowerCase() || "";
+
+            const color =
+                item.color?.toLowerCase() || "";
+
+            const size =
+                item.size?.toLowerCase() || "";
+
+            return (
+                sku.includes(search) ||
+                productName.includes(search) ||
+                productId.includes(search) ||
+                color.includes(search) ||
+                size.includes(search)
+            );
+        });
+
+        return (
+            orderNumber.includes(search) ||
+            customerName.includes(search) ||
+            customerEmail.includes(search) ||
+            customerPhone.includes(search) ||
+            orderId.includes(search) ||
+            trackingNumber.includes(search) ||
+            shipmentId.includes(search) ||
+            productMatch
+        );
     });
 
-    /*
-     * Select All - માત્ર current tab ના orders
-     */
+    // =====================================================
+    // SELECT ALL
+    // =====================================================
     const handleSelectAll = (
         e: React.ChangeEvent<HTMLInputElement>
     ) => {
         if (e.target.checked) {
-            setSelectedIds(filteredOrders.map(order => order._id));
+            setSelectedIds(
+                filteredOrders.map((order) => order._id)
+            );
         } else {
             setSelectedIds([]);
         }
     };
 
-    /*
-     * Pending -> Accepted
-     */
+    // =====================================================
+    // BULK ACCEPT
+    // =====================================================
     const handleBulkAccept = async () => {
         if (selectedIds.length === 0) {
             alert("Please select pending orders.");
             return;
         }
 
-        console.log("Selected pending order IDs:", selectedIds);
-        const respons = await apiRequest('/admin/api/v1/order/accepte', 'POST', { orderIds: selectedIds })
+        try {
+            const response = await apiRequest(
+                "/admin/api/v1/order/accepte",
+                "POST",
+                {
+                    orderIds: selectedIds
+                }
+            );
 
+            if (response?.success) {
+                const count = selectedIds.length;
 
-        setSelectedIds([]);
-        await fetchOrders();
+                setSelectedIds([]);
 
-        alert(
-            `${selectedIds.length} orders accepted successfully!`
-        );
+                await fetchOrders();
+
+                alert(
+                    `${count} orders accepted successfully!`
+                );
+            } else {
+                alert(
+                    response?.message ||
+                    "Failed to accept orders."
+                );
+            }
+        } catch (error) {
+            console.error(error);
+            alert("Something went wrong while accepting orders.");
+        }
     };
 
-    /*
-     * PRINT LABEL VIEW
-     */
+    // =====================================================
+    // PRINT LABEL
+    // =====================================================
+    const handalPrintlabel = async (ordersData: Order[]) => {
+console.log(selectedIds)
+        const acceptedOrder = ordersData.filter((order) =>selectedIds.includes(order._id));
+        console.log("Selected Orders:", acceptedOrder);
+
+        const shipmentIds = acceptedOrder.map((order) => order.shiprocketShipmentId).filter(Boolean);
+
+        if (!shipmentIds.length) {
+            alert("Pending order has no generated label.");
+            return;
+        }
+
+        try {
+            const response = await apiRequest("/admin/api/v1/order/label","POST",{shipmentIds});
+
+            console.log("Label Response:", response);
+
+            if (response?.success &&response?.label_url) {
+                setSelectedIds([]);
+                await fetchOrders();
+                const link = document.createElement("a");
+                link.href = response.label_url;
+                link.target = "_blank";
+                link.rel = "noopener noreferrer";
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
+            } else {
+                setSelectedIds([]);
+                alert(response?.message ||"Unable to generate shipping label.");
+            }
+        } catch (error) {
+            console.log(error);
+            alert("Something went wrong while generating label.");
+        }
+    };
+
+    // =====================================================
+    // PRINT LABEL VIEW
+    // =====================================================
     if (printModalData) {
         return (
             <div className="fixed inset-0 bg-gray-900 z-50 overflow-y-auto print:bg-white print:p-0">
 
-                {/* =========================
-                PRINT HEADER
-            ========================== */}
                 <div className="p-4 flex justify-between items-center bg-white shadow-sm sticky top-0 print:hidden">
 
                     <div>
@@ -220,7 +365,6 @@ const AdminOrders = () => {
 
                     <div className="flex gap-2">
 
-                        {/* PRINT */}
                         <button
                             type="button"
                             onClick={() => window.print()}
@@ -230,10 +374,11 @@ const AdminOrders = () => {
                             Print Labels
                         </button>
 
-                        {/* CLOSE */}
                         <button
                             type="button"
-                            onClick={() => setPrintModalData(null)}
+                            onClick={() =>
+                                setPrintModalData(null)
+                            }
                             className="px-4 py-2 bg-gray-100 text-gray-700 font-bold rounded-lg hover:bg-gray-200"
                         >
                             Close
@@ -242,33 +387,24 @@ const AdminOrders = () => {
                     </div>
                 </div>
 
-                {/* =========================
-                LABEL CONTAINER
-            ========================== */}
                 <div className="p-8 max-w-4xl mx-auto space-y-8 print:p-0 print:max-w-none print:space-y-0">
 
                     {printModalData.map((order) => {
-                        console.log(order)
-                        /*
-                         * IMPORTANT:
-                         * AWB random generate nahi karvu.
-                         * Backend/Shiprocket mathi aavel trackingNumber use karvo.
-                         */
-                        const awb = String(order.trackingNumber || "").trim();
 
+                        const awb = String(
+                            order.trackingNumber || ""
+                        ).trim();
 
+                        const totalQuantity =
+                            order.items.reduce(
+                                (sum, item) =>
+                                    sum +
+                                    Number(
+                                        item.quantity || 0
+                                    ),
+                                0
+                            );
 
-                        /*
-                         * Total quantity
-                         */
-                        const totalQuantity = order.items.reduce(
-                            (sum, item) => sum + Number(item.quantity || 0),
-                            0
-                        );
-
-                        /*
-                         * Payment
-                         */
                         const paymentMethod =
                             order.payment?.method?.toLowerCase();
 
@@ -277,12 +413,6 @@ const AdminOrders = () => {
                                 ? "COD"
                                 : "PREPAID";
 
-                        /*
-                         * QR value
-                         *
-                         * trackingUrl available hoy to trackingUrl.
-                         * Nahi hoy to internal tracking URL.
-                         */
                         const qrValue =
                             order.trackingUrl ||
                             (
@@ -295,46 +425,40 @@ const AdminOrders = () => {
                             <div
                                 key={order._id}
                                 className="
-                                bg-white
-                                mx-auto
-                                w-[4in]
-                                h-[6in]
-                                p-2
-                                print:w-[4in]
-                                print:h-[6in]
-                                print:page-break-after-always
-                                print:p-2
-                                box-border
-                            "
-                            >
-
-                                {/* =========================
-                                LABEL
-                            ========================== */}
-                                <div
-                                    className="
-                                    w-full
-                                    h-full
-                                    border-[2px]
-                                    border-black
-                                    flex
-                                    flex-col
-                                    font-sans
-                                    text-black
-                                    overflow-hidden
-                                    relative
+                                    bg-white
+                                    mx-auto
+                                    w-[4in]
+                                    h-[6in]
+                                    p-2
+                                    print:w-[4in]
+                                    print:h-[6in]
+                                    print:page-break-after-always
+                                    print:p-2
                                     box-border
                                 "
+                            >
+
+                                <div
+                                    className="
+                                        w-full
+                                        h-full
+                                        border-[2px]
+                                        border-black
+                                        flex
+                                        flex-col
+                                        font-sans
+                                        text-black
+                                        overflow-hidden
+                                        relative
+                                        box-border
+                                    "
                                 >
 
-                                    {/* =========================
-                                    HEADER
-                                ========================== */}
+                                    {/* HEADER */}
                                     <div className="flex border-b-[2px] border-black h-12">
 
                                         <div className="flex-1 flex flex-col justify-between">
 
-                                            {/* Courier */}
                                             <div className="flex border-b-[2px] border-black px-1 py-0.5 items-end">
 
                                                 <span className="font-bold text-lg leading-none mr-2">
@@ -347,7 +471,6 @@ const AdminOrders = () => {
 
                                             </div>
 
-                                            {/* Order + Payment */}
                                             <div className="flex items-center">
 
                                                 <span className="flex-1 px-1 text-sm font-medium truncate">
@@ -356,18 +479,18 @@ const AdminOrders = () => {
 
                                                 <span
                                                     className="
-                                                    font-bold
-                                                    text-sm
-                                                    px-2
-                                                    border-l-[2px]
-                                                    border-black
-                                                    text-indigo-900
-                                                    leading-none
-                                                    py-1
-                                                    h-full
-                                                    flex
-                                                    items-center
-                                                "
+                                                        font-bold
+                                                        text-sm
+                                                        px-2
+                                                        border-l-[2px]
+                                                        border-black
+                                                        text-indigo-900
+                                                        leading-none
+                                                        py-1
+                                                        h-full
+                                                        flex
+                                                        items-center
+                                                    "
                                                 >
                                                     {paymentType}
                                                 </span>
@@ -382,9 +505,7 @@ const AdminOrders = () => {
 
                                     </div>
 
-                                    {/* =========================
-                                    AWB + BARCODE
-                                ========================== */}
+                                    {/* AWB */}
                                     <div className="flex flex-col items-center justify-center p-2 border-b-[2px] border-black min-h-[65px]">
 
                                         {awb ? (
@@ -417,12 +538,9 @@ const AdminOrders = () => {
 
                                     </div>
 
-                                    {/* =========================
-                                    ADDRESS AREA
-                                ========================== */}
+                                    {/* ADDRESS */}
                                     <div className="flex-1 flex flex-col min-w-0">
 
-                                        {/* QR */}
                                         <div className="flex-1 flex items-center justify-center p-4">
 
                                             <QRCode
@@ -433,17 +551,16 @@ const AdminOrders = () => {
 
                                         </div>
 
-                                        {/* Customer Address */}
                                         <div
                                             className="
-                                            border-t-[2px]
-                                            border-black
-                                            p-1
-                                            text-[11px]
-                                            leading-tight
-                                            h-[85px]
-                                            overflow-hidden
-                                        "
+                                                border-t-[2px]
+                                                border-black
+                                                p-1
+                                                text-[11px]
+                                                leading-tight
+                                                h-[85px]
+                                                overflow-hidden
+                                            "
                                         >
 
                                             <span className="font-medium">
@@ -458,44 +575,53 @@ const AdminOrders = () => {
 
                                             <span className="text-[13px] font-semibold">
                                                 {" "}
-                                                {order.user?.name || "Customer"}
+                                                {order.user?.name ||
+                                                    "Customer"}
                                             </span>
 
                                             <br />
 
                                             {order.shippingAddress?.addressline && (
                                                 <>
-                                                    {order.shippingAddress.addressline}
-                                                    {","}
+                                                    {
+                                                        order.shippingAddress
+                                                            .addressline
+                                                    }
+                                                    ,
                                                 </>
                                             )}
 
                                             {order.shippingAddress?.landmark && (
                                                 <>
                                                     {" "}
-                                                    {order.shippingAddress.landmark}
-                                                    {","}
+                                                    {
+                                                        order.shippingAddress
+                                                            .landmark
+                                                    }
+                                                    ,
                                                 </>
                                             )}
 
                                             <br />
 
-                                            {order.shippingAddress?.city && (
-                                                <>
-                                                    {order.shippingAddress.city}
-                                                </>
-                                            )}
+                                            {order.shippingAddress?.city}
 
                                             {" - "}
 
                                             <span className="font-bold text-[13px]">
-                                                {order.shippingAddress?.postalCode}
+                                                {
+                                                    order.shippingAddress
+                                                        ?.postalCode
+                                                }
                                             </span>
 
                                             {order.shippingAddress?.state && (
                                                 <>
-                                                    {", "}
-                                                    {order.shippingAddress.state}
+                                                    ,{" "}
+                                                    {
+                                                        order.shippingAddress
+                                                            .state
+                                                    }
                                                 </>
                                             )}
 
@@ -503,7 +629,8 @@ const AdminOrders = () => {
 
                                             {order.user?.phone && (
                                                 <>
-                                                    Phone: {order.user.phone}
+                                                    Phone:{" "}
+                                                    {order.user.phone}
                                                 </>
                                             )}
 
@@ -511,19 +638,17 @@ const AdminOrders = () => {
 
                                     </div>
 
-                                    {/* =========================
-                                    SOLD BY
-                                ========================== */}
+                                    {/* SOLD BY */}
                                     <div
                                         className="
-                                        border-t-[2px]
-                                        border-black
-                                        p-1
-                                        text-[9px]
-                                        leading-[1.1]
-                                        h-[45px]
-                                        overflow-hidden
-                                    "
+                                            border-t-[2px]
+                                            border-black
+                                            p-1
+                                            text-[9px]
+                                            leading-[1.1]
+                                            h-[45px]
+                                            overflow-hidden
+                                        "
                                     >
 
                                         Sold By:
@@ -534,8 +659,9 @@ const AdminOrders = () => {
                                         </span>
 
                                         {" "}
-                                        PHOENIX MILLS COMPOUND, SENAPATI
-                                        BAPAT MARG, LOWER PAREL, MUMBAI,
+                                        PHOENIX MILLS COMPOUND,
+                                        SENAPATI BAPAT MARG,
+                                        LOWER PAREL, MUMBAI,
                                         MAHARASHTRA - 400013
 
                                         <br />
@@ -549,12 +675,9 @@ const AdminOrders = () => {
 
                                     </div>
 
-                                    {/* =========================
-                                    ITEMS
-                                ========================== */}
+                                    {/* ITEMS */}
                                     <div className="border-t-[2px] border-black flex flex-col min-h-[50px]">
 
-                                        {/* Table Header */}
                                         <div className="flex border-b-[2px] border-black font-bold text-[10px] bg-gray-100">
 
                                             <div className="flex-1 px-1 border-r-[2px] border-black text-center">
@@ -571,90 +694,102 @@ const AdminOrders = () => {
 
                                         </div>
 
-                                        {/* Items */}
                                         <div className="flex flex-col">
 
-                                            {order.items.map((item) => (
+                                            {order.items.map(
+                                                (item) => (
+                                                    <div
+                                                        key={
+                                                            item._id ||
+                                                            `${item.productId}-${item.variantId}`
+                                                        }
+                                                        className="flex text-[9px] border-b border-black last:border-b-0"
+                                                    >
 
-                                                <div
-                                                    key={item._id}
-                                                    className="flex text-[9px] border-b border-black last:border-b-0"
-                                                >
+                                                        <div className="flex-1 px-1 border-r-[2px] border-black py-0.5">
 
-                                                    {/* SKU / Description */}
-                                                    <div className="flex-1 px-1 border-r-[2px] border-black py-0.5">
+                                                            <div className="font-semibold truncate">
+                                                                {
+                                                                    item.sku ||
+                                                                    item.productId
+                                                                }
+                                                            </div>
 
-                                                        <div className="font-semibold truncate">
-                                                            {item.sku ||
-                                                                item.productId}
+                                                            <div className="text-[8px] text-gray-600">
+
+                                                                {item.color &&
+                                                                    `Color: ${item.color}`}
+
+                                                                {item.color &&
+                                                                    item.size &&
+                                                                    " | "}
+
+                                                                {item.size &&
+                                                                    `Size: ${item.size}`}
+
+                                                            </div>
+
                                                         </div>
 
-                                                        <div className="text-[8px] text-gray-600">
-                                                            {item.color &&
-                                                                `Color: ${item.color}`}
-                                                            {item.color &&
-                                                                item.size &&
-                                                                " | "}
-                                                            {item.size &&
-                                                                `Size: ${item.size}`}
+                                                        <div className="w-10 px-1 border-r-[2px] border-black text-center flex items-center justify-center">
+                                                            {
+                                                                item.quantity
+                                                            }
+                                                        </div>
+
+                                                        <div className="w-16 px-1 text-center flex items-center justify-center">
+                                                            ₹
+                                                            {Number(
+                                                                item.total ||
+                                                                0
+                                                            ).toFixed(2)}
                                                         </div>
 
                                                     </div>
-
-                                                    {/* Quantity */}
-                                                    <div className="w-10 px-1 border-r-[2px] border-black text-center flex items-center justify-center">
-                                                        {item.quantity}
-                                                    </div>
-
-                                                    {/* Amount */}
-                                                    <div className="w-16 px-1 text-center flex items-center justify-center">
-                                                        ₹
-                                                        {Number(
-                                                            item.total || 0
-                                                        ).toFixed(2)}
-                                                    </div>
-
-                                                </div>
-
-                                            ))}
+                                                )
+                                            )}
 
                                         </div>
 
                                     </div>
 
-                                    {/* =========================
-                                    FOOTER
-                                ========================== */}
+                                    {/* FOOTER */}
                                     <div
                                         className="
-                                        border-t-[2px]
-                                        border-black
-                                        p-1
-                                        text-[10px]
-                                        flex
-                                        justify-between
-                                        items-center
-                                    "
+                                            border-t-[2px]
+                                            border-black
+                                            p-1
+                                            text-[10px]
+                                            flex
+                                            justify-between
+                                            items-center
+                                        "
                                     >
 
                                         <div>
+
                                             <span>
                                                 Order:{" "}
                                             </span>
 
                                             <span className="font-semibold">
-                                                {order.orderNumber}
+                                                {
+                                                    order.orderNumber
+                                                }
                                             </span>
 
                                             <span className="ml-3">
-                                                Qty: {totalQuantity}
+                                                Qty:{" "}
+                                                {totalQuantity}
                                             </span>
+
                                         </div>
 
                                         <span className="font-bold">
                                             ₹
                                             {Number(
-                                                order.totalAmount || 0
+                                                order.totalAmount ||
+                                                0
                                             ).toFixed(2)}
                                         </span>
 
@@ -671,30 +806,24 @@ const AdminOrders = () => {
         );
     }
 
-    /*
-     * ORDER DETAIL VIEW
-     */
+    // =====================================================
+    // ORDER DETAIL
+    // =====================================================
     if (selectedOrder) {
         return (
             <div className="space-y-6">
 
-                {/* Header */}
+                {/* HEADER */}
                 <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
 
                     <div className="flex items-center gap-3">
 
-                        <button
-                            onClick={() => setSelectedOrder(null)}
-                            className="p-2 hover:bg-gray-100 rounded-lg"
-                        >
+                        <button onClick={() => setSelectedOrder(null) } className="p-2 hover:bg-gray-100 rounded-lg" >
                             <IoChevronBackOutline size={22} />
                         </button>
 
                         <div>
-                            <h1 className="font-heading text-2xl font-bold text-gray-900">
-                                Order {selectedOrder._id}
-                            </h1>
-
+                            <h1 className="font-heading text-2xl font-bold text-gray-900">{selectedOrder.orderNumber}</h1>
                             <p className="text-sm text-gray-500 mt-1">
                                 Order details and tracking information.
                             </p>
@@ -705,382 +834,227 @@ const AdminOrders = () => {
                     <div className="flex gap-2">
 
                         <button
-                            onClick={() =>
-                                setPrintModalData([selectedOrder])
-                            }
-                            className="flex items-center gap-2 px-4 py-2 bg-brand text-white text-sm font-semibold rounded-lg hover:bg-brand-light shadow-sm"
-                        >
-                            <IoPrintOutline size={18} />
-                            Print Label
+                            onClick={() => {setSelectedIds([selectedOrder._id]);handalPrintlabel([selectedOrder]);}}
+                            className="flex items-center gap-2 px-4 py-2 bg-brand text-white text-sm font-semibold rounded-lg hover:bg-brand-light shadow-sm">
+                            <IoPrintOutline size={18} />Print Label
                         </button>
 
-                        <button
-                            className="flex items-center gap-2 px-4 py-2 bg-white border border-gray-200 text-sm font-semibold text-gray-700 rounded-lg hover:bg-gray-50"
-                        >
-                            <IoMailOutline size={18} />
-                            Send Email
+                        <button className="flex items-center gap-2 px-4 py-2 bg-white border border-gray-200 text-sm font-semibold text-gray-700 rounded-lg hover:bg-gray-50" >
+                            <IoMailOutline size={18} /> Send Email
                         </button>
-
                     </div>
                 </div>
 
                 <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
 
-                    {/* Main Content */}
+                    {/* MAIN */}
                     <div className="lg:col-span-2 space-y-6">
 
-                        {/* Status */}
+                        {/* STATUS */}
                         <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
 
-                            <h2 className="text-lg font-bold text-gray-900 mb-4">
-                                Order Status
-                            </h2>
+                            <h2 className="text-lg font-bold text-gray-900 mb-4">Order Status</h2>
 
                             <div className="flex items-center gap-2 mb-6 overflow-x-auto pb-2">
+                                {statusFlow.map(
+                                    (status, index) => {
 
-                                {statusFlow.map((status, index) => {
+                                        const currentIndex = statusFlow.indexOf( selectedOrder.status );
 
-                                    const currentIndex =
-                                        statusFlow.indexOf(
-                                            selectedOrder.status
-                                        );
+                                        const isPast = index < currentIndex;
 
-                                    const isPast =
-                                        index < currentIndex;
+                                        const isCurrent = status === selectedOrder.status;
 
-                                    const isCurrent =
-                                        status === selectedOrder.status;
+                                        return (
+                                            <React.Fragment key={status} >
 
-                                    return (
-                                        <React.Fragment key={status}>
-
-                                            {index > 0 && (
-                                                <div
-                                                    className={`h-0.5 w-8 flex-shrink-0 ${index <= currentIndex
-                                                        ? "bg-brand"
-                                                        : "bg-gray-200"
-                                                        }`}
-                                                />
-                                            )}
-
-                                            <div
-                                                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold whitespace-nowrap flex-shrink-0 ${isCurrent
-                                                    ? "bg-brand text-white"
-                                                    : isPast
-                                                        ? "bg-brand/10 text-brand"
-                                                        : "bg-gray-100 text-gray-400"
-                                                    }`}
-                                            >
-
-                                                {isPast && (
-                                                    <IoCheckmarkCircleOutline
-                                                        size={14}
-                                                    />
+                                                {index > 0 && (
+                                                    <div className={`h-0.5 w-8 flex-shrink-0 ${ index <= currentIndex ? "bg-brand" : "bg-gray-200" }`} />
                                                 )}
 
-                                                {statusLabels[status]}
+                                                <div
+                                                    className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold whitespace-nowrap flex-shrink-0 ${
+                                                    isCurrent? "bg-brand text-white": isPast? "bg-brand/10 text-brand": "bg-gray-100 text-gray-400"}`}>
+                                                    {isPast && ( <IoCheckmarkCircleOutline size={14} /> )}
+                                                    {statusLabels[status]}
 
-                                            </div>
-                                        </React.Fragment>
-                                    );
-                                })}
+                                                </div>
 
-                                {selectedOrder.status === "cancelled" && (
-                                    <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold whitespace-nowrap bg-red-100 text-red-700">
-                                        <IoCloseOutline size={14} />
-                                        Cancelled
-                                    </div>
+                                            </React.Fragment>
+                                        );
+                                    }
                                 )}
 
+                                {selectedOrder.status ===
+                                    "cancelled" && (
+                                        <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold whitespace-nowrap bg-red-100 text-red-700">
+                                            <IoCloseOutline size={14} /> Cancelled
+                                        </div>
+                                    )}
                             </div>
+
                         </div>
 
-                        {/* Order Items */}
+                        {/* ITEMS */}
                         <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
 
                             <div className="p-6 border-b border-gray-100">
-
-                                <h2 className="text-lg font-bold text-gray-900">
-                                    Order Items
-                                </h2>
-
+                                <h2 className="text-lg font-bold text-gray-900">Order Items</h2>
                             </div>
 
                             <div className="overflow-x-auto">
-
                                 <table className="w-full text-sm">
-
                                     <thead className="bg-gray-50 text-gray-500 font-semibold uppercase text-xs tracking-wider">
-
                                         <tr>
-
-                                            <th className="px-6 py-3 text-left">
-                                                Product
-                                            </th>
-
-                                            <th className="px-6 py-3 text-left">
-                                                Variant
-                                            </th>
-
-                                            <th className="px-6 py-3 text-center">
-                                                Qty
-                                            </th>
-
-                                            <th className="px-6 py-3 text-right">
-                                                Unit Price
-                                            </th>
-
-                                            <th className="px-6 py-3 text-right">
-                                                Total
-                                            </th>
-
+                                            <th className="px-6 py-3 text-left">Product</th>
+                                            <th className="px-6 py-3 text-left">Variant</th>
+                                            <th className="px-6 py-3 text-center">Qty</th>
+                                            <th className="px-6 py-3 text-right">Unit Price</th>
+                                            <th className="px-6 py-3 text-right">Total</th>
                                         </tr>
-
                                     </thead>
-
                                     <tbody className="divide-y divide-gray-100">
-
-                                        {selectedOrder.items.map((item) => (
-
-                                            <tr key={item._id}>
-
-                                                {/* Product */}
-                                                <td className="px-6 py-4">
-
-                                                    <div className="flex items-center gap-3">
-
-                                                        <div className="w-12 h-12 rounded-lg bg-gray-100 flex items-center justify-center">
-                                                            <span className="text-xs text-gray-400">
-                                                                Product
-                                                            </span>
+                                        {selectedOrder.items.map(
+                                            (item) => (
+                                                <tr key={ item._id || `${item.productId}-${item.variantId}` } >
+                                                    <td className="px-6 py-4">
+                                                        <div className="flex items-center gap-3">
+                                                            <div className="w-12 h-12 rounded-lg bg-gray-100 flex items-center justify-center overflow-hidden">
+                                                                {item.image ? (
+                                                                <img src={ item.image } alt={ item.name || "Product" } className="w-full h-full object-cover" />) : (
+                                                                <span className="text-xs text-gray-400">No Image</span>
+                                                                )}
+                                                            </div>
+                                                            <div>
+                                                                {item.name && (<p className="text-xs text-gray-500">{item.name}</p>)}
+                                                                <p className="font-semibold text-gray-900">{item.sku ||item.productId}</p>
+                                                            </div>
                                                         </div>
+                                                    </td>
+                                                    <td className="px-6 py-4 text-gray-600">{item.color}/{item.size}</td>
+                                                    <td className="px-6 py-4 text-center">{item.quantity}</td>
+                                                    <td className="px-6 py-4 text-right">₹{Number(item.price ||0).toFixed(2)}</td>
+                                                    <td className="px-6 py-4 text-right font-semibold">₹{Number(item.total ||0).toFixed(2)}</td>
 
-                                                        <div>
+                                                </tr>
 
-                                                            <p className="font-semibold text-gray-900">
-                                                                {item.productId}
-                                                            </p>
-
-                                                            <p className="text-xs text-gray-500">
-                                                                Product ID
-                                                            </p>
-
-                                                        </div>
-
-                                                    </div>
-
-                                                </td>
-
-                                                {/* Variant */}
-                                                <td className="px-6 py-4 text-gray-600">
-                                                    {item.color} / {item.size}
-                                                </td>
-
-                                                {/* Quantity */}
-                                                <td className="px-6 py-4 text-center">
-                                                    {item.quantity}
-                                                </td>
-
-                                                {/* Price */}
-                                                <td className="px-6 py-4 text-right">
-                                                    ₹{item.price.toFixed(2)}
-                                                </td>
-
-                                                {/* Total */}
-                                                <td className="px-6 py-4 text-right font-semibold">
-                                                    ₹{item.total.toFixed(2)}
-                                                </td>
-
-                                            </tr>
-
-                                        ))}
+                                            )
+                                        )}
 
                                     </tbody>
 
                                 </table>
 
                             </div>
+
                         </div>
 
-                        {/* Amount Summary */}
+                        {/* SUMMARY */}
                         <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
-
-                            <h2 className="text-lg font-bold text-gray-900 mb-4">
-                                Order Summary
-                            </h2>
-
+                            <h2 className="text-lg font-bold text-gray-900 mb-4">Order Summary</h2>
                             <div className="space-y-3">
-
-                                {/* Subtotal */}
                                 <div className="flex justify-between text-sm">
-
-                                    <span className="text-gray-500">
-                                        Subtotal
-                                    </span>
-
-                                    <span className="font-medium">
-                                        ₹{selectedOrder.subtotal.toFixed(2)}
-                                    </span>
-
+                                    <span className="text-gray-500">Subtotal</span>
+                                    <span className="font-medium">₹{Number(selectedOrder.subtotal ||0).toFixed(2)}</span>
                                 </div>
 
-                                {/* Discount */}
                                 <div className="flex justify-between text-sm">
-
-                                    <span className="text-gray-500">
-                                        Discount
-                                    </span>
-
-                                    <span className="font-medium text-green-600">
-                                        - ₹{selectedOrder.discount.toFixed(2)}
-                                    </span>
-
+                                    <span className="text-gray-500">Discount</span>
+                                    <span className="font-medium text-green-600"> - ₹ {Number( selectedOrder.discount || 0 ).toFixed(2)} </span>
                                 </div>
 
-                                {/* Shipping */}
                                 <div className="flex justify-between text-sm">
-
-                                    <span className="text-gray-500">
-                                        Shipping
-                                    </span>
-
-                                    <span className="font-medium">
-                                        ₹{selectedOrder.shippingCharge.toFixed(2)}
-                                    </span>
-
+                                    <span className="text-gray-500">Shipping</span>
+                                    <span className="font-medium">₹{Number(selectedOrder.shippingCharge ||0).toFixed(2)}</span>
                                 </div>
 
-                                {/* Total */}
                                 <div className="border-t border-gray-100 pt-3 flex justify-between">
-
-                                    <span className="font-bold">
-                                        Total
-                                    </span>
-
-                                    <span className="font-bold text-lg text-brand">
-                                        ₹{selectedOrder.totalAmount.toFixed(2)}
-                                    </span>
-
+                                    <span className="font-bold">Total</span>
+                                    <span className="font-bold text-lg text-brand">₹{Number(selectedOrder.totalAmount ||0).toFixed(2)}</span>
                                 </div>
 
                             </div>
-
                         </div>
-
                     </div>
 
-                    {/* Sidebar */}
+                    {/* SIDEBAR */}
                     <div className="space-y-6">
 
-                        {/* Customer Info */}
+                        {/* CUSTOMER */}
                         <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
 
-                            <h2 className="text-lg font-bold text-gray-900 mb-4">
-                                Customer Details
-                            </h2>
-
+                            <h2 className="text-lg font-bold text-gray-900 mb-4">Customer Details</h2>
                             <div className="space-y-3">
 
                                 <div>
-                                    <p className="text-xs font-semibold text-gray-400 uppercase">
-                                        Name
-                                    </p>
-
-                                    <p className="text-sm font-medium text-gray-900">
-                                        {selectedOrder.name}
-                                    </p>
+                                    <p className="text-xs font-semibold text-gray-400 uppercase">Name</p>
+                                    <p className="text-sm font-medium text-gray-900">{selectedOrder.user?.name}</p>
                                 </div>
 
                                 <div>
-                                    <p className="text-xs font-semibold text-gray-400 uppercase">
-                                        Email
-                                    </p>
-
-                                    <p className="text-sm font-medium text-brand">
-                                        {selectedOrder.email}
-                                    </p>
+                                    <p className="text-xs font-semibold text-gray-400 uppercase">Email</p>
+                                    <p className="text-sm font-medium text-brand">{selectedOrder.user?.email}</p>
                                 </div>
 
                                 <div>
-                                    <p className="text-xs font-semibold text-gray-400 uppercase">
-                                        Phone
-                                    </p>
-
-                                    <p className="text-sm font-medium text-gray-900">
-                                        {selectedOrder.phone}
-                                    </p>
+                                    <p className="text-xs font-semibold text-gray-400 uppercase">Phone</p>
+                                    <p className="text-sm font-medium text-gray-900">{selectedOrder.user?.phone}</p>
                                 </div>
 
                             </div>
+
                         </div>
 
-                        {/* Payment Info */}
+                        {/* PAYMENT */}
                         <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
 
-                            <h2 className="text-lg font-bold text-gray-900 mb-4">
-                                Payment Info
-                            </h2>
+                            <h2 className="text-lg font-bold text-gray-900 mb-4">Payment Info</h2>
+                            <div className="space-y-4">
+                                <div>
+                                    <p className="text-xs font-semibold text-gray-400 uppercase">Method </p>
+                                    <p className="text-sm font-medium text-gray-900">{selectedOrder.payment ?.method}</p>
+                                </div>
 
-                            <div>
-                                <p className="text-xs font-semibold text-gray-400 uppercase">
-                                    Method
-                                </p>
+                                <div>
+                                    <p className="text-xs font-semibold text-gray-400 uppercase">Payment Status</p>
+                                    <span className={`inline-block mt-1 px-2.5 py-1 rounded-full text-xs font-semibold ${ selectedOrder.payment ?.status === "paid" ? "bg-green-100 text-green-700" : "bg-orange-100 text-orange-700" }`}>
+                                        {selectedOrder.payment?.status}
+                                    </span>
+                                </div>
 
-                                <p className="text-sm font-medium text-gray-900">
-                                    {selectedOrder.payment?.method}
-                                </p>
-                            </div>
+                                {selectedOrder.payment?.method !=="cod" && (
+                                        <>
+                                            <div>
+                                                <p className="text-xs font-semibold text-gray-400 uppercase">Order ID</p>
+                                                <p className="text-sm font-medium text-gray-900 break-all">{selectedOrder.payment?.orderId}</p>
+                                            </div>
 
-                            <div>
-                                <p className="text-xs font-semibold text-gray-400 uppercase">
-                                    Payment Status
-                                </p>
+                                            <div>
+                                                <p className="text-xs font-semibold text-gray-400 uppercase">Payment ID</p>
+                                                <p className="text-sm font-medium text-gray-900 break-all">{selectedOrder.payment?.paymentId}</p>
+                                            </div>
+                                        </>
+                                    )}
 
-                                <span
-                                    className={`inline-block mt-1 px-2.5 py-1 rounded-full text-xs font-semibold ${selectedOrder.payment?.status === "paid"
-                                        ? "bg-green-100 text-green-700"
-                                        : "bg-orange-100 text-orange-700"
-                                        }`}
-                                >
-                                    {selectedOrder.payment?.status}
-                                </span>
-                            </div>
-
-                            <div>
-                                <p className="text-xs font-semibold text-gray-400 uppercase">
-                                    Order ID
-                                </p>
-
-                                <p className="text-sm font-medium text-gray-900">
-                                    {selectedOrder.payment?.orderId}
-                                </p>
-                            </div>
-
-                            <div>
-                                <p className="text-xs font-semibold text-gray-400 uppercase">
-                                    Payment ID
-                                </p>
-
-                                <p className="text-sm font-medium text-gray-900">
-                                    {selectedOrder.payment?.paymentId}
-                                </p>
                             </div>
 
                         </div>
 
                     </div>
+
                 </div>
+
             </div>
         );
     }
 
-    /*
-     * MAIN ORDERS LIST
-     */
+    // =====================================================
+    // MAIN ORDER LIST
+    // =====================================================
     return (
         <div className="space-y-6">
 
-            {/* Page Header */}
+            {/* PAGE HEADER */}
             <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
 
                 <div>
@@ -1099,51 +1073,71 @@ const AdminOrders = () => {
 
                     {selectedIds.length > 0 && (
                         <>
-                            {/* Bulk Accept - Only Pending */}
+                            {/* BULK ACCEPT */}
                             {activeStatus === "pending" && (
                                 <button
                                     onClick={handleBulkAccept}
-                                    disabled={selectedIds.length === 0}
+                                    disabled={
+                                        selectedIds.length === 0
+                                    }
                                     className="px-4 py-2 bg-green-600 text-white text-sm font-bold rounded-lg shadow-sm hover:bg-green-700"
                                 >
-                                    Bulk Accept ({selectedIds.length})
+                                    Bulk Accept (
+                                    {selectedIds.length})
                                 </button>
                             )}
 
-                            {/* Print Labels - All statuses except All & Pending */}
-                            {activeStatus !== "all" && activeStatus !== "pending" && (
-                                <button
-                                    onClick={() =>
-                                        setPrintModalData(
-                                            orders.filter(order =>
-                                                selectedIds.includes(order._id)
+                            {/* PRINT LABEL */}
+                            {activeStatus !== "all" &&
+                                activeStatus !== "pending" && (
+                                    <button
+                                        onClick={() =>
+                                            handalPrintlabel(
+                                                orders
                                             )
-                                        )
-                                    }
-                                    className="px-4 py-2 bg-brand text-white text-sm font-bold rounded-lg shadow-sm hover:bg-brand-light flex items-center gap-2"
-                                >
-                                    <IoPrintOutline size={16} />
-                                    Print Labels
-                                </button>
-                            )}
+                                        }
+                                        className="px-4 py-2 bg-brand text-white text-sm font-bold rounded-lg shadow-sm hover:bg-brand-light flex items-center gap-2"
+                                    >
+                                        <IoPrintOutline
+                                            size={16}
+                                        />
+                                        Print Labels
+                                    </button>
+                                )}
                         </>
                     )}
 
                 </div>
+
             </div>
 
-            {/* Main Order Container */}
+            {/* MAIN CONTAINER */}
             <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
 
                 {/* STATUS TABS */}
                 <div className="flex gap-2 overflow-x-auto px-4 border-b border-gray-100">
 
                     {[
-                        { value: "all", label: "All" },
-                        { value: "pending", label: "Pending" },
-                        { value: "accepted", label: "Accepted" },
-                        { value: "processing", label: "Processing" },
-                        { value: "shipped", label: "Shipped" },
+                        {
+                            value: "all",
+                            label: "All"
+                        },
+                        {
+                            value: "pending",
+                            label: "Pending"
+                        },
+                        {
+                            value: "accepted",
+                            label: "Accepted"
+                        },
+                        {
+                            value: "processing",
+                            label: "Processing"
+                        },
+                        {
+                            value: "shipped",
+                            label: "Shipped"
+                        },
                         {
                             value: "out_for_delivery",
                             label: "Out for Delivery"
@@ -1156,19 +1150,23 @@ const AdminOrders = () => {
                             value: "cancelled",
                             label: "Cancelled"
                         }
-                    ].map(tab => (
+                    ].map((tab) => (
 
                         <button
                             key={tab.value}
                             type="button"
                             onClick={() => {
-                                setActiveStatus(tab.value);
+                                setActiveStatus(
+                                    tab.value
+                                );
                                 setSelectedIds([]);
                             }}
-                            className={`px-4 py-3 text-sm font-semibold whitespace-nowrap border-b-2 ${activeStatus === tab.value
-                                ? "border-brand text-brand"
-                                : "border-transparent text-gray-500 hover:text-gray-700"
-                                }`}
+                            className={`px-4 py-3 text-sm font-semibold whitespace-nowrap border-b-2 ${
+                                activeStatus ===
+                                tab.value
+                                    ? "border-brand text-brand"
+                                    : "border-transparent text-gray-500 hover:text-gray-700"
+                            }`}
                         >
                             {tab.label}
                         </button>
@@ -1177,10 +1175,10 @@ const AdminOrders = () => {
 
                 </div>
 
-                {/* Search */}
+                {/* SEARCH */}
                 <div className="p-4 border-b border-gray-100 flex flex-col sm:flex-row items-center justify-between gap-4">
 
-                    <div className="relative w-full sm:w-72">
+                    <div className="relative w-full sm:w-96">
 
                         <IoSearchOutline
                             size={18}
@@ -1189,15 +1187,57 @@ const AdminOrders = () => {
 
                         <input
                             type="text"
-                            placeholder="Search by order ID, customer..."
-                            className="w-full pl-10 pr-4 py-2 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:outline-none focus:border-brand focus:ring-1 focus:ring-brand"
+                            value={searchTerm}
+                            onChange={(e) =>
+                                setSearchTerm(
+                                    e.target.value
+                                )
+                            }
+                            placeholder="Search order ID, customer, email, phone..."
+                            className="w-full pl-10 pr-10 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:outline-none focus:border-brand focus:ring-1 focus:ring-brand"
                         />
+
+                        {/* CLEAR SEARCH */}
+                        {searchTerm && (
+                            <button
+                                type="button"
+                                onClick={() =>
+                                    setSearchTerm("")
+                                }
+                                className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-700"
+                            >
+                                <IoCloseOutline
+                                    size={18}
+                                />
+                            </button>
+                        )}
+
+                    </div>
+
+                    {/* RESULT COUNT */}
+                    <div className="text-sm text-gray-500 whitespace-nowrap">
+
+                        Showing{" "}
+                        <span className="font-semibold text-gray-900">
+                            {filteredOrders.length}
+                        </span>{" "}
+                        of{" "}
+                        <span className="font-semibold text-gray-900">
+                            {orders.filter(
+                                (order) =>
+                                    activeStatus ===
+                                        "all" ||
+                                    order.status ===
+                                        activeStatus
+                            ).length}
+                        </span>{" "}
+                        orders
 
                     </div>
 
                 </div>
 
-                {/* Table */}
+                {/* TABLE */}
                 <div className="overflow-x-auto">
 
                     <table className="w-full text-sm text-left">
@@ -1211,11 +1251,18 @@ const AdminOrders = () => {
                                     <input
                                         type="checkbox"
                                         checked={
-                                            filteredOrders.length > 0 &&
-                                            selectedIds.length ===
-                                            filteredOrders.length
+                                            filteredOrders.length >
+                                                0 &&
+                                            filteredOrders.every(
+                                                (order) =>
+                                                    selectedIds.includes(
+                                                        order._id
+                                                    )
+                                            )
                                         }
-                                        onChange={handleSelectAll}
+                                        onChange={
+                                            handleSelectAll
+                                        }
                                         className="w-4 h-4 rounded border-gray-300 text-brand focus:ring-brand"
                                     />
 
@@ -1255,116 +1302,203 @@ const AdminOrders = () => {
 
                         <tbody className="divide-y divide-gray-100">
 
-                            {filteredOrders.map(order => (
+                            {filteredOrders.map(
+                                (order) => (
 
-                                <tr
-                                    key={order._id}
-                                    className="hover:bg-gray-50 transition-colors cursor-pointer"
-                                    onClick={() => toggleSelection(order._id)}
-                                >
-
-                                    <td
-                                        className="px-6 py-4"
-                                        onClick={e => e.stopPropagation()}
+                                    <tr
+                                        key={order._id}
+                                        className="hover:bg-gray-50 transition-colors cursor-pointer"
+                                        onClick={() =>
+                                            toggleSelection(
+                                                order._id
+                                            )
+                                        }
                                     >
-                                        <input
-                                            type="checkbox"
-                                            checked={selectedIds.includes(order._id)}
-                                            onChange={() => toggleSelection(order._id)}
-                                            className="w-4 h-4 rounded border-gray-300 text-brand focus:ring-brand"
-                                        />
-                                    </td>
 
-                                    {/* Order ID */}
-                                    <td className="px-6 py-4 font-medium text-brand">
-                                        {order.orderNumber}
-                                    </td>
-
-                                    {/* Customer */}
-                                    <td className="px-6 py-4">
-
-                                        <p className="font-medium text-gray-900">
-                                            {order.user?.name}
-                                        </p>
-
-                                        <p className="text-xs text-gray-500">
-                                            {order.user?.email}
-                                        </p>
-
-                                    </td>
-
-                                    {/* Date */}
-                                    <td className="px-6 py-4 text-gray-500">
-                                        {order.updatedAt
-                                            ? new Date(order.updatedAt).toLocaleString("en-IN", {
-                                                day: "2-digit",
-                                                month: "short",
-                                                year: "numeric",
-                                                hour: "2-digit",
-                                                minute: "2-digit",
-                                            })
-                                            : "-"}
-                                    </td>
-
-                                    {/* Items */}
-                                    <td className="px-6 py-4 text-gray-600">
-                                        {order.items.reduce(
-                                            (total, item) => total + item.quantity,
-                                            0
-                                        )}
-                                    </td>
-
-                                    {/* Amount */}
-                                    <td className="px-6 py-4 font-medium text-gray-900">
-                                        ₹{order.totalAmount.toFixed(2)}
-                                    </td>
-
-                                    {/* Status */}
-                                    <td className="px-6 py-4">
-
-                                        <span
-                                            className={`px-2.5 py-1 rounded-full text-xs font-semibold ${getStatusColor(
-                                                order.status
-                                            )}`}
+                                        {/* CHECKBOX */}
+                                        <td
+                                            className="px-6 py-4"
+                                            onClick={(e) =>
+                                                e.stopPropagation()
+                                            }
                                         >
-                                            {statusLabels[order.status] || order.status}
-                                        </span>
 
-                                    </td>
+                                            <input
+                                                type="checkbox"
+                                                checked={selectedIds.includes(
+                                                    order._id
+                                                )}
+                                                onChange={() =>
+                                                    toggleSelection(
+                                                        order._id
+                                                    )
+                                                }
+                                                className="w-4 h-4 rounded border-gray-300 text-brand focus:ring-brand"
+                                            />
 
-                                    {/* Actions */}
-                                    <td
-                                        className="px-6 py-4 text-right"
-                                        onClick={e => e.stopPropagation()}
-                                    >
+                                        </td>
 
-                                        <button
-                                            className="text-brand text-sm font-semibold hover:underline"
-                                            onClick={() => setSelectedOrder(order)}
+                                        {/* ORDER ID */}
+                                        <td className="px-6 py-4 font-medium text-brand">
+
+                                            {order.orderNumber}
+
+                                        </td>
+
+                                        {/* CUSTOMER */}
+                                        <td className="px-6 py-4">
+
+                                            <p className="font-medium text-gray-900">
+                                                {
+                                                    order
+                                                        .user
+                                                        ?.name
+                                                }
+                                            </p>
+
+                                            <p className="text-xs text-gray-500">
+                                                {
+                                                    order
+                                                        .user
+                                                        ?.email
+                                                }
+                                            </p>
+
+                                        </td>
+
+                                        {/* DATE */}
+                                        <td className="px-6 py-4 text-gray-500">
+
+                                            {order.updatedAt
+                                                ? new Date(
+                                                    order.updatedAt
+                                                ).toLocaleString(
+                                                    "en-IN",
+                                                    {
+                                                        day: "2-digit",
+                                                        month: "short",
+                                                        year: "numeric",
+                                                        hour: "2-digit",
+                                                        minute: "2-digit"
+                                                    }
+                                                )
+                                                : "-"}
+
+                                        </td>
+
+                                        {/* ITEMS */}
+                                        <td className="px-6 py-4 text-gray-600">
+
+                                            {order.items.reduce(
+                                                (
+                                                    total,
+                                                    item
+                                                ) =>
+                                                    total +
+                                                    item.quantity,
+                                                0
+                                            )}
+
+                                        </td>
+
+                                        {/* AMOUNT */}
+                                        <td className="px-6 py-4 font-medium text-gray-900">
+
+                                            ₹
+                                            {Number(
+                                                order.totalAmount ||
+                                                0
+                                            ).toFixed(2)}
+
+                                        </td>
+
+                                        {/* STATUS */}
+                                        <td className="px-6 py-4">
+
+                                            <span
+                                                className={`px-2.5 py-1 rounded-full text-xs font-semibold ${getStatusColor(
+                                                    order.status
+                                                )}`}
+                                            >
+                                                {
+                                                    statusLabels[
+                                                    order.status
+                                                    ] ||
+                                                    order.status
+                                                }
+                                            </span>
+
+                                        </td>
+
+                                        {/* ACTION */}
+                                        <td
+                                            className="px-6 py-4 text-right"
+                                            onClick={(e) =>
+                                                e.stopPropagation()
+                                            }
                                         >
-                                            View
-                                        </button>
 
-                                    </td>
+                                            <button
+                                                className="text-brand text-sm font-semibold hover:underline"
+                                                onClick={() =>
+                                                    setSelectedOrder(
+                                                        order
+                                                    )
+                                                }
+                                            >
+                                                View
+                                            </button>
 
-                                </tr>
+                                        </td>
 
-                            ))}
+                                    </tr>
 
-                            {filteredOrders.length === 0 && (
-
-                                <tr>
-
-                                    <td
-                                        colSpan={8}
-                                        className="px-6 py-12 text-center text-gray-500"
-                                    >
-                                        No orders found for this status.
-                                    </td>
-
-                                </tr>
-
+                                )
                             )}
+
+                            {/* NO RESULTS */}
+                            {filteredOrders.length ===
+                                0 && (
+                                    <tr>
+
+                                        <td
+                                            colSpan={8}
+                                            className="px-6 py-12 text-center"
+                                        >
+
+                                            <div className="flex flex-col items-center justify-center">
+
+                                                <IoSearchOutline
+                                                    size={40}
+                                                    className="text-gray-300 mb-3"
+                                                />
+
+                                                <p className="text-gray-500 font-medium">
+                                                    {searchTerm
+                                                        ? "No orders found for your search."
+                                                        : "No orders found for this status."}
+                                                </p>
+
+                                                {searchTerm && (
+                                                    <button
+                                                        type="button"
+                                                        onClick={() =>
+                                                            setSearchTerm(
+                                                                ""
+                                                            )
+                                                        }
+                                                        className="mt-2 text-sm text-brand font-semibold hover:underline"
+                                                    >
+                                                        Clear search
+                                                    </button>
+                                                )}
+
+                                            </div>
+
+                                        </td>
+
+                                    </tr>
+                                )}
 
                         </tbody>
 

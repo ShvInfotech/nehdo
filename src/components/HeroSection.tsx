@@ -4,21 +4,8 @@ import { IoSearchOutline, IoArrowForward, IoStar, IoFlashOutline, } from "react-
 import { userapiRequest } from "../services/apiService";
 
 
-interface Product {
-    _id: string;
-    name: string;
-    salePrice: number;
-    avgRating: number;
-    image: string;
-}
-interface Banner {
-    _id: string;
-    title: string;
-    subtitle: string;
-    desktopImage: string;
-    mobileImage: string;
-    product: Product | null;
-}
+interface Product { _id: string; name: string; salePrice: number; avgRating: number; image: string; }
+interface Banner { _id: string; title: string; subtitle: string; desktopImage: string; mobileImage: string; product: Product | null; }
 
 const Particle = ({ delay, size, x, y, color, }: { delay: number; size: number; x: string; y: string; color: string; }) => (
     <motion.div
@@ -38,14 +25,10 @@ const RotatingBadge = () => {
             animate={{ rotate: 360 }}
             transition={{ duration: 20, repeat: Infinity, ease: "linear", }} className="absolute w-32 h-32 md:w-40 md:h-40">
             <svg viewBox="0 0 200 200" className="w-full h-full">
-                <defs>
-                    <path id="circlePath" d="M 100 100m -75 0a 75 75 0 1 1 150 0a 75 75 0 1 1 -150 0" />
-                </defs>
+                <defs><path id="circlePath" d="M 100 100m -75 0a 75 75 0 1 1 150 0a 75 75 0 1 1 -150 0" /></defs>
 
                 <text className="fill-brand/40 text-[13px] font-bold tracking-[4px] uppercase">
-                    <textPath href="#circlePath">
-                        {text}
-                    </textPath>
+                    <textPath href="#circlePath">{text}</textPath>
                 </text>
             </svg>
 
@@ -102,9 +85,6 @@ const HeroSection = () => {
             const query = new URLSearchParams({ category: "Hero Slider", });
 
             const response = await userapiRequest(`/user/api/v1/common/banner?${query.toString()}`, "GET");
-
-            console.log("GET BANNERS RESPONSE:", response);
-
             if (response?.success) {
                 setBanners(Array.isArray(response.banners) ? response.banners : []);
             }
@@ -116,11 +96,9 @@ const HeroSection = () => {
         }
     };
 
-
     useEffect(() => {
         GetBanners();
     }, []);
-
 
 
     useEffect(() => {
@@ -141,8 +119,7 @@ const HeroSection = () => {
 
 
 
-    const currentBanner =
-        banners[currentImage] || null;
+    const currentBanner = banners[currentImage] || null;
 
 
 
@@ -207,17 +184,17 @@ const HeroSection = () => {
 
                         <div className="mb-6 md:mb-8">
                             <div className="overflow-hidden">
-                                <motion.h1 key={`title-${currentBanner?._id}`} initial={{ y: "100%", }} animate={{ y: 0, }} transition={{ duration: 0.8, delay: 0.15, ease: [ 0.22, 1, 0.36, 1, ], }} className="font-heading text-[3.2rem] md:text-[4.5rem] lg:text-[5.5rem] xl:text-[6.5rem] font-black leading-[0.95] tracking-tight" >
-                                    <span className="text-gray-900">{currentBanner?.title ||"Elevate"}</span>
+                                <motion.h1 key={`title-${currentBanner?._id}`} initial={{ y: "100%", }} animate={{ y: 0, }} transition={{ duration: 0.8, delay: 0.15, ease: [0.22, 1, 0.36, 1,], }} className="font-heading text-[3.2rem] md:text-[4.5rem] lg:text-[5.5rem] xl:text-[6.5rem] font-black leading-[0.95] tracking-tight" >
+                                    <span className="text-gray-900">{currentBanner?.title || "Elevate"}</span>
                                 </motion.h1>
                             </div>
 
                             <div className="overflow-hidden">
-                                <motion.h1 key={`product-${currentBanner?._id}`} initial={{ y: "100%", }} animate={{ y: 0, }} transition={{ duration: 0.8, delay: 0.3, ease: [ 0.22, 1, 0.36, 1, ], }} className="font-heading text-[3.2rem] md:text-[4.5rem] lg:text-[5.5rem] xl:text-[6.5rem] font-black leading-[0.95] tracking-tight" >
+                                <motion.h1 key={`product-${currentBanner?._id}`} initial={{ y: "100%", }} animate={{ y: 0, }} transition={{ duration: 0.8, delay: 0.3, ease: [0.22, 1, 0.36, 1,], }} className="font-heading text-[3.2rem] md:text-[4.5rem] lg:text-[5.5rem] xl:text-[6.5rem] font-black leading-[0.95] tracking-tight" >
                                     <span className="text-gray-900"> Your{" "}</span>
 
                                     <span className="relative inline-block">
-                                        <span className="relative z-10 bg-gradient-to-r from-brand via-accent to-gold bg-clip-text text-transparent"> {currentBanner?.product ?.name || "Everyday"} </span>
+                                        <span className="relative z-10 bg-gradient-to-r from-brand via-accent to-gold bg-clip-text text-transparent"> {currentBanner?.product?.name || "Everyday"} </span>
 
                                         <motion.div initial={{ scaleX: 0, }} animate={{ scaleX: 1, }} transition={{ duration: 0.8, delay: 1.2, ease: "easeOut", }} className="absolute -bottom-1 md:-bottom-2 left-0 right-0 h-2 md:h-3 bg-gradient-to-r from-brand/20 via-accent/30 to-gold/20 rounded-full origin-left" />
                                     </span>
@@ -225,7 +202,7 @@ const HeroSection = () => {
                             </div>
 
                             <div className="overflow-hidden">
-                                <motion.h1 initial={{ y: "100%", }} animate={{ y: 0, }} transition={{ duration: 0.8, delay: 0.45, ease: [ 0.22, 1, 0.36, 1, ], }} className="font-heading text-[3.2rem] md:text-[4.5rem] lg:text-[5.5rem] xl:text-[6.5rem] font-black leading-[0.95] tracking-tight text-gray-900" >
+                                <motion.h1 initial={{ y: "100%", }} animate={{ y: 0, }} transition={{ duration: 0.8, delay: 0.45, ease: [0.22, 1, 0.36, 1,], }} className="font-heading text-[3.2rem] md:text-[4.5rem] lg:text-[5.5rem] xl:text-[6.5rem] font-black leading-[0.95] tracking-tight text-gray-900" >
                                     Style
                                     <span className="text-brand">.</span>
                                 </motion.h1>
@@ -275,13 +252,13 @@ const HeroSection = () => {
 
                             {/* MAIN IMAGE */}
 
-                            <motion.div initial={{ opacity: 0, scale: 0.85, rotate: -2, }} animate={{ opacity: 1, scale: 1, rotate: 0, }} transition={{ duration: 1, delay: 0.3, ease: [ 0.22, 1, 0.36, 1, ], }} className="relative aspect-[3/4] rounded-[2.5rem] overflow-hidden shadow-2xl" >
+                            <motion.div initial={{ opacity: 0, scale: 0.85, rotate: -2, }} animate={{ opacity: 1, scale: 1, rotate: 0, }} transition={{ duration: 1, delay: 0.3, ease: [0.22, 1, 0.36, 1,], }} className="relative aspect-[3/4] rounded-[2.5rem] overflow-hidden shadow-2xl" >
                                 <AnimatePresence mode="wait">
 
                                     {currentBanner && (
-                                        <picture key={ currentBanner._id } >
-                                            <source media="(max-width: 768px)" srcSet={ currentBanner.mobileImage || currentBanner.desktopImage } />
-                                            <motion.img src={ currentBanner.desktopImage } alt={ currentBanner.title } initial={{ opacity: 0, scale: 1.05, }}animate={{ opacity: 1, scale: 1, }} exit={{ opacity: 0, }} transition={{ duration: 0.6, ease: "easeOut", }} className="absolute inset-0 w-full h-full object-cover" />
+                                        <picture key={currentBanner._id} >
+                                            <source media="(max-width: 768px)" srcSet={currentBanner.mobileImage || currentBanner.desktopImage} />
+                                            <motion.img src={currentBanner.desktopImage} alt={currentBanner.title} initial={{ opacity: 0, scale: 1.05, }} animate={{ opacity: 1, scale: 1, }} exit={{ opacity: 0, }} transition={{ duration: 0.6, ease: "easeOut", }} className="absolute inset-0 w-full h-full object-cover" />
                                         </picture>
                                     )}
 
@@ -306,7 +283,7 @@ const HeroSection = () => {
 
                                 <motion.div key={`info-${currentBanner?._id}`} initial={{ y: 30, opacity: 0, }} animate={{ y: 0, opacity: 1, }} transition={{ delay: 1, duration: 0.6, }} className="absolute bottom-0 left-0 right-0 p-6 bg-gradient-to-t from-black/60 via-black/20 to-transparent" >
                                     <p className="text-white/70 text-xs font-semibold uppercase tracking-widest mb-1">Trending Now</p>
-                                    <p className="text-white font-heading text-lg font-bold">{currentBanner?.title ||"Summer Collection"}</p>
+                                    <p className="text-white font-heading text-lg font-bold">{currentBanner?.title || "Summer Collection"}</p>
                                 </motion.div>
                             </motion.div>
 
@@ -316,9 +293,9 @@ const HeroSection = () => {
 
                             {currentBanner?.product && (
                                 <motion.div key={`card-${currentBanner._id}`} initial={{ opacity: 0, x: 40, y: 20, }} animate={{ opacity: 1, x: 0, y: 0, }} transition={{ delay: 0.8, duration: 0.7, type: "spring", }} style={{ y: springY, }} className="absolute -right-8 top-[15%] z-20" >
-                                    <motion.div animate={{ y: [ 0, -8, 0, ], }} transition={{ duration: 4, repeat: Infinity, ease: "easeInOut", }} className="bg-white/95 backdrop-blur-xl rounded-2xl shadow-card-hover p-4 w-[160px] border border-white/50" >
+                                    <motion.div animate={{ y: [0, -8, 0,], }} transition={{ duration: 4, repeat: Infinity, ease: "easeInOut", }} className="bg-white/95 backdrop-blur-xl rounded-2xl shadow-card-hover p-4 w-[160px] border border-white/50" >
                                         <div className="w-full aspect-square rounded-xl bg-gradient-to-br from-brand-100 to-brand-200 mb-3 overflow-hidden">
-                                            <img src={ currentBanner .product .image } alt={ currentBanner .product .name } className="w-full h-full object-cover" />
+                                            <img src={currentBanner.product.image} alt={currentBanner.product.name} className="w-full h-full object-cover" />
                                         </div>
 
                                         <p className="font-heading text-xs font-bold text-gray-800 truncate">{currentBanner.product.name}</p>
@@ -329,8 +306,8 @@ const HeroSection = () => {
 
                                             <div className="flex gap-0.5">
                                                 {[...Array(5)].map((_, i) => (
-                                                        <IoStar key={i} size={8} className={ i < Math.round( Number( currentBanner.product?.avgRating || 0 ) ) ? "text-gold" : "text-gray-300" }/>
-                                                    )
+                                                    <IoStar key={i} size={8} className={i < Math.round(Number(currentBanner.product?.avgRating || 0)) ? "text-gold" : "text-gray-300"} />
+                                                )
                                                 )}
                                             </div>
 
@@ -347,8 +324,8 @@ const HeroSection = () => {
 
                             {/* TRUST BADGE */}
 
-                            <motion.div initial={{ opacity: 0, x: -30, }} animate={{ opacity: 1, x: 0, }} transition={{ delay: 1.3, type: "spring", }} style={{ x: springX, }}className="absolute -left-12 top-[40%] z-20">
-                                <motion.div animate={{ y: [0, 8, 0], }} transition={{ duration: 5, repeat: Infinity, ease: "easeInOut", delay: 1.5, }}className="bg-white/95 backdrop-blur-xl rounded-2xl shadow-card-hover p-3.5 border border-white/50">
+                            <motion.div initial={{ opacity: 0, x: -30, }} animate={{ opacity: 1, x: 0, }} transition={{ delay: 1.3, type: "spring", }} style={{ x: springX, }} className="absolute -left-12 top-[40%] z-20">
+                                <motion.div animate={{ y: [0, 8, 0], }} transition={{ duration: 5, repeat: Infinity, ease: "easeInOut", delay: 1.5, }} className="bg-white/95 backdrop-blur-xl rounded-2xl shadow-card-hover p-3.5 border border-white/50">
                                     <div className="flex items-center gap-3">
 
                                         <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-green-400 to-green-600 flex items-center justify-center text-white text-sm font-bold shadow-sm">
@@ -368,7 +345,7 @@ const HeroSection = () => {
 
                             <div className="absolute -z-10 -top-8 -right-8 w-full h-full rounded-[2.5rem] bg-gradient-to-br from-brand/10 to-accent/10 blur-sm" />
 
-                            <motion.div animate={{ rotate: [  0, 3, 0, -3, 0, ], }} transition={{ duration: 10, repeat: Infinity, ease: "easeInOut", }} className="absolute -z-10 -bottom-6 -left-6 w-3/4 h-3/4 rounded-[2rem] border-2 border-dashed border-brand/15" />
+                            <motion.div animate={{ rotate: [0, 3, 0, -3, 0,], }} transition={{ duration: 10, repeat: Infinity, ease: "easeInOut", }} className="absolute -z-10 -bottom-6 -left-6 w-3/4 h-3/4 rounded-[2rem] border-2 border-dashed border-brand/15" />
                         </div>
                     </motion.div>
                 </div>

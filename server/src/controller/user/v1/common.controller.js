@@ -8,7 +8,7 @@ const productvariantModel = require('../../../model/productvariant.model')
 const productshippingModel = require('../../../model/productshipping.model')
 const productinventoryModel = require('../../../model/productinventory.model')
 const { GetProductCouponApplay, GetCartProductCouponApplay, GetCartProductShipingcharg, GetCartProductPaymentOrder, GetHeroBanners } = require("../../../helper/aggretionpipeline")
-const { PercentageCoupenapplay, CartDiscountCoupenapplay, FindPriceinProduct, generateOrderNumber } = require("../../../helper/helper")
+const { PercentageCoupenapplay, CartDiscountCoupenapplay, FindPriceinProduct, generateOrderNumber, ShippingDiscountCoupenapplay } = require("../../../helper/helper")
 const { getshippingcharg } = require("../../../services/shiproketapis")
 const { razorpay, razorpaySignature } = require("../../../config/razorpay.config")
 const orderModel = require("../../../model/order.model")
@@ -16,6 +16,9 @@ const categoryModel = require('../../../model/category.model')
 const brandModel = require('../../../model/brand.model')
 const bannerModel = require('../../../model/banner.model')
 const ratingModel = require("../../../model/rating.model")
+
+
+
 exports.ApplyCoupon = async (req, res, next) => {
     try {
         if (!req.body?.couponCode) {
@@ -62,7 +65,7 @@ exports.ApplyCoupon = async (req, res, next) => {
 
 
         if (coupon.discountType === "Percentage") {
-            const discount = await PercentageCoupenapplay(coupon, carts)
+            const discount = await PercentageCoupenapplay(coupon, carts,req.user)
             if (discount.success === false) {
                 return next(CustomeError(409, discount.message))
             }
@@ -70,14 +73,20 @@ exports.ApplyCoupon = async (req, res, next) => {
         }
 
         if (coupon.discountType === "CartDiscount") {
-            const discount = await CartDiscountCoupenapplay(coupon, carts)
+            const discount = await CartDiscountCoupenapplay(coupon, carts,req.user)
             if (discount.success === false) {
                 return next(CustomeError(409, discount.message))
             }
             return res.json(discount)
         }
         if (coupon.discountType === "ProductDiscount") { }
-        if (coupon.discountType === "Shipping") { }
+        if (coupon.discountType === "Shipping") {
+            const shipping = await  ShippingDiscountCoupenapplay(coupon,carts,req.user)
+            if (shipping.success === false) {
+                return next(CustomeError(409, shipping.message))
+            }
+            return res.json(shipping)
+         }
 
     } catch (error) {
         return next(error)
@@ -109,7 +118,7 @@ exports.CheckShiping = async (req, res, next) => {
 
         let cod = 0
 
-        if(req.body?.cod){
+        if (req.body?.cod) {
             cod = 1
         }
 
@@ -383,7 +392,6 @@ exports.verifyPayment = async (req, res, next) => {
                 color: cartItem.color,
                 image: product.productImage[0] || '',
                 quantity: cartItem.quantity,
-
                 price: selectedVariant.price,
                 weight: productShipping.weight,
                 dimensions: productShipping.dimensions,
@@ -575,139 +583,139 @@ exports.GetBanners = async (req, res, next) => {
         console.log("banner", category)
         if (category === "Promotional Strip") {
 
-           const now = new Date();
+            const now = new Date();
 
-        const baseUrl = `${req.protocol}://${req.get("host")}`;
+            const baseUrl = `${req.protocol}://${req.get("host")}`;
 
-        const banners = await bannerModel.aggregate([
-            // -----------------------------------------
-            // FILTER ACTIVE PROMOTIONAL STRIP BANNERS
-            // -----------------------------------------
-            {
-                $match: {
-                    isDeleted: false,
-                    status: "Active",
-                    placement: "Promotional Strip",
+            const banners = await bannerModel.aggregate([
+                // -----------------------------------------
+                // FILTER ACTIVE PROMOTIONAL STRIP BANNERS
+                // -----------------------------------------
+                {
+                    $match: {
+                        isDeleted: false,
+                        status: "Active",
+                        placement: "Promotional Strip",
 
-                    $or: [
-                        // Start date and end date both null
-                        {
-                            startDate: null,
-                            endDate: null,
-                        },
-
-                        // Only start date exists
-                        {
-                            startDate: {
-                                $ne: null,
-                                $lte: now,
-                            },
-                            endDate: null,
-                        },
-
-                        // Only end date exists
-                        {
-                            startDate: null,
-                            endDate: {
-                                $ne: null,
-                                $gte: now,
-                            },
-                        },
-
-                        // Both dates exist
-                        {
-                            startDate: {
-                                $ne: null,
-                                $lte: now,
-                            },
-                            endDate: {
-                                $ne: null,
-                                $gte: now,
-                            },
-                        },
-                    ],
-                },
-            },
-
-            // -----------------------------------------
-            // SORT BY PRIORITY
-            // -----------------------------------------
-            {
-                $sort: {
-                    priority: 1,
-                    createdAt: -1,
-                },
-            },
-
-            // -----------------------------------------
-            // ONLY REQUIRED FIELDS
-            // -----------------------------------------
-            {
-                $project: {
-                    _id: 1,
-                    title: 1,
-                    subtitle: 1,
-                    ctaButtonText: 1,
-                    priority: 1,
-
-                    desktopImage: {
-                        $cond: [
+                        $or: [
+                            // Start date and end date both null
                             {
-                                $and: [
-                                    {
-                                        $ne: [
-                                            "$desktopImage",
-                                            null,
-                                        ],
-                                    },
-                                    {
-                                        $ne: [
-                                            "$desktopImage",
-                                            "",
-                                        ],
-                                    },
-                                ],
+                                startDate: null,
+                                endDate: null,
                             },
-                            {
-                                $concat: [
-                                    baseUrl,
-                                    "$desktopImage",
-                                ],
-                            },
-                            null,
-                        ],
-                    },
 
-                    mobileImage: {
-                        $cond: [
+                            // Only start date exists
                             {
-                                $and: [
-                                    {
-                                        $ne: [
-                                            "$mobileImage",
-                                            null,
-                                        ],
-                                    },
-                                    {
-                                        $ne: [
-                                            "$mobileImage",
-                                            "",
-                                        ],
-                                    },
-                                ],
+                                startDate: {
+                                    $ne: null,
+                                    $lte: now,
+                                },
+                                endDate: null,
                             },
+
+                            // Only end date exists
                             {
-                                $concat: [
-                                    baseUrl,
-                                    "$mobileImage",
-                                ],
+                                startDate: null,
+                                endDate: {
+                                    $ne: null,
+                                    $gte: now,
+                                },
                             },
-                            null,
+
+                            // Both dates exist
+                            {
+                                startDate: {
+                                    $ne: null,
+                                    $lte: now,
+                                },
+                                endDate: {
+                                    $ne: null,
+                                    $gte: now,
+                                },
+                            },
                         ],
                     },
                 },
-            },
-        ]);
+
+                // -----------------------------------------
+                // SORT BY PRIORITY
+                // -----------------------------------------
+                {
+                    $sort: {
+                        priority: 1,
+                        createdAt: -1,
+                    },
+                },
+
+                // -----------------------------------------
+                // ONLY REQUIRED FIELDS
+                // -----------------------------------------
+                {
+                    $project: {
+                        _id: 1,
+                        title: 1,
+                        subtitle: 1,
+                        ctaButtonText: 1,
+                        priority: 1,
+
+                        desktopImage: {
+                            $cond: [
+                                {
+                                    $and: [
+                                        {
+                                            $ne: [
+                                                "$desktopImage",
+                                                null,
+                                            ],
+                                        },
+                                        {
+                                            $ne: [
+                                                "$desktopImage",
+                                                "",
+                                            ],
+                                        },
+                                    ],
+                                },
+                                {
+                                    $concat: [
+                                        baseUrl,
+                                        "$desktopImage",
+                                    ],
+                                },
+                                null,
+                            ],
+                        },
+
+                        mobileImage: {
+                            $cond: [
+                                {
+                                    $and: [
+                                        {
+                                            $ne: [
+                                                "$mobileImage",
+                                                null,
+                                            ],
+                                        },
+                                        {
+                                            $ne: [
+                                                "$mobileImage",
+                                                "",
+                                            ],
+                                        },
+                                    ],
+                                },
+                                {
+                                    $concat: [
+                                        baseUrl,
+                                        "$mobileImage",
+                                    ],
+                                },
+                                null,
+                            ],
+                        },
+                    },
+                },
+            ]);
             return res.status(200).json({ success: true, message: 'get banners', banners })
 
         }
@@ -721,6 +729,155 @@ exports.GetBanners = async (req, res, next) => {
             const banners = await bannerModel.aggregate(GetHeroBanners());
             return res.status(200).json({ success: true, message: 'get banners', banners })
         }
+    } catch (error) {
+        return next(error)
+    }
+}
+
+
+
+
+exports.placecodeorder = async (req, res, next) => {
+    try {
+
+        if (!req.body?.cartIds && !req.body?.cartIds?.length) {
+            return next(CustomeError(422, 'cart id required'))
+        }
+        const address = await addressModel.findById(req.body?.addressId)
+        const carts = await cartModel.find({
+            _id: { $in: req.body?.cartIds },
+            userId: req.user._id
+        });
+
+        const orderItems = [];
+
+        for (const cartItem of carts) {
+
+            // 1. Product na variants find karo
+            const productVariant = await productvariantModel.findOne({
+                productId: cartItem.productId
+            });
+
+            const productShipping = await productshippingModel.findOne({ productId: cartItem.productId })
+
+            if (!productVariant) {
+                return res.status(404).json({
+                    success: false,
+                    message: `Variant not found for product ${cartItem.productId}`
+                });
+            }
+
+            const product = await productModel.findById(cartItem.productId)
+
+            // 2. Size + Color combination
+            const variantName = `${cartItem.color}/${cartItem.size}`;
+
+            // 3. Actual variant find karo
+            const selectedVariant = productVariant.variant.find(
+                (variant) => variant.name === variantName
+            );
+
+            if (!selectedVariant) {
+                return res.status(404).json({
+                    success: false,
+                    message: `Variant ${variantName} not found`
+                });
+            }
+
+            console.log("Selected Variant:", selectedVariant);
+
+            // 4. Order item
+            orderItems.push({
+                productId: cartItem.productId,
+                variantId: selectedVariant._id,
+                sku: selectedVariant.sku,
+                size: cartItem.size,
+                color: cartItem.color,
+                image: product.productImage[0] || '',
+                quantity: cartItem.quantity,
+
+                price: selectedVariant.price,
+                weight: productShipping.weight,
+                dimensions: productShipping.dimensions,
+                HSCode: productShipping.HSCode,
+                total: selectedVariant.price * cartItem.quantity
+            });
+
+            const updatedVariant = await productvariantModel.findOneAndUpdate(
+                {
+                    variant: {
+                        $elemMatch: {
+                            _id: selectedVariant._id,
+                            stock: { $gte: cartItem.quantity }
+                        }
+                    }
+                },
+                {
+                    $inc: {
+                        "variant.$.stock": -Number(cartItem.quantity)
+                    }
+                },
+                {
+
+                    returnDocument: "after"
+                }
+            );
+
+            await productinventoryModel.findOneAndUpdate(
+                { productId: cartItem.productId },
+                {
+                    $inc: {
+                        stock: -Number(cartItem.quantity)
+                    }
+                },
+                {
+                    returnDocument: "after"
+                }
+            );
+        }
+
+        const shippingAddress = {
+            addressline: address.addressline,
+            landmark: address.landmark,
+            city: address.city,
+            state: address.state,
+            postalCode: address.postalCode,
+        }
+
+        const subtotal = orderItems.reduce((sum, item) => sum + item.total, 0);
+        const discount = req.body?.discount || 0
+        const couponId = req.body?.coupenId || null
+        const shipping = req.body?.shipping || 0
+
+        const totalAmount = subtotal + shipping - discount
+        const payment = {
+            method: "cod",
+            status: "pending",
+        }
+
+        const orderNumber = await generateOrderNumber()
+        const orderData = {
+            userId: req.user._id,
+            orderNumber,
+            items: orderItems,
+            shippingAddress,
+            subtotal,
+            shippingCharge: shipping,
+            discount,
+            couponId,
+            totalAmount,
+            payment,
+        }
+
+        const order = await orderModel.create(orderData)
+
+        if (order) {
+            await cartModel.deleteMany({
+                _id: { $in: req.body?.cartIds },
+                userId: req.user._id
+            });
+        }
+        return res.status(200).json({ success: true, message: 'order create successfullly', order })
     } catch (error) {
         return next(error)
     }

@@ -238,7 +238,7 @@ exports.GetProducts = async (req, res, next) => {
     try {
 
         const page = parseInt(req.query.page) || 1;
-        const limit = parseInt(req.query.limit) || 10;
+        const limit = parseInt(req.query.limit) || 20;
 
         const pipeline = [
             ...getproductspipeline(),
@@ -255,14 +255,6 @@ exports.GetProducts = async (req, res, next) => {
             success: true,
             message: "get product",
             products,
-            pagination: {
-                page,
-                limit,
-                total,
-                totalPages,
-                hasPrev: page > 1,
-                hasNext: page < totalPages
-            }
         });
 
     } catch (error) {
@@ -394,6 +386,7 @@ exports.UpdateProduct = async (req, res, next) => {
         }
 
         let variantData = await productVariantModel.findOne({ productId: product._id })
+
         if (req.body?.size) {
             variantData.size =
                 typeof req.body.size === 'string'
@@ -416,10 +409,9 @@ exports.UpdateProduct = async (req, res, next) => {
         let existingVariants = [];
 
         if (req.body?.variant) {
-            existingVariants =
-                typeof req.body.variant === "string"
-                    ? JSON.parse(req.body.variant)
-                    : req.body.variant;
+            
+            existingVariants = typeof req.body.variant === "string"? JSON.parse(req.body.variant) : req.body.variant;
+            console.log(existingVariants)
         }
 
         if (existingVariants.length) {
@@ -438,22 +430,12 @@ exports.UpdateProduct = async (req, res, next) => {
         let newVariants = [];
 
         if (req.body?.newvariant) {
-            newVariants =
-                typeof req.body.newvariant === "string"
-                    ? JSON.parse(req.body.newvariant)
-                    : req.body.newvariant;
-        }
-
+            newVariants = typeof req.body.newvariant === "string" ? JSON.parse(req.body.newvariant) : req.body.newvariant; }
         if (newVariants.length) {
             let length = variantData.variant.length + 1;
-
             for (const item of newVariants) {
                 item.sku = item.sku || `${product.sku}-${length}`;
-
-                const exists = variantData.variant.some(
-                    (v) => v.name === item.name
-                );
-
+                const exists = variantData.variant.some((v) => v.name === item.name);
                 if (!exists) {
                     variantData.variant.push(item);
                     length++;
@@ -526,6 +508,123 @@ exports.GetProductUsingSlug = async (req, res, next) => {
         const product = await productModel.aggregate(getproductslugpipeline(slug));
 
         return res.status(200).json({ success: true, product })
+    } catch (error) {
+        return next(error)
+    }
+}
+
+
+
+exports.GetInventory = async (req, res, next) => {
+    try {
+        const products = await productModel.aggregate([
+            // ==========================================
+            // 1. PRODUCT INVENTORY JOIN
+            // ==========================================
+            {
+                $lookup: {
+                    from: "productinventorys",
+                    localField: "_id",
+                    foreignField: "productId",
+                    as: "inventory"
+                }
+            },
+
+            // એક product માટે એક inventory
+            {
+                $unwind: {
+                    path: "$inventory",
+                    preserveNullAndEmptyArrays: true
+                }
+            },
+
+            // ==========================================
+            // 2. PRODUCT VARIANTS JOIN
+            // ==========================================
+            {
+                $lookup: {
+                    from: "productvariants",
+                    localField: "_id",
+                    foreignField: "productId",
+                    as: "variantData"
+                }
+            },
+
+            {
+                $unwind: {
+                    path: "$variantData",
+                    preserveNullAndEmptyArrays: true
+                }
+            },
+
+            // ==========================================
+            // 3. FINAL RESPONSE STRUCTURE
+            // ==========================================
+            {
+                $project: {
+                    _id: {
+                        $ifNull: ["$inventory._id", "$_id"]
+                    },
+
+                    productname: "$name",
+
+                    // જો Product model માં sku હોય તો
+                    productsku: "$sku",
+
+                    variants: {
+                        $map: {
+                            input: {
+                                $ifNull: ["$variantData.variant", []]
+                            },
+                            as: "variant",
+                            in: {
+                                _id: "$$variant._id",
+                                name: "$$variant.name",
+                                stock: {
+                                    $ifNull: ["$$variant.stock", 0]
+                                }
+                            }
+                        }
+                    },
+
+                    warehouseLocation: {
+                        $ifNull: [
+                            "$inventory.warehouseLocation",
+                            "Main Warehouse"
+                        ]
+                    },
+
+                    lowStock: {
+                        $ifNull: [
+                            "$inventory.lowStock",
+                            0
+                        ]
+                    }
+                }
+            }
+        ]);
+
+
+        return res.status(200).json({ success: true, message: "get inventry", products })
+    } catch (error) {
+        return next(error)
+    }
+}
+
+
+exports.UpdateInventory = async (req, res, next) => {
+    try {
+
+
+       const newData =  await productVariantModel.updateOne(
+            { "variant._id": req.body?.variantId },
+            { $set: { "variant.$.stock": req.body?.stock } },
+            {returnDocument:'after'}
+        );
+
+
+        return res.json({success:true,message:'Update',newData})
+
     } catch (error) {
         return next(error)
     }

@@ -210,7 +210,6 @@ const expiredCoupons = coupons.filter((coupon) => coupon.status === "expired").l
                                             onChange={handleChange}>
                                             <option value="Percentage">Percentage (%)</option>
                                             <option value="CartDiscount">Fixed Cart Discount (₹)</option>
-                                            <option value="ProductDiscount">Fixed Product Discount (₹)</option>
                                             <option value="Shipping">Free Shipping</option>
                                         </select>
                                     </div>
@@ -286,7 +285,6 @@ const expiredCoupons = coupons.filter((coupon) => coupon.status === "expired").l
                                             onChange={handleChange}>
                                             <option value="allProduct">All Products</option>
                                             <option value="specificProduct">Specific Products</option>
-                                            <option value="specificCategory">Specific Categories</option>
                                         </select>
                                     </div>
                                     <div>
@@ -329,18 +327,36 @@ const expiredCoupons = coupons.filter((coupon) => coupon.status === "expired").l
                                             className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:border-brand mt-3"
                                         />
                                     </div>
-                                    <label className="flex items-center justify-between p-4 bg-gray-50 rounded-xl">
-                                        <div>
-                                            <p className="font-semibold text-gray-900 text-sm">Combinable with other coupons</p>
-                                            <p className="text-xs text-gray-500">Allow customers to stack this with other discount codes</p>
-                                        </div>
-                                        <label className="relative inline-flex items-center cursor-pointer">
-                                            <input type="checkbox" className="sr-only peer" />
-                                            <div className="w-11 h-6 bg-gray-200 rounded-full peer peer-checked:after:translate-x-full after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-brand"></div>
-                                        </label>
-                                    </label>
+                                 
                                 </div>
                             </div>
+
+                            {/* Coupon Status */}
+<div className="border-t border-gray-100 pt-6">
+    <h3 className="text-sm font-bold text-gray-700 mb-4">
+        Coupon Status
+    </h3>
+
+    <div>
+        <label className="block text-sm font-semibold text-gray-700 mb-2">
+            Status
+        </label>
+
+        <select
+            name="status"
+            value={formData.status}
+            onChange={handleChange}
+            className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:border-brand"
+        >
+            <option value="active">Active</option>
+            <option value="inactive">Inactive</option>
+        </select>
+
+        <p className="text-xs text-gray-400 mt-1">
+            Active coupon customers use kari shake. Inactive coupon use nahi thai shake.
+        </p>
+    </div>
+</div>
                         </div>
                         <div className="p-6 border-t border-gray-100 flex justify-end gap-3 sticky bottom-0 bg-white z-10">
                             <button onClick={() => setIsAddModalOpen(false)} className="px-6 py-2.5 rounded-xl border border-gray-200 text-sm font-bold text-gray-600 hover:bg-gray-50">Cancel</button>

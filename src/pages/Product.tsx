@@ -28,9 +28,7 @@ const ProductDetail = () => {
     const [mainImage, setMainImage] = useState(0);
     const [added, setAdded] = useState(false);
 
-
     const [reviews, setReviews] = useState<Review[]>([]);
-
     // Review form state
     const [reviewForm, setReviewForm] = useState({ rating: 5, name: "", title: "", text: "" });
     const [reviewSubmitted, setReviewSubmitted] = useState(false);
@@ -45,6 +43,8 @@ const ProductDetail = () => {
     const selectedVariant = product.variants?.find(
         (v) => v.name === `${selectedColor}/${selectedSize}`
     );
+
+    console.log(selectedVariant)
 
     const displayPrice = selectedVariant?.price ?? product.price;
 
@@ -124,7 +124,7 @@ const ProductDetail = () => {
                             </span>
                         )}
                     </div>
-                    <p className="text-muted text-sm leading-relaxed mb-6">{product.description}</p>
+                    <p className="text-muted text-sm leading-relaxed mb-6">{product.sortdescription}</p>
                     <div className="h-px bg-gray-200 mb-6" />
 
                     {/* Size */}
@@ -184,7 +184,7 @@ const ProductDetail = () => {
                         <button key={t} onClick={() => setActiveTab(t)} className={`px-6 py-3 text-sm font-semibold transition-all border-b-2 ${activeTab === t ? "border-brand text-brand" : "border-transparent text-muted hover:text-gray-900"}`}>{t}</button>
                     ))}
                 </div>
-                {activeTab === "Description" && <div className="prose max-w-3xl text-muted text-sm leading-relaxed"><p>{product.description}</p><p className="mt-3">Each piece is carefully crafted using premium materials sourced from the finest suppliers. Our commitment to quality ensures durability and comfort that lasts through every season.</p></div>}
+                {activeTab === "Description" && <div className="prose max-w-3xl text-muted text-sm leading-relaxed"><p>{product.description}</p></div>}
                 {activeTab === "Reviews" && (
                     <div className="grid grid-cols-1 lg:grid-cols-3 gap-12">
                         {/* Reviews List */}

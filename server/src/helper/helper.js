@@ -47,23 +47,49 @@ exports.razorpay_signature = (razorpay_order_id, razorpay_payment_id) => {
 
 // coupon function
 
-const checkUserCouponEligibility = (coupon) => {
+const checkUserCouponEligibility = async (coupon, user) => {
     let userEligibility = false
     if (coupon.couponUser == "AllUser") {
         userEligibility = true
         return userEligibility
     }
+
     if (coupon.couponUser == "FirstOrder") {
-        userEligibility = false
+        const orders = await orderModel.find({ userId: user._id })
+        if (!orders.length) {
+            userEligibility = true
+        }
         return userEligibility
     }
 
     if (coupon.couponUser == "specificCustomer") {
-        userEligibility = false
+
+        const userEmail = user.email
+        const couponEmails = coupon.applayCustomer
+        const isUserEligible = couponEmails.includes(userEmail);
+        if (isUserEligible) {
+            userEligibility = true
+        }
         return userEligibility
     }
 
 
+}
+
+const checkUserLimit = async (coupon, user) => {
+
+    const maxusecoupone = coupon.maxusecoupone
+
+    if (!maxusecoupone) {
+        return true
+    }
+
+    const orders = await orderModel.find({ userId: user._id, couponId: coupon._id })
+
+    if (orders.length >= maxusecoupone) {
+        return false
+    }
+    return true
 }
 
 const checkProductCouponEligibility = (coupon, carts) => {
@@ -82,7 +108,7 @@ const checkProductCouponEligibility = (coupon, carts) => {
 
     if (coupon.apply == "specificProduct") {
         const productsku = carts.map(cart => cart.product.sku)
-        const couponskus = coupon.productSku 
+        const couponskus = coupon.productSku
 
         let matchProduct = productsku.filter(sku =>
             couponskus.includes(sku)
@@ -112,7 +138,7 @@ const GetVariants = (products) => {
     products.forEach((product) => {
         product.variant.variant.forEach((v) => {
             if (v.name === `${product.color}/${product.size}`) {
-                variants.push({...v,price:v.price * product.quantity})
+                variants.push({ ...v, price: v.price * product.quantity })
             }
         })
     })
@@ -130,13 +156,17 @@ const checkPurchaseCouponEligibility = (minimumprice, productprice) => {
 }
 
 
-exports.PercentageCoupenapplay =  (coupon, carts) => {
+exports.PercentageCoupenapplay = async (coupon, carts, user) => {
 
-    const userEligibility = checkUserCouponEligibility(coupon)
+    const userEligibility = await checkUserCouponEligibility(coupon, user)
     if (!userEligibility) {
         return { success: false, message: "coupon not apply this user" }
     }
 
+    const userLimit = await checkUserLimit(coupon, user)
+    if (!userLimit) {
+        return { success: false, message: "You have already used this coupon." }
+    }
 
     const matchsku = checkProductCouponEligibility(coupon, carts)
 
@@ -173,18 +203,21 @@ exports.PercentageCoupenapplay =  (coupon, carts) => {
         return { success: true, message: "total discount", discount: coupon.maximumDiscount }
 
     }
-    return { success: true, message: "total discount", discount,couponId:coupon._id }
+    return { success: true, message: "total discount", discount, couponId: coupon._id }
 }
 
 
-exports.CartDiscountCoupenapplay = (coupon,carts) =>{
-const userEligibility = checkUserCouponEligibility(coupon)
+exports.CartDiscountCoupenapplay = async(coupon, carts,user) => {
+    const userEligibility = checkUserCouponEligibility(coupon)
     if (!userEligibility) {
         return { success: false, message: "coupon not apply this user" }
     }
 
-    
 
+ const userLimit = await checkUserLimit(coupon, user)
+    if (!userLimit) {
+        return { success: false, message: "You have already used this coupon." }
+    }
 
     const matchsku = checkProductCouponEligibility(coupon, carts)
 
@@ -199,7 +232,7 @@ const userEligibility = checkUserCouponEligibility(coupon)
 
 
     const variants = GetVariants(mproducts)
-console.log(variants)
+    console.log(variants)
 
     if (!variants.length) {
         return { success: false, message: "varinat not found" }
@@ -217,34 +250,86 @@ console.log(variants)
 
     }
 
-    const discount =  coupon.discountValue
-   
-    return { success: true, message: "total discount", discount,couponId:coupon._id }
+    const discount = coupon.discountValue
+
+    return { success: true, message: "total discount", discount, couponId: coupon._id }
+}
+
+exports.ShippingDiscountCoupenapplay = async(coupon, carts,user)=>{
+    const userEligibility = checkUserCouponEligibility(coupon)
+    if (!userEligibility) {
+        return { success: false, message: "coupon not apply this user" }
+    }
+
+
+ const userLimit = await checkUserLimit(coupon, user)
+    if (!userLimit) {
+        return { success: false, message: "You have already used this coupon." }
+    }
+
+
+
+
+    const matchsku = checkProductCouponEligibility(coupon, carts)
+
+    if (!matchsku.length) {
+        return { success: false, message: "coupon not apply this product" }
+    }
+
+    const mproducts = matchProduct(matchsku, carts)
+    if (!mproducts.length) {
+        return { success: false, message: "coupon not apply this products" }
+    }
+
+
+    const variants = GetVariants(mproducts)
+    console.log(variants)
+
+    if (!variants.length) {
+        return { success: false, message: "varinat not found" }
+    }
+
+    const totalPrice = variants.reduce((total, variant) => {
+        return total + (variant.price || 0);
+    }, 0);
+
+    console.log(totalPrice)
+
+    const purchaseEligibility = checkPurchaseCouponEligibility(coupon.minimumPurchase, totalPrice)
+    if (!purchaseEligibility) {
+        return { success: false, message: `minimum purches Rs:${coupon.minimumPurchase}` }
+
+    }
+
+    const discount = coupon.discountValue
+
+    return { success: true, message: "free shipping", discount, couponId: coupon._id }
+
 }
 
 
 exports.FindPriceinProduct = (products) => {
-  let total = 0;
+    let total = 0;
 
-  products.forEach((item) => {
-    const variantName = `${item.color}/${item.size}`;
+    products.forEach((item) => {
+        const variantName = `${item.color}/${item.size}`;
 
-    const matchedVariant = item.variant?.variant?.find(
-      (v) => v.name === variantName
-    );
+        const matchedVariant = item.variant?.variant?.find(
+            (v) => v.name === variantName
+        );
 
-    if (matchedVariant) {
-      total += matchedVariant.price * item.quantity;
-    } else {
-      // fallback: product salePrice અથવા price
-      const fallbackPrice =
-        item.product?.salePrice || item.product?.price || 0;
+        if (matchedVariant) {
+            total += matchedVariant.price * item.quantity;
+        } else {
+            // fallback: product salePrice અથવા price
+            const fallbackPrice =
+                item.product?.salePrice || item.product?.price || 0;
 
-      total += fallbackPrice * item.quantity;
-    }
-  });
+            total += fallbackPrice * item.quantity;
+        }
+    });
 
-  return total;
+    return total;
 };
 
 

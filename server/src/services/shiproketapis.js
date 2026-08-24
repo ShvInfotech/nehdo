@@ -59,3 +59,20 @@ exports.AssignCourierAndAWB = async(data)=>{
     );
     return response.data;
 }
+
+
+
+exports.GenerateLabel = async(data)=>{
+    const url = "https://apiv2.shiprocket.in/v1/external/courier/generate/label";
+    const response = await axios.post(
+        url,
+        {shipment_id:data},
+        {
+            headers: {
+                Authorization: `Bearer ${process.env.SHIPROCKET_TOKEN}`,
+                "Content-Type": "application/json"
+            }
+        }
+    );
+    return response.data;
+}

@@ -1,12 +1,12 @@
 const { default: mongoose } = require("mongoose");
 const { CustomeError } = require("../../../middleware/globelError");
 const orderModel = require("../../../model/order.model");
-const { getshippingcharg, CreatOrderINShiproket, AssignCourierAndAWB } = require("../../../services/shiproketapis");
+const { getshippingcharg, CreatOrderINShiproket, AssignCourierAndAWB, GenerateLabel } = require("../../../services/shiproketapis");
+const { label } = require("framer-motion/client");
 
 
 exports.PendingOrder = async (req, res, next) => {
     try {
-
         const orders = await orderModel.aggregate([
             {
                 $lookup: {
@@ -29,7 +29,26 @@ exports.PendingOrder = async (req, res, next) => {
                     "user.name": 1,
                     "user.email": 1,
                     "user.phone": 1,
-                    items: 1,
+                    items: {
+            $map: {
+                input: "$items",
+                as: "item",
+                in: {
+                    $mergeObjects: [
+                        "$$item",
+                        {
+                            image: {
+                                $cond: [
+                                    { $ne: ["$$item.image", null] },
+                                    {$concat: [`http://${process.env.HOST}:${process.env.PORT}`,"$$item.image"]},
+                                    null
+                                ]
+                            }
+                        }
+                    ]
+                }
+            }
+        },
                     shippingAddress: 1,
                     payment: 1,
                     subtotal: 1,
@@ -52,7 +71,7 @@ exports.PendingOrder = async (req, res, next) => {
             }
         ]);
 
-        return res.status(200).json({ success: true, message: 'get pending order', orders })
+        return res.status(200).json({ success: true, message: 'get order', orders })
 
     } catch (error) {
         return next(error)
@@ -115,40 +134,15 @@ exports.AccepteOrder = async (req, res, next) => {
 
         for (const order of orders) {
 
-            const length = Math.max(
-                ...order.items.map(
-                    item => Number(item.dimensions?.length || 0)
-                ),
-                0
-            );
-
-            const breadth = Math.max(
-                ...order.items.map(
-                    item => Number(item.dimensions?.width || 0)
-                ),
-                0
-            );
-
-            const height = order.items.reduce(
-                (total, item) =>
-                    total +
-                    Number(item.dimensions?.height || 0) *
-                    Number(item.quantity || 1),
-                0
-            );
-            console.log(length, breadth, height)
-            const weight = order.items.reduce(
-                (total, item) =>
-                    total +
-                    Number(item.weight || 0) *
-                    Number(item.quantity || 1),
-                0
-            );
+            const length = Math.max(...order.items.map(item => Number(item.dimensions?.length || 0)), 0);
+            const breadth = Math.max(...order.items.map(item => Number(item.dimensions?.width || 0)), 0);
+            const height = order.items.reduce((total, item) => total + Number(item.dimensions?.height || 0) * Number(item.quantity || 1), 0);
+            const weight = order.items.reduce((total, item) => total + Number(item.weight || 0) * Number(item.quantity || 1), 0);
 
             const packageDetails = {
                 pincode: order.shippingAddress.postalCode,
                 weight,
-                cod: 0,
+                cod: order.payment.method === "cod" ? 1 : 0,
                 length,
                 breadth,
                 height
@@ -158,17 +152,10 @@ exports.AccepteOrder = async (req, res, next) => {
             const data = await getshippingcharg(packageDetails);
 
             if (data.status === 400 || data.status === 404) {
-                return res.status(data.status).json({
-                    success: false,
-                    message: data.message
-                });
+                return next(CustomeError(data.status, data.message))
             }
 
-            const bestCourier =
-                data.data.available_courier_companies.reduce(
-                    (best, current) =>
-                        current.rate < best.rate ? current : best
-                );
+            const bestCourier = data.data.available_courier_companies.reduce((best, current) => current.rate < best.rate ? current : best);
 
             const courierDetails = {
                 courierCompanyId: bestCourier.courier_company_id,
@@ -212,10 +199,10 @@ exports.AccepteOrder = async (req, res, next) => {
                     billing_country: "India",
                     billing_email: order.user.email,
                     billing_phone: order.user.phone,
+
                     shipping_is_billing: true,
                     order_items,
-
-                    payment_method: "Prepaid",
+                    payment_method: order.payment?.method === "cod" ? "COD" : "Prepaid",
                     shipping_charges: 0,
                     giftwrap_charges: 0,
                     transaction_charges: 0,
@@ -226,6 +213,8 @@ exports.AccepteOrder = async (req, res, next) => {
                     height,
                     weight
                 }
+
+            console.log(createorderData)
 
 
             const confirmorderData = await CreatOrderINShiproket(createorderData)
@@ -241,7 +230,6 @@ exports.AccepteOrder = async (req, res, next) => {
 
         return res.status(200).json({ success: true, message: "Order Accepted", orders })
     } catch (error) {
-
         console.log(
             "Shiprocket Error:",
             JSON.stringify(error.response?.data, null, 2)
@@ -251,6 +239,43 @@ exports.AccepteOrder = async (req, res, next) => {
             "Shiprocket Errors:",
             JSON.stringify(error.response?.data?.errors, null, 2)
         );
+        return next(error)
+    }
+}
+
+
+
+exports.GanrateLabel = async (req, res, next) => {
+    try {
+
+        if (!req.body?.shipmentIds && !req.body?.shipmentIds?.length) {
+            return CustomeError(422, "shipmentId not provide")
+        }
+console.log(req.body?.shipmentIds)
+        const respons = await GenerateLabel(req.body?.shipmentIds)
+console.log(respons)
+
+        const notCreatedShipmentIds = Object.keys(respons.not_created);
+        const successfulShipmentIds = req.body?.shipmentIds.filter((shipmentId) => !notCreatedShipmentIds.includes(String(shipmentId)));
+
+
+
+         const updateOrders = await orderModel.updateMany(
+            {shiprocketShipmentId: {$in: req.body.shipmentIds},status: "accepted"},
+            {$set: {status: "processing"}}
+        );
+
+        // const updateOrders = await orderModel.updateMany(
+        //     {shiprocketShipmentId: {$in: successfulShipmentIds},status: "accepted"},
+        //     {$set: {status: "processing"}}
+        // );
+
+        console.log("Updated orders:", updateOrders.modifiedCount);
+        return res.status(200).json({ success: true, message: ` label Genareted`,label_url:'https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf'
+  })
+        // return res.status(200).json({ success: true, message: `label Genareted`,label_url:respons?.label_url  })
+
+    } catch (error) {
         return next(error)
     }
 }
@@ -267,6 +292,8 @@ exports.ShippingWebhook = async (req, res, next) => {
                 message: "Unauthorized webhook"
             });
         }
+
+        console.log(req.body)
         const {
             awb,
             current_status,
