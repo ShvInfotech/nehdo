@@ -17,10 +17,10 @@ const wishlistIds = items.map(item => item.productId);
   wishlistIds.includes(String(p.id))
 );
 
- 
+
 
     const handleMoveToCart = (p: typeof products[0]) => {
-        addItem({ productId: p.id, name: p.name, brand: p.brand, image: p.image, price: p.price, originalPrice: p.originalPrice, size: p.sizes[0], color: p.colors[0]?.name || "" });
+        addItem({ shipping: false,productId: p.id, name: p.name, brand: p.brand, image: p.image, price: p.price, originalPrice: p.originalPrice, size: p.sizes[0], color: p.colors[0]?.name || "" });
         toggle(p.id);
     };
 

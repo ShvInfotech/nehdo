@@ -7,6 +7,8 @@ import React, {
 } from 'react';
 
 import { userapiRequest, setUnauthorizedHandler } from '../services/apiService';
+import { toast } from 'react-toastify';
+import { warning } from 'framer-motion';
 
 export interface User {
   _id: string;
@@ -20,8 +22,8 @@ export interface User {
 interface AuthContextType {
   user: User | null;
   isLoggedIn: boolean;
-  login: (email: string, password: string,deviceToken:string, GoogleIdToken: string, key: string) => Promise<boolean>;
-  signup: (name: string, email: string, password: string,deviceToken:string) => Promise<boolean>;
+  login: (email: string, password: string, deviceToken: string, GoogleIdToken: string, key: string) => Promise<boolean>;
+  signup: (name: string, email: string, password: string, deviceToken: string) => Promise<boolean>;
   logout: () => void;
   updateProfile: (data: any) => Promise<void>
   authModalMode: 'login' | 'signup' | null;
@@ -57,33 +59,16 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     });
   }, []);
 
-  const login = useCallback(async (email: string, _password: string,deviceToken:string, GoogleIdToken: String, key: String) => {
+  const login = useCallback(async (email: string, _password: string, deviceToken: string, GoogleIdToken: String, key: String) => {
     try {
       let res: any
 
       if (key === 'google') {
-        const payload = {
-          deviceToken,
-          GoogleIdToken,
-        };
-
-        res = await userapiRequest(
-          '/user/api/v1/auth/googlelogin',
-          'POST',
-          payload
-        );
+        const payload = { deviceToken, GoogleIdToken, };
+        res = await userapiRequest('/user/api/v1/auth/googlelogin', 'POST', payload);
       } else {
-        const payload = {
-          email,
-          password: _password,
-          deviceToken
-        };
-
-        res = await userapiRequest(
-          '/user/api/v1/auth/login',
-          'POST',
-          payload
-        );
+        const payload = { email, password: _password, deviceToken };
+        res = await userapiRequest('/user/api/v1/auth/login', 'POST', payload);
       }
 
 
@@ -101,21 +86,18 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
       setUser(loggedInUser);
 
-      // Save token if backend returns it
       if (res.accesstoken) {
         localStorage.setItem('accessToken', res.accesstoken);
       }
-
       setAuthModalMode(null);
 
-      return true;
+      return res;
     } catch (error: any) {
-      console.error(error);
       throw error;
     }
   }, []);
 
-  const signup = useCallback(async (name: string, email: string, _password: string,deviceToken:string) => {
+  const signup = useCallback(async (name: string, email: string, _password: string, deviceToken: string) => {
     try {
       const payload = {
         name,
@@ -157,13 +139,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   }, []);
 
   const logout = useCallback(async () => {
-    const respons = await userapiRequest('/user/api/v1/auth/logout', 'POST')
+    await userapiRequest('/user/api/v1/auth/logout', 'POST')
     setUser(null);
     localStorage.removeItem('user');
     localStorage.removeItem('accessToken');
+    toast.warning('logout')
   }, []);
 
-  const updateProfile:any = useCallback(async (data: FormData) => {
+  const updateProfile: any = useCallback(async (data: FormData) => {
     const res = await userapiRequest(`/user/api/v1/auth/updateprofile/${user?._id}`, "POST", data)
 
     setUser({ ...res.user });

@@ -10,8 +10,13 @@ const Collection = () => {
     // For now, we'll just show related products.
     const collectionName = slug ? slug.charAt(0).toUpperCase() + slug.slice(1).replace("-", " ") : "Collection";
     
-    // Just a mock filter logic
-    const results = products.filter(p => p.category.toLowerCase().includes(slug || "") || p.brand.toLowerCase().includes(slug || ""));
+    const normalizedSlug = (slug || "").toLowerCase().trim();
+    const results = products.filter((p) => {
+    const category = (p.category || "").toLowerCase().trim();
+    const brand = (p.brand || "").toLowerCase().trim();
+
+    return (category === normalizedSlug ||brand === normalizedSlug)
+});
     const displayProducts = results.length > 0 ? results : products; // Fallback
 
     return (

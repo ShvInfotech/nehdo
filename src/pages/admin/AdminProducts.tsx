@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from "react";
 import {IoAddOutline,IoSearchOutline,IoFilterOutline,IoCloseOutline,IoCloudUploadOutline,IoTrashOutline,IoImageOutline} from "react-icons/io5";
 import { apiRequest } from "../../services/apiService";
+import { toast } from "react-toastify";
 
 const AdminProducts = () => {
     const ITEMS_PER_PAGE = 20;
@@ -318,14 +319,11 @@ const AdminProducts = () => {
                 productImages.forEach((file) => {
                     formData.append("productImage", file);
                 });
-
-                await apiRequest(
-                    `/admin/api/v1/product/update/${editProductId}`,
-                    "PATCH",
-                    formData
-                );
-
-                alert("Product updated successfully");
+    
+                   let res =  await apiRequest(`/admin/api/v1/product/update/${editProductId}`,"PATCH",formData);
+                   toast.success(res.message)
+                    
+               
 
                 await fetchProducts();
 
@@ -375,16 +373,13 @@ const AdminProducts = () => {
             formData.append("variant",JSON.stringify(variants));
             productImages.forEach((file) => {formData.append("productImage", file);});
 
-            await apiRequest("/admin/api/v1/product/add","POST",formData);
-
-            alert("Product added successfully");
-
+           let res =  await apiRequest("/admin/api/v1/product/add","POST",formData);
+           toast.success(res.message)
             await fetchProducts();
             setIsAddModalOpen(false);
             resetForm();
-        } catch (error) {
-            console.log(error);
-            alert(editProductId? "Failed to update product": "Failed to add product");
+        } catch (error:any) {
+            toast.error(error.message)
         } finally {
             setLoading(false);
         }
@@ -420,7 +415,6 @@ const AdminProducts = () => {
     const handleEditProduct = async (id: string) => {
         try {
             const res = await apiRequest(`/admin/api/v1/product/edit/${id}`,"GET");
-
             const {product,variant,inventory,shipping,} = res;
             await fetchSubCategories(product.categoryId);
 
@@ -462,9 +456,8 @@ const AdminProducts = () => {
             setMetaDescription(product.metaDescription || "");
             setIsAddModalOpen(true);
 
-        } catch (error) {
-            console.log(error);
-            alert("Failed to load product details");
+        } catch (error:any) {
+            toast.error("Failed to load product details")
         }
     };
 

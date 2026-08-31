@@ -1,11 +1,8 @@
+import { toast } from "react-toastify";
+
 const API_URL = 'http://192.168.29.73:8001';
 
-export const apiRequest = async (
-  url: string,
-  method: string = 'GET',
-  bodyData: any = null,
-  params: Record<string, any> = {}
-) => {
+export const apiRequest = async (url: string,method: string = 'GET',bodyData: any = null,params: Record<string, any> = {}) => {
   const token = localStorage.getItem('admin_token');
 
  
@@ -80,12 +77,7 @@ export const apiRequest = async (
 
 
 
-export const userapiRequest = async (
-  url: string,
-  method: string = 'GET',
-  bodyData: any = null,
-  params: Record<string, any> = {}
-) => {
+export const userapiRequest = async (url: string,method: string = 'GET',bodyData: any = null,params: Record<string, any> = {}) => {
   const token = localStorage.getItem('accessToken');
 
  
@@ -107,9 +99,12 @@ export const userapiRequest = async (
   // Check FormData
   const isFormData = bodyData instanceof FormData;
 
-  const response = await fetch(finalUrl, {
+  const response:any = await fetch(finalUrl, {
     method,
-    body: bodyData? isFormData? bodyData: JSON.stringify(bodyData): null,
+    // body: bodyData? isFormData? bodyData: JSON.stringify(bodyData): null,
+    body: bodyData
+    ? (isFormData ? bodyData : JSON.stringify(bodyData))
+    : null,
     headers: {
       ...(isFormData ? {} : { 'Content-Type': 'application/json' }),
       Authorization: token ? `Bearer ${token}` : '',
@@ -132,7 +127,7 @@ export const userapiRequest = async (
   if (unauthorizedHandler) {
     unauthorizedHandler();
   }
-
+  toast.error("UNAUTHORIZED")
   return Promise.reject(new Error('UNAUTHORIZED'));
 }
 
@@ -142,12 +137,15 @@ export const userapiRequest = async (
   }
 
   if (response.status >= 500) {
-    // window.location.href = '/server-error';
     return Promise.reject(new Error('Server error'));
   }
 
   if (response.status === 409) {
     return Promise.reject(new Error(data?.message || 'Duplicate entry'));
+  }
+
+   if (response.status === 400) {
+    return Promise.reject(new Error(data?.message));
   }
 
   if (response.status === 404) {
@@ -156,9 +154,7 @@ export const userapiRequest = async (
 
  
 
-  if (!response.ok) {
-    throw new Error(data?.message || 'Something went wrong');
-  }
+  
 
   return data;
 };

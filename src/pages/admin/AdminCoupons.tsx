@@ -29,7 +29,7 @@ const AdminCoupons = () => {
     const [formData, setFormData] = useState(initialFormData);
     const [totalRedemptions, setTotalRedemptions] = useState(0);
     const [totalRevenueLost, setTotalRevenueLost] = useState(0);
-    const handleChange = (e) => {
+    const handleChange = (e:any) => {
         const { name, value } = e.target;
 
         setFormData((prev) => ({
@@ -104,7 +104,7 @@ const AdminCoupons = () => {
             setEditId(null);
 
             getCoupons();
-        } catch (error) {
+        } catch (error:any) {
             console.error(error);
             alert(error?.message || 'Failed to create coupon');
         }
@@ -112,7 +112,7 @@ const AdminCoupons = () => {
 
 
 
-    const handleEdit = (coupon) => {
+    const handleEdit = (coupon:any) => {
         setIsEditMode(true);
         setEditId(coupon._id);
 
@@ -149,9 +149,9 @@ const AdminCoupons = () => {
         setIsAddModalOpen(true);
     };
 
-    const activeCoupons = coupons.filter((coupon) => coupon.status === "active").length || 0;
+    const activeCoupons = coupons.filter((coupon:any) => coupon.status === "active").length || 0;
 
-const expiredCoupons = coupons.filter((coupon) => coupon.status === "expired").length || 0;
+const expiredCoupons = coupons.filter((coupon:any) => coupon.status === "expired").length || 0;
     return (
         <div className="space-y-6">
             <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
@@ -408,7 +408,7 @@ const expiredCoupons = coupons.filter((coupon) => coupon.status === "expired").l
                             </tr>
                         </thead>
                         <tbody className="divide-y divide-gray-100">
-                            {coupons.map((coupon) => (
+                            {coupons.map((coupon:any) => (
                                 <tr key={coupon._id} className="hover:bg-gray-50 transition-colors">
                                     <td className="px-6 py-4 font-bold text-brand font-mono">
                                         {coupon.couponCode}

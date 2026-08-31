@@ -460,20 +460,13 @@ const AdminReviews = () => {
     // RATING PERCENTAGE
     // ==========================================
 
-    const getRatingPercentage = (rating: number) => {
+    const getRatingPercentage = (rating:any) => {
 
         if (!totalReviews) {
             return 0;
         }
 
-        return Math.round(
-            (
-                ratingSummary[
-                    rating as keyof typeof ratingSummary
-                ] /
-                totalReviews
-            ) * 100
-        );
+        return Math.round((ratingSummary[rating as keyof typeof ratingSummary] /totalReviews) * 100);
 
     };
 
@@ -639,7 +632,7 @@ const AdminReviews = () => {
 
                 <div className="space-y-2">
 
-                    {[5, 4, 3, 2, 1].map((stars) => {
+                    {[5, 4, 3, 2, 1].map((stars:any) => {
 
                         const count =
                             ratingSummary[

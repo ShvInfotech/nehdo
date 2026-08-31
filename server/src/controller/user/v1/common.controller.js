@@ -16,6 +16,7 @@ const categoryModel = require('../../../model/category.model')
 const brandModel = require('../../../model/brand.model')
 const bannerModel = require('../../../model/banner.model')
 const ratingModel = require("../../../model/rating.model")
+const { name } = require("ejs")
 
 
 
@@ -190,7 +191,6 @@ exports.PaymentOrder = async (req, res, next) => {
         const discount = req.body?.discount || null
         const shippingcharge = req.body.shippingcharge || null
         const products = await cartModel.aggregate(GetCartProductPaymentOrder(req.body.cartIds));
-        console.log(products)
 
         const outOfStockProducts = [];
 
@@ -223,16 +223,12 @@ exports.PaymentOrder = async (req, res, next) => {
             // =========================
             // 2. SELECTED VARIANT STOCK
             // =========================
-            const selectedVariant = cartItem.variant?.variant?.find(
-                (variant) => {
-                    const variantName =
-                        variant.name?.toLowerCase().trim();
+            const selectedVariant = cartItem.variant?.variant?.find((variant) => {
+                    const variantName = variant.name?.toLowerCase().trim();
 
-                    const cartSize =
-                        cartItem.size?.toLowerCase().trim();
+                    const cartSize = cartItem.size?.toLowerCase().trim();
 
-                    const cartColor =
-                        cartItem.color?.toLowerCase().trim();
+                    const cartColor = cartItem.color?.toLowerCase().trim();
 
                     return (
                         variantName === `${cartColor}/${cartSize}`
@@ -241,7 +237,7 @@ exports.PaymentOrder = async (req, res, next) => {
             );
 
 
-            // Variant na male
+          
             if (!selectedVariant) {
                 outOfStockProducts.push({
                     productId: cartItem.productId,
@@ -274,14 +270,8 @@ exports.PaymentOrder = async (req, res, next) => {
             }
         }
 
-        console.log(outOfStockProducts)
         if (outOfStockProducts.length > 0) {
-            return next(
-                CustomeError(
-                    409,
-                    "Some products or variants do not have sufficient stock"
-                )
-            );
+            return next(CustomeError(422,"Some products or variants do not have sufficient stock"));
         }
         console.log(products)
         let totalprice = FindPriceinProduct(products)
@@ -387,6 +377,7 @@ exports.verifyPayment = async (req, res, next) => {
             orderItems.push({
                 productId: cartItem.productId,
                 variantId: selectedVariant._id,
+                name:product.name,
                 sku: selectedVariant.sku,
                 size: cartItem.size,
                 color: cartItem.color,
@@ -440,6 +431,7 @@ exports.verifyPayment = async (req, res, next) => {
             postalCode: address.postalCode,
         }
 
+        console.log(orderItems)
         const subtotal = orderItems.reduce((sum, item) => sum + item.total, 0);
         const discount = req.body?.discount || 0
         const couponId = req.body?.coupenId || null
@@ -785,11 +777,14 @@ exports.placecodeorder = async (req, res, next) => {
             }
 
             console.log("Selected Variant:", selectedVariant);
-
+            if(cartItem.quantity > selectedVariant.stock ){
+                return next(CustomeError(422,"Some products or variants do not have sufficient stock"))
+            }
             // 4. Order item
             orderItems.push({
                 productId: cartItem.productId,
                 variantId: selectedVariant._id,
+                name:product.name,
                 sku: selectedVariant.sku,
                 size: cartItem.size,
                 color: cartItem.color,

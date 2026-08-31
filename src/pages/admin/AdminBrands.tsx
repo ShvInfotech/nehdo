@@ -2,6 +2,7 @@ import React, { useEffect, useState } from "react";
 import { IoAddOutline, IoSearchOutline, IoEllipsisVertical, IoCloseOutline, IoCloudUploadOutline, IoImageOutline } from "react-icons/io5";
 // import { brands } from "../../data/products";
 import { apiRequest } from "../../services/apiService"
+import { toast } from "react-toastify";
 const AdminBrands = () => {
 
     interface Brand {
@@ -100,10 +101,12 @@ const AdminBrands = () => {
             }
 
             // reset form
+            toast.success('Brand saved successfully')
             resetForm();
             await getbrand();
             setIsAddModalOpen(false);
         } catch (err: any) {
+            toast.error(err.message)
             alert(err.message);
         }
     };
@@ -119,7 +122,7 @@ const AdminBrands = () => {
 
         setIsEditMode(false);
         setEditBrandId('');
-setLogoPreview('');
+        setLogoPreview('');
         setErrors({
             name: '',
             slug: '',
@@ -138,7 +141,7 @@ setLogoPreview('');
         setDescription(brand.description);
         setHomepageDisplay(brand.homepageDisplay);
         setStatus(brand.status);
-         setLogoPreview(brand.logo || '');
+        setLogoPreview(brand.logo || '');
 
         // existing logo string URL છે, File નથી
         setLogo(null);
@@ -261,64 +264,64 @@ setLogoPreview('');
 
                                 {/* Logo */}
                                 <div className="md:col-span-2">
-  <label className="block text-sm font-semibold text-gray-700 mb-2">
-    Brand Logo
-  </label>
+                                    <label className="block text-sm font-semibold text-gray-700 mb-2">
+                                        Brand Logo
+                                    </label>
 
-  <label className="border-2 border-dashed border-gray-300 rounded-xl p-6 text-center bg-gray-50 hover:bg-gray-100 transition-colors cursor-pointer block">
+                                    <label className="border-2 border-dashed border-gray-300 rounded-xl p-6 text-center bg-gray-50 hover:bg-gray-100 transition-colors cursor-pointer block">
 
-    <input
-      type="file"
-      accept="image/*"
-      className="hidden"
-      onChange={(e) => {
-        const file = e.target.files?.[0] || null;
-        setLogo(file);
+                                        <input
+                                            type="file"
+                                            accept="image/*"
+                                            className="hidden"
+                                            onChange={(e) => {
+                                                const file = e.target.files?.[0] || null;
+                                                setLogo(file);
 
-        if (file) {
-          setLogoPreview(URL.createObjectURL(file));
-        }
-      }}
-    />
+                                                if (file) {
+                                                    setLogoPreview(URL.createObjectURL(file));
+                                                }
+                                            }}
+                                        />
 
-    {logoPreview ? (
-      <div className="flex flex-col items-center gap-3">
-        <img
-          src={logoPreview}
-          alt="Brand preview"
-          className="w-24 h-24 object-cover rounded-xl border border-gray-200"
-        />
+                                        {logoPreview ? (
+                                            <div className="flex flex-col items-center gap-3">
+                                                <img
+                                                    src={logoPreview}
+                                                    alt="Brand preview"
+                                                    className="w-24 h-24 object-cover rounded-xl border border-gray-200"
+                                                />
 
-        <p className="text-sm font-medium text-gray-700">
-          {logo ? logo.name : 'Current logo'}
-        </p>
+                                                <p className="text-sm font-medium text-gray-700">
+                                                    {logo ? logo.name : 'Current logo'}
+                                                </p>
 
-        <p className="text-xs text-brand font-semibold">
-          Click to change logo
-        </p>
-      </div>
-    ) : (
-      <>
-        <IoCloudUploadOutline
-          size={32}
-          className="mx-auto text-gray-400 mb-2"
-        />
+                                                <p className="text-xs text-brand font-semibold">
+                                                    Click to change logo
+                                                </p>
+                                            </div>
+                                        ) : (
+                                            <>
+                                                <IoCloudUploadOutline
+                                                    size={32}
+                                                    className="mx-auto text-gray-400 mb-2"
+                                                />
 
-        <p className="text-sm font-semibold text-gray-600">
-          Click to upload brand logo
-        </p>
+                                                <p className="text-sm font-semibold text-gray-600">
+                                                    Click to upload brand logo
+                                                </p>
 
-        <p className="text-xs text-gray-400 mt-1">
-          Recommended: 400×400px, PNG or JPG
-        </p>
-      </>
-    )}
-  </label>
+                                                <p className="text-xs text-gray-400 mt-1">
+                                                    Recommended: 400×400px, PNG or JPG
+                                                </p>
+                                            </>
+                                        )}
+                                    </label>
 
-  {errors.logo && (
-    <p className="text-red-500 text-xs mt-2">{errors.logo}</p>
-  )}
-</div>
+                                    {errors.logo && (
+                                        <p className="text-red-500 text-xs mt-2">{errors.logo}</p>
+                                    )}
+                                </div>
 
                                 {/* Status */}
                                 <div>

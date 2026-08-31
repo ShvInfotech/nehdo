@@ -6,7 +6,12 @@ import { useCart } from "../context/CartContext";
 import { useAuth } from "../context/AuthContext";
 import Breadcrumb from "../components/Breadcrumb";
 import { userapiRequest } from "../services/apiService";
-
+import { toast } from "react-toastify";
+declare global {
+    interface Window {
+        Razorpay?: any;
+    }
+}
 const Checkout = () => {
     const { items, subtotal, shipping, clearCart, setShippingCharge } = useCart();
     const [step, setStep] = useState(1);
@@ -23,7 +28,7 @@ const Checkout = () => {
     const nameParts = user?.name?.trim().split(" ") || [];
     const firstName = nameParts[0] || "";
     const lastName = nameParts.slice(1).join(" ") || "";
-    const storedCoupon = sessionStorage.getItem("appliedCoupon");
+    const storedCoupon: any = sessionStorage.getItem("appliedCoupon");
     const appliedCoupon = JSON.parse(storedCoupon);
 
     const loadRazorpay = () => {
@@ -135,6 +140,8 @@ const Checkout = () => {
 
             // Address check
             if (!defaultAddress?._id) {
+                toast.warning("Please add and select a default shipping address.")
+
                 setErrorMessage("Please add and select a default shipping address.");
                 setIsProcessing(false);
                 setStep(1);
@@ -158,7 +165,7 @@ const Checkout = () => {
             const result = await userapiRequest("/user/api/v1/common/paymentOrder", "POST", { cartIds, discount, shippingcharge: shipping, });
 
             if (result?.success === false) {
-                setErrorMessage(result?.message || "Unable to create payment order.");
+                toast.error(result?.message || "Unable to create payment order.")
                 setIsProcessing(false);
                 return;
             }
@@ -170,7 +177,7 @@ const Checkout = () => {
             setIsProcessing(false);
 
             const options = {
-                key: "rzp_test_MJ6kGUsiZlv1c9",
+                key: "rzp_test_TVSL7tlw4NS59L",
                 amount: result.order.amount,
                 currency: result.order.currency,
                 order_id: result.order.id,
@@ -197,7 +204,7 @@ const Checkout = () => {
                         });
 
                         if (verifyResponse?.success === false) {
-                            setErrorMessage(verifyResponse?.message || "Payment verification failed.");
+                            toast.error(verifyResponse?.message|| "Payment verification failed.")
                             setIsProcessing(false);
                             return;
                         }
@@ -206,27 +213,29 @@ const Checkout = () => {
                             if (verifyResponse?.order?.orderNumber) {
                                 localStorage.setItem("orderId", verifyResponse.order.orderNumber);
                             }
+                            toast.success(verifyResponse.message)
                             setIsProcessing(false);
                             setStep(3);
                         } else {
-                            setErrorMessage(verifyResponse?.message || "Payment verification failed.");
+                            toast.error(verifyResponse?.message || "Payment verification failed.")
                             setIsProcessing(false);
                         }
                     } catch (error: any) {
-                        setErrorMessage(getErrorMessage(error));
+                            toast.error(getErrorMessage(error))
+
                         setIsProcessing(false);
                     }
                 },
             };
             const razorpay = new window.Razorpay(options);
             razorpay.on("payment.failed", function (response: any) {
-                console.error("Payment Failed:", response.error);
-                setErrorMessage(response?.error?.description || response?.error?.reason || "Payment failed. Please try again.");
+                toast.error(response?.error?.description || response?.error?.reason || "Payment failed. Please try again.")
                 setIsProcessing(false);
             }
             );
             razorpay.open();
         } catch (error: any) {
+            toast.error(getErrorMessage(error))
             setErrorMessage(getErrorMessage(error));
             setIsProcessing(false);
         }
@@ -242,16 +251,17 @@ const Checkout = () => {
         }
 
         const verifyResponse = await userapiRequest("/user/api/v1/common/cod-order", "POST", { coupenId: CoupenId, addressId: defaultAddress._id, cartIds, shipping, discount, });
+
         if (verifyResponse?.success) {
             if (verifyResponse?.order?.orderNumber) {
+                toast.success(verifyResponse.message)
                 localStorage.setItem("orderId", verifyResponse.order.orderNumber);
             }
             setIsProcessing(false);
             setErrorMessage("")
             setStep(3);
         } else {
-            setErrorMessage(verifyResponse?.message || "try again"
-            );
+            toast.error(verifyResponse?.message);
             setIsProcessing(false);
         }
     };
@@ -271,8 +281,8 @@ const Checkout = () => {
             const res = await userapiRequest("/user/api/v1/common/checkshiping", "POST", { addressId: defaultAddress?._id, cartIds: shippingCartIds, cod: false });
             setShippingCharge(res.shipping)
             if (appliedCoupon?.type == "shipping") {
-            setDiscount(Number(res.shipping))
-        }
+                setDiscount(Number(res.shipping))
+            }
         } catch (error) {
             setErrorMessage(getErrorMessage(error))
         }

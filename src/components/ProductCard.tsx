@@ -16,6 +16,7 @@ const ProductCard: React.FC<{ product: Product; index?: number }> = ({ product, 
   e.preventDefault();
 
   await addItem({
+    shipping:false,
     productId: product.id,
     name: product.name,
     brand: product.brand,

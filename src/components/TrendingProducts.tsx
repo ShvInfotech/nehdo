@@ -6,8 +6,6 @@ import ProductCard from "./ProductCard";
 import { products } from "../data/products";
 
 const TrendingProducts = () => {
-    // Get 10 products for the 2-line grid (5 products per line)
-    // First try to get trending ones, then pad with others if needed
     const trending = products.filter(p => p.isTrending);
     const others = products.filter(p => !p.isTrending);
     const displayProducts = [...trending].slice(0, 10);

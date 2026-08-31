@@ -7,7 +7,7 @@ import React, {
 } from 'react';
 
 import { userapiRequest } from '../services/apiService';
-import { number } from 'framer-motion';
+import { toast } from 'react-toastify';
 
 export interface CartItem {
   _id: string;
@@ -25,34 +25,17 @@ export interface CartItem {
 
 interface CartContextType {
   items: CartItem[];
-  addItem: (
-    item: Omit<CartItem, '_id' | 'quantity'>,
-    quantity?: number
-  ) => Promise<void>;
-
-  removeItem: (
-    cartId: string
-  ) => Promise<void>;
-
-  updateQuantity: (
-    cartId: string,
-    quantity: number
-  ) => Promise<void>;
-
+  addItem: (item: Omit<CartItem, '_id' | 'quantity'>,quantity?: number) => Promise<void>;
+  removeItem: (cartId: string) => Promise<void>;
+  updateQuantity: (cartId: string,quantity: number) => Promise<void>;
   refreshCart: () => Promise<void>;
-
   clearCart: () => void;
-
   itemCount: number;
   cartCount: number;
-
   subtotal: number;
   shipping: number;
   setShippingCharge: (amount: number) => void;
-  shippingInfo: {
-    estimated_delivery_days?: string;
-    courier_name?: string;
-  } | null;
+  shippingInfo: {estimated_delivery_days?: string;courier_name?: string;} | null;
   setShippingInfo: (info: any) => void;
   total: number;
 }
@@ -63,10 +46,7 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const [items, setItems] = useState<CartItem[]>([]);
   const [shippingCharge, setShippingCharge] = useState(0);
-  const [shippingInfo, setShippingInfo] = useState<{
-    estimated_delivery_days?: string;
-    courier_name?: string;
-  } | null>(null);
+  const [shippingInfo, setShippingInfo] = useState<{estimated_delivery_days?: string;courier_name?: string;} | null>(null);
   // Load cart from backend
   const refreshCart = useCallback(async () => {
 
@@ -79,10 +59,7 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
         return;
       }
 
-      const res: any = await userapiRequest(
-        '/user/api/v1/cart/get',
-        'GET'
-      );
+      const res: any = await userapiRequest('/user/api/v1/cart/get','GET');
 
       const carts = res.carts || [];
 
@@ -115,28 +92,16 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
   }, [refreshCart]);
 
   // Add item
-  const addItem = useCallback(async (
-    item: Omit<CartItem, '_id' | 'quantity'>,
-    quantity = 1
-  ) => {
+  const addItem = useCallback(async (item: Omit<CartItem, '_id' | 'quantity'>,quantity = 1) => {
 
     try {
 
-      await userapiRequest(
-        '/user/api/v1/cart/add',
-        'POST',
-        {
-          productId: item.productId,
-          size: item.size,
-          color: item.color,
-          quantity
-        }
-      );
-
+     let res =  await userapiRequest('/user/api/v1/cart/add','POST',{productId: item.productId,size: item.size,color: item.color,quantity});
+     toast.success(res.message)
       await refreshCart();
+    } catch (error:any) {
+     toast.error(error.message)
 
-    } catch (error) {
-      console.error('Add cart failed', error);
     }
 
   }, [refreshCart]);
@@ -145,28 +110,18 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const removeItem = useCallback(async (cartId: string) => {
 
     try {
+    const res =  await userapiRequest(`/user/api/v1/cart/delete/${cartId}`,'DELETE');
+    toast.warn(res.message)
 
-      await userapiRequest(
-        `/user/api/v1/cart/delete/${cartId}`,
-        'DELETE'
-      );
-
-      setItems(prev =>
-        prev.filter(item => item._id !== cartId)
-      );
-
-    } catch (error) {
-      console.error('Remove cart failed', error);
+      setItems(prev =>prev.filter(item => item._id !== cartId));
+    } catch (error:any) {
+     toast.error(error.message)
     }
 
   }, []);
 
   // Update quantity
-  const updateQuantity = useCallback(async (
-    cartId: string,
-    quantity: number
-  ) => {
-
+  const updateQuantity = useCallback(async (cartId: string,quantity: number) => {
     try {
 
       if (quantity <= 0) {
@@ -174,20 +129,8 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
         return;
       }
 
-      await userapiRequest(
-        `/user/api/v1/cart/update/${cartId}`,
-        'PATCH',
-        { quantity }
-      );
-
-      setItems(prev =>
-        prev.map(item =>
-          item._id === cartId
-            ? { ...item, quantity }
-            : item
-        )
-      );
-
+      await userapiRequest(`/user/api/v1/cart/update/${cartId}`,'PATCH',{ quantity });
+      setItems(prev =>prev.map(item =>item._id === cartId? { ...item, quantity }: item));
     } catch (error) {
       console.error('Update quantity failed', error);
     }
@@ -198,17 +141,11 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setItems([]);
   }, []);
 
-  const itemCount = items.reduce(
-    (sum, item) => sum + item.quantity,
-    0
-  );
+  const itemCount = items.reduce((sum, item) => sum + item.quantity,0);
 
   const cartCount = items.length
 
-  const subtotal = items.reduce(
-    (sum, item) => sum + item.price * item.quantity,
-    0
-  );
+  const subtotal = items.reduce((sum, item) => sum + item.price * item.quantity,0);
 
   const shipping = shippingCharge;
 

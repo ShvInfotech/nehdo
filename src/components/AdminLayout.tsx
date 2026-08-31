@@ -18,6 +18,7 @@ const sidebarLinks = [
         { name: "Categories", path: "/admin/categories", icon: IoLayersOutline },
         { name: "Brands", path: "/admin/brands", icon: IoPricetagOutline },
         { name: "Orders", path: "/admin/orders", icon: IoCartOutline },
+        { name: "Cancelled Orders", path: "/admin/Canceledorders", icon: IoCartOutline },
         { name: "Customers", path: "/admin/customers", icon: IoPeopleOutline },
         { name: "Inventory", path: "/admin/inventory", icon: IoStatsChartOutline },
     ]},

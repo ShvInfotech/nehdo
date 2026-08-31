@@ -1,6 +1,7 @@
 const mongoose = require("mongoose");
 const productModel = require("../model/product.model");
 const ratingModel = require("../model/rating.model");
+const categoryModel = require("../model/category.model");
 
 
 exports.getproductspipeline = () => {
@@ -483,7 +484,7 @@ pipeline.push({
 
     pipeline.push({
         $project: {
-
+ createdAt: 1,
             name: 1,
             price: 1,
             salePrice: 1,
@@ -596,13 +597,13 @@ pipeline.push({
                     $sort: sort
                 },
 
-                {
-                    $skip: (Number(page) - 1) * Number(limit)
-                },
+                // {
+                //     $skip: (Number(page) - 1) * Number(2)
+                // },
 
-                {
-                    $limit: Number(limit)
-                }
+                // {
+                //     $limit: Number(limit)
+                // }
 
             ],
 
@@ -1376,7 +1377,7 @@ exports.GetHeroBanners = () =>{
                                 _id: 1,
                                 name: 1,
                                 salePrice: 1,
-
+categoryId: 1,
                                 // First image only
                                 image: {
                                     $arrayElemAt: [
@@ -1413,49 +1414,36 @@ exports.GetHeroBanners = () =>{
                 },
             },
 
+
+
+        {
+    $lookup: {
+        from: categoryModel.collection.name,
+        localField: "product.categoryId",
+        foreignField: "_id",
+        as: "category",
+    },
+},
+{
+    $unwind: {
+        path: "$category",
+        preserveNullAndEmptyArrays: true,
+    },
+},
+
+
             // =====================================================
             // FINAL RESPONSE
             // =====================================================
             {
                 $project: {
                     _id: 1,
-
                     title: 1,
                     subtitle: 1,
-
-                   
-                   
-                   
-
-                    
-
-                    // =============================================
-                    // DESKTOP IMAGE WITH DOMAIN
-                    // =============================================
                     desktopImage: {
                         $cond: [
-                            {
-                                $and: [
-                                    {
-                                        $ne: [
-                                            "$desktopImage",
-                                            null,
-                                        ],
-                                    },
-                                    {
-                                        $ne: [
-                                            "$desktopImage",
-                                            "",
-                                        ],
-                                    },
-                                ],
-                            },
-                            {
-                                $concat: [
-                                    `http://${process.env.HOST}:${process.env.PORT}`,"$desktopImage",
-                                ],
-                            },
-                            "",
+                            {$and: [{$ne: ["$desktopImage",null,],},{$ne: ["$desktopImage","",],},],},
+                            {$concat: [`http://${process.env.HOST}:${process.env.PORT}`,"$desktopImage",],},"",
                         ],
                     },
 
@@ -1464,29 +1452,8 @@ exports.GetHeroBanners = () =>{
                     // =============================================
                     mobileImage: {
                         $cond: [
-                            {
-                                $and: [
-                                    {
-                                        $ne: [
-                                            "$mobileImage",
-                                            null,
-                                        ],
-                                    },
-                                    {
-                                        $ne: [
-                                            "$mobileImage",
-                                            "",
-                                        ],
-                                    },
-                                ],
-                            },
-                            {
-                                $concat: [
-                                    `http://${process.env.HOST}:${process.env.PORT}`,
-                                    "$mobileImage",
-                                ],
-                            },
-                            "",
+                            {$and: [{$ne: ["$mobileImage",null,],},{$ne: ["$mobileImage","",],},],},
+                            {$concat: [`http://${process.env.HOST}:${process.env.PORT}`,"$mobileImage",],},"",
                         ],
                     },
 
@@ -1495,55 +1462,25 @@ exports.GetHeroBanners = () =>{
                     // =============================================
                     product: {
                         $cond: [
-                            {
-                                $ne: [
-                                    "$product",
-                                    null,
-                                ],
-                            },
+                            {$ne: ["$product",null,],},
                             {
                                 _id: "$product._id",
-
                                 name: "$product.name",
-
-                                salePrice:
-                                    "$product.salePrice",
-
-                                avgRating:
-                                    "$product.avgRating",
-
+                                salePrice:"$product.salePrice",
+                                avgRating:"$product.avgRating",
+                                category: "$category.name",
                                 // Product first image with domain
                                 image: {
                                     $cond: [
-                                        {
-                                            $and: [
-                                                {
-                                                    $ne: [
-                                                        "$product.image",
-                                                        null,
-                                                    ],
-                                                },
-                                                {
-                                                    $ne: [
-                                                        "$product.image",
-                                                        "",
-                                                    ],
-                                                },
-                                            ],
-                                        },
-                                        {
-                                            $concat: [
-                                                `http://${process.env.HOST}:${process.env.PORT}`,
-                                                "$product.image",
-                                            ],
-                                        },
-                                        "",
+                                        {$and: [{$ne: ["$product.image",null,],},{$ne: ["$product.image","",],},],},
+                                        {$concat: [`http://${process.env.HOST}:${process.env.PORT}`,"$product.image",],},"",
                                     ],
                                 },
                             },
                             null,
                         ],
                     },
+            
                 },
             },
         ]

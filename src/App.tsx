@@ -5,6 +5,9 @@ import Home from './pages/Home';
 import { useEffect } from 'react';
 import { loadProducts } from './data/products';
 
+import { ToastContainer } from "react-toastify";
+import "react-toastify/dist/ReactToastify.css";
+
 const Shop = lazy(() => import('./pages/Shop'));
 const ProductDetail = lazy(() => import('./pages/Product'));
 const Cart = lazy(() => import('./pages/Cart'));
@@ -30,6 +33,7 @@ const AdminProducts = lazy(() => import('./pages/admin/AdminProducts'));
 const AdminCategories = lazy(() => import('./pages/admin/AdminCategories'));
 const AdminBrands = lazy(() => import('./pages/admin/AdminBrands'));
 const AdminOrders = lazy(() => import('./pages/admin/AdminOrders'));
+const AdminCancelledOrders = lazy(() => import('./pages/admin/AdminCancelledOrders'));
 const AdminCustomers = lazy(() => import('./pages/admin/AdminCustomers'));
 const AdminInventory = lazy(() => import('./pages/admin/AdminInventory'));
 const AdminCoupons = lazy(() => import('./pages/admin/AdminCoupons'));
@@ -105,6 +109,7 @@ function App() {
                             <Route path="categories" element={<AdminCategories />} />
                             <Route path="brands" element={<AdminBrands />} />
                             <Route path="orders" element={<AdminOrders />} />
+                            <Route path="canceledorders" element={<AdminCancelledOrders />} />
                             <Route path="customers" element={<AdminCustomers />} />
                             <Route path="inventory" element={<AdminInventory />} />
                             <Route path="coupons" element={<AdminCoupons />} />
@@ -121,6 +126,18 @@ function App() {
                         </Route>
                     </Route>
                 </Routes>
+
+                 <ToastContainer
+                position="top-right"
+                autoClose={3000}
+                hideProgressBar={false}
+                newestOnTop
+                closeOnClick
+                pauseOnFocusLoss
+                draggable
+                pauseOnHover
+                theme="light"
+            />
             </Suspense>
         </BrowserRouter>
     );

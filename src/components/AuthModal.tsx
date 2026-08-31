@@ -17,6 +17,7 @@ import { useCart } from '../context/CartContext';
 import { signInWithPopup } from "firebase/auth";
 import { auth, googleProvider, messaging } from "../services/firebase";
 import { getToken } from "firebase/messaging";
+import { toast } from 'react-toastify';
 // import {messaging} from "../../public/"
 
 const AuthModal = () => {
@@ -26,7 +27,7 @@ const AuthModal = () => {
     closeAuthModal,
     login,
     signup,
-  }:any = useAuth();
+  }: any = useAuth();
 
   const navigate = useNavigate();
 
@@ -45,37 +46,32 @@ const AuthModal = () => {
   if (!authModalMode) return null;
 
   const isLogin = authModalMode === 'login';
-const { refreshWishlist } = useWishlist();
-const { refreshCart } = useCart();
+  const { refreshWishlist } = useWishlist();
+  const { refreshCart } = useCart();
 
 
 
-const getDeviceToken = async () => {
-  try {
-    const permission = await Notification.requestPermission();
+  const getDeviceToken = async () => {
+    try {
+      const permission = await Notification.requestPermission();
+      if (permission !== "granted") {
+        console.log("Notification permission denied");
+        return null;
+      }
 
-    if (permission !== "granted") {
-      console.log("Notification permission denied");
+      const swPath = `${import.meta.env.BASE_URL}firebase-messaging-sw.js`;
+      const registration = await navigator.serviceWorker.register("/nehdo/firebase-messaging-sw.js"
+      );
+      const token = await getToken(messaging, {vapidKey: "BJ9rA0mIYGOm2eoQIY5w3CX3iUf_jf8Hl_TU4BZYEtWCW6NSdITn5CRY0Bz25Fa1CYyfbTdt1xWEh7ylwru0BiY",serviceWorkerRegistration: registration,});
+      return token;
+    } catch (error) {
+      console.error("FCM Token Error:", error);
       return null;
     }
+  };
 
-    const swPath = `${import.meta.env.BASE_URL}firebase-messaging-sw.js`;
 
-  
 
-    const registration = await navigator.serviceWorker.register(
-  "/nehdo/firebase-messaging-sw.js"
-);
-    const token = await getToken(messaging, {
-      vapidKey: "BJ9rA0mIYGOm2eoQIY5w3CX3iUf_jf8Hl_TU4BZYEtWCW6NSdITn5CRY0Bz25Fa1CYyfbTdt1xWEh7ylwru0BiY",
-      serviceWorkerRegistration: registration,
-    });
-    return token;
-  } catch (error) {
-    console.error("FCM Token Error:", error);
-    return null;
-  }
-};
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
@@ -83,70 +79,59 @@ const getDeviceToken = async () => {
       setError('');
 
       let res;
-    const deviceToken:any = await getDeviceToken();
+      const deviceToken: any = await getDeviceToken();
 
       if (isLogin) {
-        res = await login(email, password,deviceToken);
+        res = await login(email, password, deviceToken);
       } else {
-        res = await signup(name, email, password,deviceToken);
+        res = await signup(name, email, password, deviceToken);
       }
 
+      if (res) {
+        console.log(res)
+        setName('');
+        setEmail('');
+        setPassword('');
+        await refreshWishlist();
+        await refreshCart()
+        toast.success(res.message)
+        navigate('/account');
+      }
+    } catch (err: any) {
+      toast.error(err.message)
+    }
+  };
+
+  const handalgoogleLogin = async () => {
+    try {
+      const result = await signInWithPopup(auth, googleProvider);
+      const user = result.user;
+
+      // Real Firebase ID Token
+      const GoogleIdToken = await user.getIdToken();
+      const deviceToken: any = await getDeviceToken();
+      let res = await login("", "", deviceToken, GoogleIdToken, 'google')
       if (res) {
         setName('');
         setEmail('');
         setPassword('');
-         await refreshWishlist();
-         await refreshCart()
+        await refreshWishlist();
+        await refreshCart()
         navigate('/account');
       }
-    } catch (err: any) {
-      setError(err.message || 'Something went wrong');
-    }
-  };
-
-  const handalgoogleLogin = async ()=>{
-    try {
- const result = await signInWithPopup(auth, googleProvider);
- const user = result.user;
-
-    // Real Firebase ID Token
-    const GoogleIdToken = await user.getIdToken();
-    const deviceToken:any = await getDeviceToken();
-     let res = await login("","",deviceToken,GoogleIdToken,'google')
-      if(res){
-        setName('');
-        setEmail('');
-        setPassword('');
-         await refreshWishlist();
-         await refreshCart()
-        navigate('/account');
-      }
-    } catch (error:any) {
-      setError(error.message || 'Something went wrong');
-      
+    } catch (error: any) {
+      toast.error(error.message)
     }
   }
 
   const handleForgotPassword = async (e: React.FormEvent) => {
     e.preventDefault();
-
     try {
       setForgotLoading(true);
-      setForgotMessage('');
-
-      const res: any = await userapiRequest(
-        '/user/api/v1/auth/forgot-password',
-        'POST',
-        { email: forgotEmail }
-      );
-
-      setForgotMessage(
-        res.message || 'Reset link sent to your email'
-      );
+      const res: any = await userapiRequest('/user/api/v1/auth/forgot-password', 'POST', { email: forgotEmail });
+      toast.success(res.message)
     } catch (error: any) {
-      setForgotMessage(
-        error.message || 'Failed to send reset email'
-      );
+      toast.error(error.message)
     } finally {
       setForgotLoading(false);
     }
@@ -194,16 +179,16 @@ const getDeviceToken = async () => {
                 {forgotMode
                   ? 'Recover your account.'
                   : isLogin
-                  ? 'Elevate your shopping experience.'
-                  : 'Join our fashion community.'}
+                    ? 'Elevate your shopping experience.'
+                    : 'Join our fashion community.'}
               </h2>
 
               <p className="text-white/80 font-medium">
                 {forgotMode
                   ? 'Enter your registered email and we will send you a password reset link.'
                   : isLogin
-                  ? 'Access your saved items, track your orders, and discover new styles tailored just for you.'
-                  : 'Create an account to track orders, save favorites to your wishlist, and check out faster.'}
+                    ? 'Access your saved items, track your orders, and discover new styles tailored just for you.'
+                    : 'Create an account to track orders, save favorites to your wishlist, and check out faster.'}
               </p>
 
             </div>

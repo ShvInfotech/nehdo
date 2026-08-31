@@ -35,7 +35,7 @@ const orderSchema = mongoose.Schema(
                     type: Number,
                     required: true,
                 },
-                image:String,
+                image: String,
 
                 price: {
                     type: Number,
@@ -109,17 +109,17 @@ const orderSchema = mongoose.Schema(
             },
             status: {
                 type: String,
-                enum: ["pending", "paid", "failed", "refunded"],
+                enum: ["pending", "paid", "failed", "refunded",],
                 default: "paid",
             },
 
             orderId: {
-                type:String,
-                default:''
+                type: String,
+                default: ''
             },
             paymentId: {
-                type:String,
-                default:''
+                type: String,
+                default: ''
             },
         },
 
@@ -154,6 +154,10 @@ const orderSchema = mongoose.Schema(
 
         trackingUrl: {
             type: String,
+            default: null,
+        },
+        deliveredAt: {
+            type: Date,
             default: null,
         },
     },

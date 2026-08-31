@@ -61,9 +61,7 @@ const checkUserCouponEligibility = async (coupon, user) => {
         }
         return userEligibility
     }
-
     if (coupon.couponUser == "specificCustomer") {
-
         const userEmail = user.email
         const couponEmails = coupon.applayCustomer
         const isUserEligible = couponEmails.includes(userEmail);
@@ -208,7 +206,8 @@ exports.PercentageCoupenapplay = async (coupon, carts, user) => {
 
 
 exports.CartDiscountCoupenapplay = async(coupon, carts,user) => {
-    const userEligibility = checkUserCouponEligibility(coupon)
+    
+    const userEligibility = checkUserCouponEligibility(coupon,user)
     if (!userEligibility) {
         return { success: false, message: "coupon not apply this user" }
     }
@@ -356,6 +355,13 @@ exports.generateOrderNumber = async () => {
 
     return orderNumber;
 };
+
+
+
+
+
+
+
 
 
 

@@ -161,7 +161,6 @@ exports.UserLogin = async (req, res, next) => {
 exports.GoogelLogin = async (req, res, next) => {
     try {
 
-        console.log(req.body)
 
         if (!req.body?.GoogleIdToken) {
             return next(CustomeError(422, "GoogleIdToken is required"))

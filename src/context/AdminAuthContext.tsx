@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useState, useCallback, useEffect } from "react";
 import { apiRequest, userapiRequest } from "../services/apiService"
+import { toast } from "react-toastify";
 interface AdminUser {
     email: string;
     name: string;
@@ -58,25 +59,29 @@ export const AdminAuthProvider: React.FC<{ children: React.ReactNode }> = ({ chi
 
     const adminLogin = useCallback(async (email: string, password: string) => {
 
-        const data = await apiRequest('/user/api/v1/auth/login', "POST", { email, password },{})
-
+        try {
+            const data = await apiRequest('/user/api/v1/auth/login', "POST", { email, password },{})
         
         if(data.user.role !== "admin"){
+
             return { success: false, error: "Invalid email or password. Please try again."};
         }
         setAdminUser(data.user);
         setAccessToken(data.accesstoken)
        return { success: true };
+        } catch (error:any) {
+            toast.error("Invalid email or password. Please try again.")
+            return  { success: false }
+        }
     }, []);
 
     const adminLogout = useCallback(async() => {
-            const respons  = await apiRequest('/user/api/v1/auth/logout','POST')
-              console.log(respons)
+        await apiRequest('/user/api/v1/auth/logout','POST')
         setAdminUser(null);
         setAccessToken(null)
         localStorage.removeItem("nehdo_admin");
         localStorage.removeItem("admin_token");
-
+        toast.warning("logout")
     }, []);
 
     return (

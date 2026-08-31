@@ -90,7 +90,7 @@ const Cart = () => {
                 setShippingInfo({ estimated_delivery_days: res.estimated_delivery_days, courier_name: res.courier_name });
                 sessionStorage.setItem("shippingCharge", JSON.stringify(res.shipping))
             }
-        } catch (error) {
+        } catch (error:any) {
             console.log(error);
             setShippingError(error?.message || "Unable to calculate shipping charge.");
             setTimeout(() => {

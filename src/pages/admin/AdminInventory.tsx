@@ -965,7 +965,7 @@ const AdminInventory = () => {
 
                             ) : (
 
-                                filteredRows.map((row) => {
+                                filteredRows.map((row:any) => {
 
                                     const status = getStockStatus(row.stock);
 

@@ -1,6 +1,7 @@
 const { default: mongoose } = require("mongoose");
 const { CustomeError } = require("../../../middleware/globelError");
 const orderModel = require("../../../model/order.model");
+const orderRequestsModel = require('../../../model/orderRequests.model')
 const { getshippingcharg, CreatOrderINShiproket, AssignCourierAndAWB, GenerateLabel } = require("../../../services/shiproketapis");
 const { label } = require("framer-motion/client");
 
@@ -30,25 +31,25 @@ exports.PendingOrder = async (req, res, next) => {
                     "user.email": 1,
                     "user.phone": 1,
                     items: {
-            $map: {
-                input: "$items",
-                as: "item",
-                in: {
-                    $mergeObjects: [
-                        "$$item",
-                        {
-                            image: {
-                                $cond: [
-                                    { $ne: ["$$item.image", null] },
-                                    {$concat: [`http://${process.env.HOST}:${process.env.PORT}`,"$$item.image"]},
-                                    null
+                        $map: {
+                            input: "$items",
+                            as: "item",
+                            in: {
+                                $mergeObjects: [
+                                    "$$item",
+                                    {
+                                        image: {
+                                            $cond: [
+                                                { $ne: ["$$item.image", null] },
+                                                { $concat: [`http://${process.env.HOST}:${process.env.PORT}`, "$$item.image"] },
+                                                null
+                                            ]
+                                        }
+                                    }
                                 ]
                             }
                         }
-                    ]
-                }
-            }
-        },
+                    },
                     shippingAddress: 1,
                     payment: 1,
                     subtotal: 1,
@@ -172,7 +173,7 @@ exports.AccepteOrder = async (req, res, next) => {
             // અહીં order પ્રમાણે courier store/use કરી શકો
 
             const order_items = order.items.map(item => ({
-                name: `${item.color} ${item.size}`,
+                name: item.name,
                 sku: item.sku,
                 units: Number(item.quantity),
                 selling_price: Number(item.price),
@@ -214,13 +215,14 @@ exports.AccepteOrder = async (req, res, next) => {
                     weight
                 }
 
-            console.log(createorderData)
+
 
 
             const confirmorderData = await CreatOrderINShiproket(createorderData)
             const awsData = {
                 shipment_id: confirmorderData.shipment_id,
-                courier_id: courierDetails.courierId
+                courier_id: courierDetails.courierId,
+
             }
             // const awsNumber = await AssignCourierAndAWB(awsData)    // pending aws not provide by shiproket in test mode 
             // console.log(awsNumber.data.errors)
@@ -251,18 +253,18 @@ exports.GanrateLabel = async (req, res, next) => {
         if (!req.body?.shipmentIds && !req.body?.shipmentIds?.length) {
             return CustomeError(422, "shipmentId not provide")
         }
-console.log(req.body?.shipmentIds)
+        console.log(req.body?.shipmentIds)
         const respons = await GenerateLabel(req.body?.shipmentIds)
-console.log(respons)
+        console.log(respons)
 
         const notCreatedShipmentIds = Object.keys(respons.not_created);
         const successfulShipmentIds = req.body?.shipmentIds.filter((shipmentId) => !notCreatedShipmentIds.includes(String(shipmentId)));
 
 
 
-         const updateOrders = await orderModel.updateMany(
-            {shiprocketShipmentId: {$in: req.body.shipmentIds},status: "accepted"},
-            {$set: {status: "processing"}}
+        const updateOrders = await orderModel.updateMany(
+            { shiprocketShipmentId: { $in: req.body.shipmentIds }, status: "accepted" },
+            { $set: { status: "processing" } }
         );
 
         // const updateOrders = await orderModel.updateMany(
@@ -271,9 +273,115 @@ console.log(respons)
         // );
 
         console.log("Updated orders:", updateOrders.modifiedCount);
-        return res.status(200).json({ success: true, message: ` label Genareted`,label_url:'https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf'
-  })
+        return res.status(200).json({
+            success: true, message: ` label Genareted`, label_url: 'https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf'
+        })
         // return res.status(200).json({ success: true, message: `label Genareted`,label_url:respons?.label_url  })
+
+    } catch (error) {
+        return next(error)
+    }
+}
+
+
+exports.CanceledOrderRequest = async (req, res, next) => {
+    try {
+
+
+
+        const orders = await orderRequestsModel.aggregate([
+
+
+            // Order details
+            {
+                $lookup: {
+                    from: "orders",
+                    localField: "orderId",
+                    foreignField: "_id",
+                    as: "orderData",
+                },
+            },
+
+            {
+                $unwind: {
+                    path: "$orderData",
+                    preserveNullAndEmptyArrays: true,
+                },
+            },
+
+            // User details
+            {
+                $lookup: {
+                    from: "users",
+                    localField: "userId",
+                    foreignField: "_id",
+                    as: "user",
+                },
+            },
+
+            {
+                $unwind: {
+                    path: "$user",
+                    preserveNullAndEmptyArrays: true,
+                },
+            },
+
+            // Response structure
+            {
+                $project: {
+                    _id: 1,
+                    orderId: 1,
+                    userId: 1,
+                    type: 1,
+                    initiatedBy: 1,
+                    reason: 1,
+                    status: 1,
+                    completedAt: 1,
+                    createdAt: 1,
+                    updatedAt: 1,
+                    refund: 1,
+                    order:1,
+                    orderNumber: "$orderData.orderNumber",
+
+                    user: {
+                        _id: "$user._id",
+                        name: "$user.name",
+                        email: "$user.email",
+                        phone: "$user.phone",
+                        profile: {
+                            $cond: [
+                                {
+                                    $and: [
+                                        { $ne: ["$user.profile", null] },
+                                        { $ne: ["$user.profile", ""] },
+                                    ],
+                                },
+                                {
+                                    $concat: [
+                                        `http://${process.env.HOST}:${process.env.PORT}`,
+                                        "$user.profile",
+                                    ],
+                                },
+                                null,
+                            ],
+                        },
+                    },
+                },
+            },
+
+            {
+                $sort: {
+                    createdAt: -1,
+                },
+            },
+        ]);
+
+        return res.status(200).json({ success: true, message: "Get canceled return rto order", orders, });
+
+
+
+
+
 
     } catch (error) {
         return next(error)
@@ -284,6 +392,10 @@ console.log(respons)
 
 exports.ShippingWebhook = async (req, res, next) => {
     try {
+
+
+        console.log(req.body)
+        // return
         const apiKey = req.headers["x-api-key"];
 
         if (apiKey !== "123456abc") {
@@ -293,7 +405,7 @@ exports.ShippingWebhook = async (req, res, next) => {
             });
         }
 
-        console.log(req.body)
+        console.log("webhook call", req.body)
         const {
             awb,
             current_status,
@@ -312,13 +424,19 @@ exports.ShippingWebhook = async (req, res, next) => {
             "CANCELED": "cancelled",
             "CANCELLED": "cancelled"
         };
-        console.log(req.body)
         const newStatus = statusMap[current_status?.toUpperCase()];
         const generateRandom6Digit = () => {
             return Math.floor(100000 + Math.random() * 900000);
         };
-        const updateorder = await orderModel.findOneAndUpdate({ trackingNumber: awb }, { status: newStatus, trackingNumber: generateRandom6Digit() }, { returnDocument: 'after' })
-        console.log(updateorder)
+
+
+        const filter = awb ? { trackingNumber: awb } : { shiprocketOrderId: sr_order_id };
+        const updateorder = await orderModel.findOneAndUpdate(filter, { status: newStatus, trackingNumber: generateRandom6Digit() }, { returnDocument: 'after' })
+        if (newStatus === "delivered" && updateorder.payment.method == "cod" && updateorder.payment.status == "pending") {
+            await orderModel.findByIdAndUpdate(updateorder._id, { $set: { "payment.status": "paid", deliveredAt: Date.now() } });
+        } else if (newStatus === "delivered") {
+            await orderModel.findByIdAndUpdate(updateorder._id, { $set: { deliveredAt: Date.now() } });
+        }
         return res.json(true)
     } catch (error) {
         return next(error)

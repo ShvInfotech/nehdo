@@ -5,6 +5,7 @@ import {
     IoFolderOutline, IoGitBranchOutline, IoFilterOutline
 } from "react-icons/io5";
 import { apiRequest } from "../../services/apiService"
+import { toast } from "react-toastify";
 interface CategoryItem {
     id: number;
     name: string;
@@ -117,7 +118,7 @@ const AdminCategories = () => {
                 );
 
                 if (!selectedParent) {
-                    alert("Please select parent category");
+                    toast.warn("Please select parent category")
                     return;
                 }
 
@@ -140,17 +141,9 @@ const AdminCategories = () => {
                 }
 
                 if (editingCategory) {
-                    await apiRequest(
-                        `/admin/api/v1/subcategory/update/${editingCategory.id}`,
-                        "PATCH",
-                        formData
-                    );
+                    await apiRequest(`/admin/api/v1/subcategory/update/${editingCategory.id}`,"PATCH",formData);
                 } else {
-                    await apiRequest(
-                        "/admin/api/v1/subcategory/add",
-                        "POST",
-                        formData
-                    );
+                    await apiRequest("/admin/api/v1/subcategory/add","POST",formData);
                 }
 
                 await fetchCategories();
@@ -158,7 +151,7 @@ const AdminCategories = () => {
                 setIsAddModalOpen(false);
                 resetForm();
 
-                alert("Sub Category saved successfully");
+                toast.success("Sub Category saved successfully")
                 return;
             }
             const formData = new FormData();
@@ -185,11 +178,9 @@ const AdminCategories = () => {
 
             setIsAddModalOpen(false);
             resetForm();
-
-            alert("Category saved successfully");
-        } catch (error) {
-            console.log(error);
-            alert("Something went wrong");
+       toast.success("Category saved successfully")
+        } catch (error:any) {
+           toast.error(error.message)
         }
     };
 
@@ -221,11 +212,7 @@ const AdminCategories = () => {
         setCategoryType(cat.parentCategory ? "sub" : "main");
         setName(cat.name);
         setSlug(cat.slug);
-        setParentCategory(
-            String(
-                mainCategories.find(m => m.name === cat.parentCategory)?.id || ""
-            )
-        );
+        setParentCategory(String(mainCategories.find(m => m.name === cat.parentCategory)?.id || ""));
         setDescription(cat.description);
         setDisplayOrder(cat.displayOrder);
         setStatus(cat.status);
@@ -245,21 +232,18 @@ const AdminCategories = () => {
 
             if (item?.parentCategory) {
                 // Sub category
-                await apiRequest(
-                    `/admin/api/v1/subcategory/delete/${id}`,
-                    "DELETE"
-                );
+                await apiRequest(`/admin/api/v1/subcategory/delete/${id}`,"DELETE");
+                toast.success('subcategory deleted')
             } else {
                 // Main category
-                await apiRequest(
-                    `/admin/api/v1/category/delete/${id}`,
-                    "DELETE"
-                );
+                await apiRequest(`/admin/api/v1/category/delete/${id}`,"DELETE");
+                toast.success('category deleted')
+
             }
 
             await fetchCategories();
-        } catch (error) {
-            console.log(error);
+        } catch (error:any) {
+            toast.error(error.message)
         }
     };
 

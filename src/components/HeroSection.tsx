@@ -2,9 +2,10 @@ import React, { useState, useEffect, useRef } from "react";
 import { motion, useScroll, useTransform, useMotionValue, useSpring, AnimatePresence, } from "framer-motion";
 import { IoSearchOutline, IoArrowForward, IoStar, IoFlashOutline, } from "react-icons/io5";
 import { userapiRequest } from "../services/apiService";
+import { useNavigate } from "react-router-dom";
 
 
-interface Product { _id: string; name: string; salePrice: number; avgRating: number; image: string; }
+interface Product { _id: string; name: string; salePrice: number; avgRating: number; image: string; category: string; }
 interface Banner { _id: string; title: string; subtitle: string; desktopImage: string; mobileImage: string; product: Product | null; }
 
 const Particle = ({ delay, size, x, y, color, }: { delay: number; size: number; x: string; y: string; color: string; }) => (
@@ -53,7 +54,7 @@ const HeroSection = () => {
     const textY = useTransform(scrollYProgress, [0, 1], [0, -50]);
 
     const bgScale = useTransform(scrollYProgress, [0, 1], [1, 1.1]);
-
+const navigate = useNavigate();
 
 
     const [banners, setBanners] = useState<Banner[]>([]);
@@ -240,10 +241,21 @@ const HeroSection = () => {
                                 <IoArrowForward className="relative z-10 group-hover:translate-x-1.5 transition-transform" size={18} />
                             </a>
 
-                            <a href="/collection" className="group inline-flex items-center gap-2 px-9 py-4 rounded-2xl text-base font-bold text-gray-800 border-2 border-gray-300 hover:border-brand hover:text-brand hover:bg-brand/5 transition-all" >
-                                Explore Collection
-                                <span className="w-0 group-hover:w-5 overflow-hidden transition-all duration-300"> <IoArrowForward size={16} /> </span>
-                            </a>
+                           <button
+    onClick={() => {
+        const category =
+            currentBanner?.product?.category?.toLowerCase() || "men";
+
+        navigate(`/collection/${category}`);
+    }}
+    className="group inline-flex items-center gap-2 px-9 py-4 rounded-2xl text-base font-bold text-gray-800 border-2 border-gray-300 hover:border-brand hover:text-brand hover:bg-brand/5 transition-all"
+>
+    Explore Collection
+
+    <span className="w-0 group-hover:w-5 overflow-hidden transition-all duration-300">
+        <IoArrowForward size={16} />
+    </span>
+</button>
                         </motion.div>
                     </motion.div>
 

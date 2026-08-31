@@ -57,7 +57,7 @@ exports.AddProduct = async (req, res, next) => {
             return next(CustomeError(409, 'salePrice is required'))
         }
 
-        if (req.body?.salePrice > req.body?.price) {
+        if (req.body?.salePrice < req.body?.price) {
             return next(CustomeError(409, 'sale price can not set morethane price'))
         }
 
@@ -632,5 +632,3 @@ exports.UpdateInventory = async (req, res, next) => {
 
 
 
-
-// [{"name": "White/XS","price": 400,"stock": 20},{"name": "White/S","price": 400,"stock": 20},{"name": "Black/XS","price": 400,"stock": 20},{"name": "Black/S","price": 400,"stock": 20}]

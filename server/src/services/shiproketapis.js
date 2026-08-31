@@ -27,6 +27,27 @@ exports.getshippingcharg = async (data) => {
 }
 
 
+exports.getReturnshippingcharg = async (orderId) => {
+    const deliveryPincode = process.env.PICKUP_PINCODE;
+
+
+
+    const url = "https://apiv2.shiprocket.in/v1/external/courier/serviceability/";
+
+    const response = await axios.get(url, {
+        params: {
+            order_id: orderId,
+           
+        },
+        headers: {
+            Authorization: `Bearer ${process.env.SHIPROCKET_TOKEN}`
+        }
+    });
+    return response.data;
+
+}
+
+
 exports.CreatOrderINShiproket = async (data) => {
     const url = "https://apiv2.shiprocket.in/v1/external/orders/create/adhoc";
 
@@ -74,5 +95,43 @@ exports.GenerateLabel = async(data)=>{
             }
         }
     );
+    return response.data;
+}
+
+
+
+exports.ShiprocketCancel = async(id)=>{
+    console.log(id)
+    const url = "https://apiv2.shiprocket.in/v1/external/orders/cancel";
+    const response = await axios.post(
+        url,
+        {ids:[id]},
+        {
+            headers: {
+                Authorization: `Bearer ${process.env.SHIPROCKET_TOKEN}`,
+                "Content-Type": "application/json"
+            }
+        }
+    );
+    return response.data;
+}
+
+
+
+exports.ShiproketReturnCreate = async(data) =>{
+     const url = "https://apiv2.shiprocket.in/v1/external/orders/create/return";
+
+    const response = await axios.post(
+        url,
+        data,
+        {
+            headers: {
+                Authorization: `Bearer ${process.env.SHIPROCKET_TOKEN}`,
+                "Content-Type": "application/json"
+            }
+        }
+    );
+
+    
     return response.data;
 }

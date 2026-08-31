@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { IoMailOutline, IoLockClosedOutline, IoAlertCircleOutline, IoEyeOutline, IoEyeOffOutline } from 'react-icons/io5';
 import { useAdminAuth } from '../../context/AdminAuthContext';
+import { toast } from 'react-toastify';
 
 const AdminLogin = () => {
     const [email, setEmail] = useState('');
@@ -27,11 +28,15 @@ const AdminLogin = () => {
         // Simulate network delay
         await new Promise(resolve => setTimeout(resolve, 800));
 
-        const result =await adminLogin(email, password);
+        const result = await adminLogin(email, password);
         if (result.success) {
+            toast.success("Login Success")
+
             navigate('/admin', { replace: true });
         } else {
-            setError(result.error || 'Login failed');
+            toast.error(result.error)
+            setIsLoading(false);
+
         }
         setIsLoading(false);
     };
