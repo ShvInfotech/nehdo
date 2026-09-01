@@ -4,6 +4,8 @@ const userModel = require("../../../model/user.model");
 const { RazorpayRefundApi } = require("../../../services/razorpayapi");
 const orderRequestsModel = require('../../../model/orderRequests.model');
 const { ShiprocketCancel, getReturnshippingcharg, ShiproketReturnCreate, AssignCourierAndAWB } = require("../../../services/shiproketapis");
+const sendEmail = require("../../../config/nodemailer.confing");
+const { OrderCancelledMail } = require("../../../helper/emailTemplate");
 
 
 exports.GetOrders = async (req, res, next) => {
@@ -76,7 +78,7 @@ exports.CancelledOrder = async (req, res, next) => {
             userId: order.userId,
             type: "cancel",
             initiatedBy: "customer",
-            reason: req.body.reason || "change my minde",
+            reason: req.body.reason || "other",
             status: "approved",
         }
 
@@ -107,6 +109,9 @@ exports.CancelledOrder = async (req, res, next) => {
         const data = await orderRequestsModel.create(orderrequirestdata)
 
         await orderModel.findByIdAndUpdate(order._id,{status:"cancelled"})
+
+            await sendEmail(OrderCancelledMail(req.user.email,req.user.name,order.orderNumber,order.totalAmount,order.payment.method,req.body.reason || "other"))
+        
 
         return res.status(200).json({ success: true, message: 'order cancelled successfully', data })
 
@@ -224,21 +229,16 @@ exports.ReturnOrder = async (req, res, next) => {
 
 
         const confirmorderData = await ShiproketReturnCreate(data)
-
         if (!confirmorderData) {
             return next(CustomeError(400, "Try after some time"))
         }
 
-
         let shiping = await getReturnshippingcharg(confirmorderData.order_id)
-
         const bestCourier = shiping?.data?.available_courier_companies.reduce((best, current) => current.rate < best.rate ? current : best);
-
         if (!bestCourier) {
-
-            return next(CustomeError(400, "Try after some time"))
-
+            return next(CustomeError(400, shiping.message))
         }
+
         const courierDetails = {
             courierCompanyId: bestCourier.courier_company_id,
             courierId: bestCourier.id,

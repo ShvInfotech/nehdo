@@ -1,4 +1,3 @@
-const { default: mongoose } = require("mongoose")
 const { CustomeError } = require("../../../middleware/globelError")
 const couponModel = require("../../../model/coupon.model")
 const cartModel = require("../../../model/cart.model")
@@ -7,7 +6,7 @@ const productModel = require("../../../model/product.model")
 const productvariantModel = require('../../../model/productvariant.model')
 const productshippingModel = require('../../../model/productshipping.model')
 const productinventoryModel = require('../../../model/productinventory.model')
-const { GetProductCouponApplay, GetCartProductCouponApplay, GetCartProductShipingcharg, GetCartProductPaymentOrder, GetHeroBanners } = require("../../../helper/aggretionpipeline")
+const {  GetCartProductCouponApplay, GetCartProductShipingcharg, GetCartProductPaymentOrder, GetHeroBanners } = require("../../../helper/aggretionpipeline")
 const { PercentageCoupenapplay, CartDiscountCoupenapplay, FindPriceinProduct, generateOrderNumber, ShippingDiscountCoupenapplay } = require("../../../helper/helper")
 const { getshippingcharg } = require("../../../services/shiproketapis")
 const { razorpay, razorpaySignature } = require("../../../config/razorpay.config")
@@ -15,8 +14,9 @@ const orderModel = require("../../../model/order.model")
 const categoryModel = require('../../../model/category.model')
 const brandModel = require('../../../model/brand.model')
 const bannerModel = require('../../../model/banner.model')
-const ratingModel = require("../../../model/rating.model")
-const { name } = require("ejs")
+
+const sendEmail = require("../../../config/nodemailer.confing")
+const { OrderConfirmationMail } = require("../../../helper/emailTemplate")
 
 
 
@@ -66,7 +66,7 @@ exports.ApplyCoupon = async (req, res, next) => {
 
 
         if (coupon.discountType === "Percentage") {
-            const discount = await PercentageCoupenapplay(coupon, carts,req.user)
+            const discount = await PercentageCoupenapplay(coupon, carts, req.user)
             if (discount.success === false) {
                 return next(CustomeError(409, discount.message))
             }
@@ -74,20 +74,20 @@ exports.ApplyCoupon = async (req, res, next) => {
         }
 
         if (coupon.discountType === "CartDiscount") {
-            const discount = await CartDiscountCoupenapplay(coupon, carts,req.user)
+            const discount = await CartDiscountCoupenapplay(coupon, carts, req.user)
             if (discount.success === false) {
                 return next(CustomeError(409, discount.message))
             }
             return res.json(discount)
         }
-        if (coupon.discountType === "ProductDiscount") { }
+
         if (coupon.discountType === "Shipping") {
-            const shipping = await  ShippingDiscountCoupenapplay(coupon,carts,req.user)
+            const shipping = await ShippingDiscountCoupenapplay(coupon, carts, req.user)
             if (shipping.success === false) {
                 return next(CustomeError(409, shipping.message))
             }
             return res.json(shipping)
-         }
+        }
 
     } catch (error) {
         return next(error)
@@ -198,12 +198,7 @@ exports.PaymentOrder = async (req, res, next) => {
 
             const requiredQuantity = Number(cartItem.quantity || 0);
 
-            // =========================
-            // 1. PRODUCT INVENTORY STOCK
-            // =========================
-            const availableStock = Number(
-                cartItem.inventory?.stock || 0
-            );
+            const availableStock = Number(cartItem.inventory?.stock || 0);
 
             if (availableStock < requiredQuantity) {
                 outOfStockProducts.push({
@@ -220,24 +215,18 @@ exports.PaymentOrder = async (req, res, next) => {
             }
 
 
-            // =========================
-            // 2. SELECTED VARIANT STOCK
-            // =========================
             const selectedVariant = cartItem.variant?.variant?.find((variant) => {
-                    const variantName = variant.name?.toLowerCase().trim();
-
-                    const cartSize = cartItem.size?.toLowerCase().trim();
-
-                    const cartColor = cartItem.color?.toLowerCase().trim();
-
-                    return (
-                        variantName === `${cartColor}/${cartSize}`
-                    );
-                }
+                const variantName = variant.name?.toLowerCase().trim();
+                const cartSize = cartItem.size?.toLowerCase().trim();
+                const cartColor = cartItem.color?.toLowerCase().trim();
+                return (
+                    variantName === `${cartColor}/${cartSize}`
+                );
+            }
             );
 
 
-          
+
             if (!selectedVariant) {
                 outOfStockProducts.push({
                     productId: cartItem.productId,
@@ -271,9 +260,8 @@ exports.PaymentOrder = async (req, res, next) => {
         }
 
         if (outOfStockProducts.length > 0) {
-            return next(CustomeError(422,"Some products or variants do not have sufficient stock"));
+            return next(CustomeError(422, "Some products or variants do not have sufficient stock"));
         }
-        console.log(products)
         let totalprice = FindPriceinProduct(products)
         if (shippingcharge) {
             totalprice += shippingcharge
@@ -283,17 +271,14 @@ exports.PaymentOrder = async (req, res, next) => {
         }
 
         const options = {
-            amount: Math.round(totalprice * 100), // paise
+            amount: Math.round(totalprice * 100),
             currency: 'INR',
             receipt: `rcpt_${Date.now()}`
         };
 
         let order = await razorpay.orders.create(options)
 
-        console.log(order)
-
         return res.status(200).json({ success: true, message: 'payment order created', order })
-
 
     } catch (error) {
         return next(error)
@@ -322,7 +307,7 @@ exports.verifyPayment = async (req, res, next) => {
 
 
         const signature = razorpaySignature(req.body.razorpay_order_id, req.body.razorpay_payment_id)
-        if (signature !== req.body?.razorpay_signature) {  // chang after
+        if (signature !== req.body?.razorpay_signature) {
             return res.status(409).json({ success: false, message: "payment not verify" })
         }
 
@@ -331,53 +316,32 @@ exports.verifyPayment = async (req, res, next) => {
 
 
         const address = await addressModel.findById(req.body?.addressId)
-        const carts = await cartModel.find({
-            _id: { $in: req.body?.cartIds },
-            userId: req.user._id
-        });
+        const carts = await cartModel.find({_id: { $in: req.body?.cartIds },userId: req.user._id});
 
         const orderItems = [];
 
         for (const cartItem of carts) {
 
-            // 1. Product na variants find karo
-            const productVariant = await productvariantModel.findOne({
-                productId: cartItem.productId
-            });
 
+            const productVariant = await productvariantModel.findOne({productId: cartItem.productId});
             const productShipping = await productshippingModel.findOne({ productId: cartItem.productId })
-
             if (!productVariant) {
-                return res.status(404).json({
-                    success: false,
-                    message: `Variant not found for product ${cartItem.productId}`
-                });
+                return next(CustomeError(404, `Variant not found for product ${cartItem.productId}`))
             }
-
             const product = await productModel.findById(cartItem.productId)
-
-            // 2. Size + Color combination
             const variantName = `${cartItem.color}/${cartItem.size}`;
-
-            // 3. Actual variant find karo
-            const selectedVariant = productVariant.variant.find(
-                (variant) => variant.name === variantName
-            );
-
+            const selectedVariant = productVariant.variant.find((variant) => variant.name === variantName);
             if (!selectedVariant) {
-                return res.status(404).json({
-                    success: false,
-                    message: `Variant ${variantName} not found`
-                });
+                return next(CustomeError(404,`Variant ${variantName} not found`))
             }
 
-            console.log("Selected Variant:", selectedVariant);
 
-            // 4. Order item
+            
+
             orderItems.push({
                 productId: cartItem.productId,
                 variantId: selectedVariant._id,
-                name:product.name,
+                name: product.name,
                 sku: selectedVariant.sku,
                 size: cartItem.size,
                 color: cartItem.color,
@@ -410,17 +374,7 @@ exports.verifyPayment = async (req, res, next) => {
                 }
             );
 
-            await productinventoryModel.findOneAndUpdate(
-                { productId: cartItem.productId },
-                {
-                    $inc: {
-                        stock: -Number(cartItem.quantity)
-                    }
-                },
-                {
-                    returnDocument: "after"
-                }
-            );
+            await productinventoryModel.findOneAndUpdate({ productId: cartItem.productId },{$inc: {stock: -Number(cartItem.quantity)}},{returnDocument: "after"});
         }
 
         const shippingAddress = {
@@ -431,7 +385,6 @@ exports.verifyPayment = async (req, res, next) => {
             postalCode: address.postalCode,
         }
 
-        console.log(orderItems)
         const subtotal = orderItems.reduce((sum, item) => sum + item.total, 0);
         const discount = req.body?.discount || 0
         const couponId = req.body?.coupenId || null
@@ -460,11 +413,10 @@ exports.verifyPayment = async (req, res, next) => {
         const order = await orderModel.create(orderData)
 
         if (order) {
-            await cartModel.deleteMany({
-                _id: { $in: req.body?.cartIds },
-                userId: req.user._id
-            });
+            await cartModel.deleteMany({_id: { $in: req.body?.cartIds },userId: req.user._id});
         }
+
+        await sendEmail(OrderConfirmationMail(req.user.email, req.user.name, order.orderNumber, order.totalAmount, order.payment.method))
         return res.status(200).json({ success: true, message: 'order create successfullly', order })
     } catch (error) {
         return next(error)
@@ -736,61 +688,41 @@ exports.placecodeorder = async (req, res, next) => {
             return next(CustomeError(422, 'cart id required'))
         }
         const address = await addressModel.findById(req.body?.addressId)
-        const carts = await cartModel.find({
-            _id: { $in: req.body?.cartIds },
-            userId: req.user._id
-        });
+        const carts = await cartModel.find({_id: { $in: req.body?.cartIds },userId: req.user._id});
 
         const orderItems = [];
 
         for (const cartItem of carts) {
 
-            // 1. Product na variants find karo
-            const productVariant = await productvariantModel.findOne({
-                productId: cartItem.productId
-            });
-
+          
+            const productVariant = await productvariantModel.findOne({productId: cartItem.productId});
             const productShipping = await productshippingModel.findOne({ productId: cartItem.productId })
 
             if (!productVariant) {
-                return res.status(404).json({
-                    success: false,
-                    message: `Variant not found for product ${cartItem.productId}`
-                });
+                return next(CustomeError(404,`Variant not found for product ${cartItem.productId}`))
             }
 
             const product = await productModel.findById(cartItem.productId)
-
-            // 2. Size + Color combination
             const variantName = `${cartItem.color}/${cartItem.size}`;
 
-            // 3. Actual variant find karo
-            const selectedVariant = productVariant.variant.find(
-                (variant) => variant.name === variantName
-            );
+            const selectedVariant = productVariant.variant.find((variant) => variant.name === variantName);
 
             if (!selectedVariant) {
-                return res.status(404).json({
-                    success: false,
-                    message: `Variant ${variantName} not found`
-                });
+                return next(CustomeError(404,`Variant ${variantName} not found`))
             }
 
-            console.log("Selected Variant:", selectedVariant);
-            if(cartItem.quantity > selectedVariant.stock ){
-                return next(CustomeError(422,"Some products or variants do not have sufficient stock"))
+            if (cartItem.quantity > selectedVariant.stock) {
+                return next(CustomeError(422, "Some products or variants do not have sufficient stock"))
             }
-            // 4. Order item
             orderItems.push({
                 productId: cartItem.productId,
                 variantId: selectedVariant._id,
-                name:product.name,
+                name: product.name,
                 sku: selectedVariant.sku,
                 size: cartItem.size,
                 color: cartItem.color,
                 image: product.productImage[0] || '',
                 quantity: cartItem.quantity,
-
                 price: selectedVariant.price,
                 weight: productShipping.weight,
                 dimensions: productShipping.dimensions,
@@ -800,20 +732,12 @@ exports.placecodeorder = async (req, res, next) => {
 
             const updatedVariant = await productvariantModel.findOneAndUpdate(
                 {
-                    variant: {
-                        $elemMatch: {
-                            _id: selectedVariant._id,
-                            stock: { $gte: cartItem.quantity }
-                        }
-                    }
+                    variant: { $elemMatch: { _id: selectedVariant._id, stock: { $gte: cartItem.quantity } } }
                 },
                 {
-                    $inc: {
-                        "variant.$.stock": -Number(cartItem.quantity)
-                    }
+                    $inc: { "variant.$.stock": -Number(cartItem.quantity) }
                 },
                 {
-
                     returnDocument: "after"
                 }
             );
@@ -867,11 +791,10 @@ exports.placecodeorder = async (req, res, next) => {
         const order = await orderModel.create(orderData)
 
         if (order) {
-            await cartModel.deleteMany({
-                _id: { $in: req.body?.cartIds },
-                userId: req.user._id
-            });
+            await cartModel.deleteMany({_id: { $in: req.body?.cartIds },userId: req.user._id});
         }
+
+        await sendEmail(OrderConfirmationMail(req.user.email, req.user.name, order.orderNumber, order.totalAmount, order.payment.method))
         return res.status(200).json({ success: true, message: 'order create successfullly', order })
     } catch (error) {
         return next(error)

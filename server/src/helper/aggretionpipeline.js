@@ -345,28 +345,28 @@ exports.userGetProductpipeline = ({
     //====================================
 
     //====================================
-// Approved Ratings
-//====================================
+    // Approved Ratings
+    //====================================
 
-pipeline.push({
-    $lookup: {
-        from: "ratings",
-        let: {
-            productId: "$_id"
-        },
-        pipeline: [
-            {
-                $match: {
-                    $expr: {
-                        $eq: ["$productId", "$$productId"]
-                    },
-                    status: "approved"
+    pipeline.push({
+        $lookup: {
+            from: "ratings",
+            let: {
+                productId: "$_id"
+            },
+            pipeline: [
+                {
+                    $match: {
+                        $expr: {
+                            $eq: ["$productId", "$$productId"]
+                        },
+                        status: "approved"
+                    }
                 }
-            }
-        ],
-        as: "ratings"
-    }
-});
+            ],
+            as: "ratings"
+        }
+    });
 
     if (userId) {
         pipeline.push({
@@ -484,12 +484,12 @@ pipeline.push({
 
     pipeline.push({
         $project: {
- createdAt: 1,
+            createdAt: 1,
             name: 1,
             price: 1,
             salePrice: 1,
-            longDescription:1,
-            shortDescription:1,
+            longDescription: 1,
+            shortDescription: 1,
             flags: 1,
             wishlist: 1,
             cart: 1,
@@ -698,7 +698,7 @@ exports.userGetSingalsProductRatingpipeline = (id) => {
         {
             $match: {
                 productId: new mongoose.Types.ObjectId(id),
-                status:'approved'
+                status: 'approved'
             }
         },
         {
@@ -970,29 +970,6 @@ exports.GetCartProductShipingcharg = (cartIds) => {
     ]
 }
 
-exports.GetProductCouponApplay = (productId) => {
-    return [
-        {
-            $match: {
-                _id: new mongoose.Types.ObjectId(productId)
-            }
-        },
-        {
-            $lookup: {
-                from: "productvariants",
-                localField: "_id",
-                foreignField: "productId",
-                as: "variant"
-            }
-        },
-        {
-            $unwind: {
-                path: "$variant",
-                preserveNullAndEmptyArrays: true
-            }
-        },
-    ]
-}
 
 
 exports.GetCartProductPaymentOrder = (cartIds) => {
@@ -1057,9 +1034,9 @@ exports.GetCustomersAdmin = () => {
                 name: 1,
                 email: 1,
                 phone: 1,
-                status:1,
+                status: 1,
                 createdAt: 1,
-                 profile: {
+                profile: {
                     $cond: [
                         {
                             $and: [
@@ -1240,250 +1217,250 @@ exports.GetCustomersAdmin = () => {
 
 
 
-exports.GetHeroBanners = () =>{
+exports.GetHeroBanners = () => {
     const now = new Date();
-    return[
-            // =====================================================
-            // BANNER FILTER
-            // =====================================================
-            {
-                $match: {
-                    isDeleted: false,
-                    status: "Active",
-                    placement: "Hero Slider",
+    return [
+        // =====================================================
+        // BANNER FILTER
+        // =====================================================
+        {
+            $match: {
+                isDeleted: false,
+                status: "Active",
+                placement: "Hero Slider",
 
-                    $or: [
-                        // No start date and no end date
-                        {
-                            startDate: null,
-                            endDate: null,
-                        },
-
-                        // Only start date
-                        {
-                            startDate: {
-                                $ne: null,
-                                $lte: now,
-                            },
-                            endDate: null,
-                        },
-
-                        // Only end date
-                        {
-                            startDate: null,
-                            endDate: {
-                                $ne: null,
-                                $gte: now,
-                            },
-                        },
-
-                        // Both start and end date
-                        {
-                            startDate: {
-                                $ne: null,
-                                $lte: now,
-                            },
-                            endDate: {
-                                $ne: null,
-                                $gte: now,
-                            },
-                        },
-                    ],
-                },
-            },
-
-            // =====================================================
-            // PRIORITY SORT
-            // =====================================================
-            {
-                $sort: {
-                    priority: 1,
-                },
-            },
-
-            // =====================================================
-            // PRODUCT LOOKUP USING SKU
-            // =====================================================
-            {
-                $lookup: {
-                    from: productModel.collection.name,
-                    let: {
-                        bannerSku: "$productSku",
+                $or: [
+                    // No start date and no end date
+                    {
+                        startDate: null,
+                        endDate: null,
                     },
-                    pipeline: [
-                        {
-                            $match: {
-                                $expr: {
-                                    $eq: [
-                                        "$sku",
-                                        "$$bannerSku",
-                                    ],
-                                },
-                            },
+
+                    // Only start date
+                    {
+                        startDate: {
+                            $ne: null,
+                            $lte: now,
                         },
+                        endDate: null,
+                    },
 
-                        // =============================================
-                        // RATING LOOKUP
-                        // =============================================
-                        {
-                            $lookup: {
-                                from: ratingModel.collection.name,
-                                let: {
-                                    productId: "$_id",
-                                },
-                                pipeline: [
-                                    {
-                                        $match: {
-                                            $expr: {
-                                                $eq: [
-                                                    "$productId",
-                                                    "$$productId",
-                                                ],
-                                            },
-                                        },
-                                    },
+                    // Only end date
+                    {
+                        startDate: null,
+                        endDate: {
+                            $ne: null,
+                            $gte: now,
+                        },
+                    },
 
-                                    // Average rating calculate
-                                    {
-                                        $group: {
-                                            _id: null,
-                                            avgRating: {
-                                                $avg: "$rating",
-                                            },
-                                        },
-                                    },
+                    // Both start and end date
+                    {
+                        startDate: {
+                            $ne: null,
+                            $lte: now,
+                        },
+                        endDate: {
+                            $ne: null,
+                            $gte: now,
+                        },
+                    },
+                ],
+            },
+        },
 
-                                    {
-                                        $project: {
-                                            _id: 0,
-                                            avgRating: {
-                                                $round: [
-                                                    "$avgRating",
-                                                    1,
-                                                ],
-                                            },
-                                        },
-                                    },
+        // =====================================================
+        // PRIORITY SORT
+        // =====================================================
+        {
+            $sort: {
+                priority: 1,
+            },
+        },
+
+        // =====================================================
+        // PRODUCT LOOKUP USING SKU
+        // =====================================================
+        {
+            $lookup: {
+                from: productModel.collection.name,
+                let: {
+                    bannerSku: "$productSku",
+                },
+                pipeline: [
+                    {
+                        $match: {
+                            $expr: {
+                                $eq: [
+                                    "$sku",
+                                    "$$bannerSku",
                                 ],
-                                as: "ratingData",
                             },
                         },
+                    },
 
-                        // =============================================
-                        // PRODUCT RESPONSE FORMAT
-                        // =============================================
-                        {
-                            $project: {
-                                _id: 1,
-                                name: 1,
-                                salePrice: 1,
-categoryId: 1,
-                                // First image only
-                                image: {
-                                    $arrayElemAt: [
-                                        "$productImage",
-                                        0,
-                                    ],
-                                },
-
-                                avgRating: {
-                                    $ifNull: [
-                                        {
-                                            $arrayElemAt: [
-                                                "$ratingData.avgRating",
-                                                0,
+                    // =============================================
+                    // RATING LOOKUP
+                    // =============================================
+                    {
+                        $lookup: {
+                            from: ratingModel.collection.name,
+                            let: {
+                                productId: "$_id",
+                            },
+                            pipeline: [
+                                {
+                                    $match: {
+                                        $expr: {
+                                            $eq: [
+                                                "$productId",
+                                                "$$productId",
                                             ],
                                         },
-                                        0,
-                                    ],
+                                    },
                                 },
+
+                                // Average rating calculate
+                                {
+                                    $group: {
+                                        _id: null,
+                                        avgRating: {
+                                            $avg: "$rating",
+                                        },
+                                    },
+                                },
+
+                                {
+                                    $project: {
+                                        _id: 0,
+                                        avgRating: {
+                                            $round: [
+                                                "$avgRating",
+                                                1,
+                                            ],
+                                        },
+                                    },
+                                },
+                            ],
+                            as: "ratingData",
+                        },
+                    },
+
+                    // =============================================
+                    // PRODUCT RESPONSE FORMAT
+                    // =============================================
+                    {
+                        $project: {
+                            _id: 1,
+                            name: 1,
+                            salePrice: 1,
+                            categoryId: 1,
+                            // First image only
+                            image: {
+                                $arrayElemAt: [
+                                    "$productImage",
+                                    0,
+                                ],
+                            },
+
+                            avgRating: {
+                                $ifNull: [
+                                    {
+                                        $arrayElemAt: [
+                                            "$ratingData.avgRating",
+                                            0,
+                                        ],
+                                    },
+                                    0,
+                                ],
                             },
                         },
-                    ],
-                    as: "product",
-                },
+                    },
+                ],
+                as: "product",
             },
+        },
 
-            // =====================================================
-            // PRODUCT ARRAY -> OBJECT
-            // =====================================================
-            {
-                $unwind: {
-                    path: "$product",
-                    preserveNullAndEmptyArrays: true,
-                },
+        // =====================================================
+        // PRODUCT ARRAY -> OBJECT
+        // =====================================================
+        {
+            $unwind: {
+                path: "$product",
+                preserveNullAndEmptyArrays: true,
             },
+        },
 
 
 
         {
-    $lookup: {
-        from: categoryModel.collection.name,
-        localField: "product.categoryId",
-        foreignField: "_id",
-        as: "category",
-    },
-},
-{
-    $unwind: {
-        path: "$category",
-        preserveNullAndEmptyArrays: true,
-    },
-},
-
-
-            // =====================================================
-            // FINAL RESPONSE
-            // =====================================================
-            {
-                $project: {
-                    _id: 1,
-                    title: 1,
-                    subtitle: 1,
-                    desktopImage: {
-                        $cond: [
-                            {$and: [{$ne: ["$desktopImage",null,],},{$ne: ["$desktopImage","",],},],},
-                            {$concat: [`http://${process.env.HOST}:${process.env.PORT}`,"$desktopImage",],},"",
-                        ],
-                    },
-
-                    // =============================================
-                    // MOBILE IMAGE WITH DOMAIN
-                    // =============================================
-                    mobileImage: {
-                        $cond: [
-                            {$and: [{$ne: ["$mobileImage",null,],},{$ne: ["$mobileImage","",],},],},
-                            {$concat: [`http://${process.env.HOST}:${process.env.PORT}`,"$mobileImage",],},"",
-                        ],
-                    },
-
-                    // =============================================
-                    // PRODUCT DATA
-                    // =============================================
-                    product: {
-                        $cond: [
-                            {$ne: ["$product",null,],},
-                            {
-                                _id: "$product._id",
-                                name: "$product.name",
-                                salePrice:"$product.salePrice",
-                                avgRating:"$product.avgRating",
-                                category: "$category.name",
-                                // Product first image with domain
-                                image: {
-                                    $cond: [
-                                        {$and: [{$ne: ["$product.image",null,],},{$ne: ["$product.image","",],},],},
-                                        {$concat: [`http://${process.env.HOST}:${process.env.PORT}`,"$product.image",],},"",
-                                    ],
-                                },
-                            },
-                            null,
-                        ],
-                    },
-            
-                },
+            $lookup: {
+                from: categoryModel.collection.name,
+                localField: "product.categoryId",
+                foreignField: "_id",
+                as: "category",
             },
-        ]
+        },
+        {
+            $unwind: {
+                path: "$category",
+                preserveNullAndEmptyArrays: true,
+            },
+        },
+
+
+        // =====================================================
+        // FINAL RESPONSE
+        // =====================================================
+        {
+            $project: {
+                _id: 1,
+                title: 1,
+                subtitle: 1,
+                desktopImage: {
+                    $cond: [
+                        { $and: [{ $ne: ["$desktopImage", null,], }, { $ne: ["$desktopImage", "",], },], },
+                        { $concat: [`http://${process.env.HOST}:${process.env.PORT}`, "$desktopImage",], }, "",
+                    ],
+                },
+
+                // =============================================
+                // MOBILE IMAGE WITH DOMAIN
+                // =============================================
+                mobileImage: {
+                    $cond: [
+                        { $and: [{ $ne: ["$mobileImage", null,], }, { $ne: ["$mobileImage", "",], },], },
+                        { $concat: [`http://${process.env.HOST}:${process.env.PORT}`, "$mobileImage",], }, "",
+                    ],
+                },
+
+                // =============================================
+                // PRODUCT DATA
+                // =============================================
+                product: {
+                    $cond: [
+                        { $ne: ["$product", null,], },
+                        {
+                            _id: "$product._id",
+                            name: "$product.name",
+                            salePrice: "$product.salePrice",
+                            avgRating: "$product.avgRating",
+                            category: "$category.name",
+                            // Product first image with domain
+                            image: {
+                                $cond: [
+                                    { $and: [{ $ne: ["$product.image", null,], }, { $ne: ["$product.image", "",], },], },
+                                    { $concat: [`http://${process.env.HOST}:${process.env.PORT}`, "$product.image",], }, "",
+                                ],
+                            },
+                        },
+                        null,
+                    ],
+                },
+
+            },
+        },
+    ]
 }
 
 

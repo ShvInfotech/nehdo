@@ -123,8 +123,8 @@ const orderRequestsSchema = new mongoose.Schema(
 
             status: {
                 type: String,
-                enum:[null,"RETURN PENDING"],
-                default:null
+                enum: [null, "RETURN PENDING","RETURN CANCELLED","RETURN PICKED UP","RETURN DELIVERED","RTO INITIATED","RTO IN TRANSIT","RTO DELIVERED","RTO CANCELLED"],
+                default: null
             },
             shiprocketOrderId: {
                 type: String,
@@ -141,9 +141,9 @@ const orderRequestsSchema = new mongoose.Schema(
                 default: null,
             },
             deliveredAt: {
-            type: Date,
-            default: null,
-        },
+                type: Date,
+                default: null,
+            },
         },
 
 
