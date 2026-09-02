@@ -300,6 +300,7 @@ exports.UpdateProduct = async (req, res, next) => {
         }
 
         let productData = product
+        
 
         if (req.body?.name) {
             productData.name = req.body?.name
@@ -315,6 +316,7 @@ exports.UpdateProduct = async (req, res, next) => {
         if (req.body?.categoryId) {
             productData.categoryId = req.body.categoryId
         }
+
         if (req.body?.price) {
             productData.price = req.body?.price
         }
@@ -325,7 +327,7 @@ exports.UpdateProduct = async (req, res, next) => {
 
 
         if (req.body?.itemCost) {
-            productData.price = req.body?.itemCost
+            productData.itemCost = req.body?.itemCost
         }
 
         if (req.body?.tags) {
@@ -409,9 +411,8 @@ exports.UpdateProduct = async (req, res, next) => {
         let existingVariants = [];
 
         if (req.body?.variant) {
-            
-            existingVariants = typeof req.body.variant === "string"? JSON.parse(req.body.variant) : req.body.variant;
-            console.log(existingVariants)
+
+            existingVariants = typeof req.body.variant === "string" ? JSON.parse(req.body.variant) : req.body.variant;
         }
 
         if (existingVariants.length) {
@@ -430,7 +431,8 @@ exports.UpdateProduct = async (req, res, next) => {
         let newVariants = [];
 
         if (req.body?.newvariant) {
-            newVariants = typeof req.body.newvariant === "string" ? JSON.parse(req.body.newvariant) : req.body.newvariant; }
+            newVariants = typeof req.body.newvariant === "string" ? JSON.parse(req.body.newvariant) : req.body.newvariant;
+        }
         if (newVariants.length) {
             let length = variantData.variant.length + 1;
             for (const item of newVariants) {
@@ -479,7 +481,6 @@ exports.UpdateProduct = async (req, res, next) => {
             shippingData.weight = req.body?.weight
         }
 
-        console.log("print dimention", req.body?.dimensions)
         if (req.body?.dimensions) {
             shippingData.dimensions = JSON.parse(req.body?.dimensions)
         }
@@ -487,7 +488,6 @@ exports.UpdateProduct = async (req, res, next) => {
         if (req.body?.HSCode) {
             shippingData.HSCode = req.body?.HSCode
         }
-
 
         const updateproduct = await productModel.findByIdAndUpdate(id, productData, { returnDocument: 'after' })
         const variant = await productVariantModel.findByIdAndUpdate(variantData._id, variantData, { returnDocument: 'after' })
@@ -616,14 +616,14 @@ exports.UpdateInventory = async (req, res, next) => {
     try {
 
 
-       const newData =  await productVariantModel.updateOne(
+        const newData = await productVariantModel.updateOne(
             { "variant._id": req.body?.variantId },
             { $set: { "variant.$.stock": req.body?.stock } },
-            {returnDocument:'after'}
+            { returnDocument: 'after' }
         );
 
 
-        return res.json({success:true,message:'Update',newData})
+        return res.json({ success: true, message: 'Update', newData })
 
     } catch (error) {
         return next(error)

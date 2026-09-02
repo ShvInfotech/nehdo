@@ -1,10 +1,8 @@
 import React, { useEffect, useState } from "react";
-import { IoAddOutline, IoSearchOutline, IoEllipsisVertical, IoCloseOutline, IoCloudUploadOutline, IoImageOutline } from "react-icons/io5";
-// import { brands } from "../../data/products";
-import { apiRequest } from "../../services/apiService"
+import { IoAddOutline, IoSearchOutline, IoEllipsisVertical, IoCloseOutline, IoCloudUploadOutline, IoImageOutline,} from "react-icons/io5";
+import { apiRequest } from "../../services/apiService";
 import { toast } from "react-toastify";
 const AdminBrands = () => {
-
     interface Brand {
         _id: string;
         name: string;
@@ -12,62 +10,55 @@ const AdminBrands = () => {
         description: string;
         logo: string;
         homepageDisplay: boolean;
-        status: 'active' | 'inactive';
+        status: "active" | "inactive";
         productCount: number;
     }
     const [isAddModalOpen, setIsAddModalOpen] = useState(false);
-    const [name, setName] = useState('');
-    const [slug, setSlug] = useState('');
-    const [description, setDescription] = useState('');
+    const [name, setName] = useState("");
+    const [slug, setSlug] = useState("");
+    const [description, setDescription] = useState("");
     const [logo, setLogo] = useState<File | null>(null);
     const [homepageDisplay, setHomepageDisplay] = useState(false);
-    const [status, setStatus] = useState('active');
+    const [status, setStatus] = useState("active");
     const [brands, setBrands] = useState<Brand[]>([]);
-    const [logoPreview, setLogoPreview] = useState('');
+    const [searchTerm, setSearchTerm] = useState("");
+    const [logoPreview, setLogoPreview] = useState("");
     const [isEditMode, setIsEditMode] = useState(false);
-    const [editBrandId, setEditBrandId] = useState('');
-    const [errors, setErrors] = useState({
-        name: '',
-        slug: '',
-        description: '',
-        logo: '',
-    });
-
+    const [editBrandId, setEditBrandId] = useState("");
+    const [errors, setErrors] = useState({name: "",slug: "",description: "",logo: "",});
 
     const validateForm = () => {
         const newErrors = {
-            name: '',
-            slug: '',
-            description: '',
-            logo: '',
+            name: "",
+            slug: "",
+            description: "",
+            logo: "",
         };
 
         let isValid = true;
 
-        // Brand Name
         if (!name.trim()) {
-            newErrors.name = 'Brand name is required';
+            newErrors.name = "Brand name is required";
             isValid = false;
         }
 
-        // Slug
         if (!slug.trim()) {
-            newErrors.slug = 'Slug is required';
+            newErrors.slug = "Slug is required";
             isValid = false;
-        } else if (slug.includes(' ')) {
-            newErrors.slug = 'Slug cannot contain spaces';
+        } else if (slug.includes(" ")) {
+            newErrors.slug = "Slug cannot contain spaces";
             isValid = false;
         }
 
-        // Description
+        
         if (!description.trim()) {
-            newErrors.description = 'Description is required';
+            newErrors.description = "Description is required";
             isValid = false;
         }
 
-        // Logo
+        
         if (!isEditMode && !logo) {
-            newErrors.logo = 'Brand logo is required';
+            newErrors.logo = "Brand logo is required";
             isValid = false;
         }
 
@@ -75,62 +66,47 @@ const AdminBrands = () => {
         return isValid;
     };
 
-
     const handleSaveBrand = async () => {
         if (!validateForm()) return;
 
         try {
             const formData = new FormData();
 
-            formData.append('name', name);
-            formData.append('slug', slug);
-            formData.append('description', description);
-            formData.append('homepageDisplay', String(homepageDisplay));
-            formData.append('status', status);
+            formData.append("name", name);
+            formData.append("slug", slug);
+            formData.append("description", description);
+            formData.append("homepageDisplay", String(homepageDisplay));
+            formData.append("status", status);
 
             if (logo) {
-                formData.append('brandlogo', logo);
+                formData.append("brandlogo", logo);
             }
-
             if (isEditMode) {
-                // UPDATE API
-                await apiRequest(`/admin/api/v1/brand/update/${editBrandId}`, 'PATCH', formData, {});
+                await apiRequest(`/admin/api/v1/brand/update/${editBrandId}`,"PATCH",formData,{});
             } else {
-                // ADD API
-                await apiRequest('/admin/api/v1/brand/add', 'POST', formData, {});
+                await apiRequest("/admin/api/v1/brand/add", "POST", formData, {});
             }
-
-            // reset form
-            toast.success('Brand saved successfully')
+            toast.success("Brand saved successfully");
             resetForm();
             await getbrand();
             setIsAddModalOpen(false);
         } catch (err: any) {
-            toast.error(err.message)
-            alert(err.message);
+            toast.error(err.message);
         }
     };
 
-
     const resetForm = () => {
-        setName('');
-        setSlug('');
-        setDescription('');
+        setName("");
+        setSlug("");
+        setDescription("");
         setLogo(null);
         setHomepageDisplay(false);
-        setStatus('active');
-
+        setStatus("active");
         setIsEditMode(false);
-        setEditBrandId('');
-        setLogoPreview('');
-        setErrors({
-            name: '',
-            slug: '',
-            description: '',
-            logo: '',
-        });
+        setEditBrandId("");
+        setLogoPreview("");
+        setErrors({name: "",slug: "",description: "",logo: "",});
     };
-
 
     const handleEditBrand = (brand: Brand) => {
         setIsEditMode(true);
@@ -141,35 +117,39 @@ const AdminBrands = () => {
         setDescription(brand.description);
         setHomepageDisplay(brand.homepageDisplay);
         setStatus(brand.status);
-        setLogoPreview(brand.logo || '');
-
-        // existing logo string URL છે, File નથી
+        setLogoPreview(brand.logo || "");
         setLogo(null);
-
         setIsAddModalOpen(true);
     };
 
     const getbrand = async () => {
         try {
-            const data = await apiRequest('/admin/api/v1/brand/get', "GET")
-            setBrands(data.brands)
-
-        } catch (error) {
-            console.log(error)
+            const data = await apiRequest("/admin/api/v1/brand/get", "GET");
+            setBrands(data.brands);
+        } catch (error:any) {
+            toast.error(error?.message)
+            console.log(error);
         }
-    }
+    };
 
     useEffect(() => {
-        getbrand()
-    }, [])
+        getbrand();
+    }, []);
 
+    const filteredBrands = brands.filter((brand) =>
+        brand.name.toLowerCase().includes(searchTerm.toLowerCase())
+    );
 
     return (
         <div className="space-y-6">
             <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
                 <div>
-                    <h1 className="font-heading text-2xl font-bold text-gray-900">Brands</h1>
-                    <p className="text-sm text-gray-500 mt-1">Manage product brands and their details.</p>
+                    <h1 className="font-heading text-2xl font-bold text-gray-900">
+                        Brands
+                    </h1>
+                    <p className="text-sm text-gray-500 mt-1">
+                        Manage product brands and their details.
+                    </p>
                 </div>
                 <button
                     onClick={() => setIsAddModalOpen(true)}
@@ -184,11 +164,10 @@ const AdminBrands = () => {
             {isAddModalOpen && (
                 <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
                     <div className="bg-white rounded-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
-
                         {/* Header */}
                         <div className="p-6 border-b border-gray-100 flex items-center justify-between sticky top-0 bg-white z-10">
                             <h2 className="text-xl font-bold text-gray-900">
-                                {isEditMode ? 'Edit Brand' : 'Add New Brand'}
+                                {isEditMode ? "Edit Brand" : "Add New Brand"}
                             </h2>
 
                             <button
@@ -201,9 +180,7 @@ const AdminBrands = () => {
 
                         {/* Body */}
                         <div className="p-6 space-y-6">
-
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-
                                 {/* Brand Name */}
                                 <div className="md:col-span-2">
                                     <label className="block text-sm font-semibold text-gray-700 mb-2">
@@ -258,7 +235,9 @@ const AdminBrands = () => {
                                         className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:border-brand"
                                     />
                                     {errors.description && (
-                                        <p className="text-red-500 text-xs mt-1">{errors.description}</p>
+                                        <p className="text-red-500 text-xs mt-1">
+                                            {errors.description}
+                                        </p>
                                     )}
                                 </div>
 
@@ -269,7 +248,6 @@ const AdminBrands = () => {
                                     </label>
 
                                     <label className="border-2 border-dashed border-gray-300 rounded-xl p-6 text-center bg-gray-50 hover:bg-gray-100 transition-colors cursor-pointer block">
-
                                         <input
                                             type="file"
                                             accept="image/*"
@@ -293,7 +271,7 @@ const AdminBrands = () => {
                                                 />
 
                                                 <p className="text-sm font-medium text-gray-700">
-                                                    {logo ? logo.name : 'Current logo'}
+                                                    {logo ? logo.name : "Current logo"}
                                                 </p>
 
                                                 <p className="text-xs text-brand font-semibold">
@@ -338,20 +316,16 @@ const AdminBrands = () => {
                                         <option value="inactive">Inactive</option>
                                     </select>
                                 </div>
-
                             </div>
 
                             {/* Display Settings */}
                             <div className="border-t border-gray-100 pt-6">
-
                                 <h3 className="text-sm font-bold text-gray-700 mb-4">
                                     Display Settings
                                 </h3>
 
                                 <div className="space-y-3">
-
                                     <label className="flex items-center justify-between p-4 bg-gray-50 rounded-xl">
-
                                         <div>
                                             <p className="font-semibold text-gray-900 text-sm">
                                                 Show on Homepage
@@ -363,7 +337,6 @@ const AdminBrands = () => {
                                         </div>
 
                                         <label className="relative inline-flex items-center cursor-pointer">
-
                                             <input
                                                 type="checkbox"
                                                 className="sr-only peer"
@@ -372,19 +345,14 @@ const AdminBrands = () => {
                                             />
 
                                             <div className="w-11 h-6 bg-gray-200 rounded-full peer peer-checked:after:translate-x-full after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-brand"></div>
-
                                         </label>
-
                                     </label>
-
                                 </div>
                             </div>
-
                         </div>
 
                         {/* Footer */}
                         <div className="p-6 border-t border-gray-100 flex justify-end gap-3 sticky bottom-0 bg-white z-10">
-
                             <button
                                 onClick={() => {
                                     resetForm();
@@ -399,11 +367,9 @@ const AdminBrands = () => {
                                 onClick={handleSaveBrand}
                                 className="px-6 py-2.5 rounded-xl bg-brand text-white text-sm font-bold hover:bg-brand-light shadow-sm"
                             >
-                                {isEditMode ? 'Update Brand' : 'Save Brand'}
+                                {isEditMode ? "Update Brand" : "Save Brand"}
                             </button>
-
                         </div>
-
                     </div>
                 </div>
             )}
@@ -411,10 +377,15 @@ const AdminBrands = () => {
             <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
                 <div className="p-4 border-b border-gray-100 flex items-center justify-between">
                     <div className="relative w-full sm:w-72">
-                        <IoSearchOutline size={18} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+                        <IoSearchOutline
+                            size={18}
+                            className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"
+                        />
                         <input
                             type="text"
                             placeholder="Search brands..."
+                            value={searchTerm}
+                            onChange={(e) => setSearchTerm(e.target.value)}
                             className="w-full pl-10 pr-4 py-2 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:outline-none focus:border-brand focus:ring-1 focus:ring-brand"
                         />
                     </div>
@@ -435,10 +406,16 @@ const AdminBrands = () => {
                             </tr>
                         </thead>
                         <tbody className="divide-y divide-gray-100">
-                            {brands.map((brand, i) => (
-                                <tr key={i} className="hover:bg-gray-50 transition-colors group">
+                            {filteredBrands.map((brand, i) => (
+                                <tr
+                                    key={i}
+                                    className="hover:bg-gray-50 transition-colors group"
+                                >
                                     <td className="px-6 py-4">
-                                        <input type="checkbox" className="w-4 h-4 rounded border-gray-300 text-brand focus:ring-brand" />
+                                        <input
+                                            type="checkbox"
+                                            className="w-4 h-4 rounded border-gray-300 text-brand focus:ring-brand"
+                                        />
                                     </td>
                                     <td className="px-6 py-4">
                                         <div className="w-10 h-10 rounded-lg bg-gray-100 flex items-center justify-center overflow-hidden">
@@ -453,15 +430,18 @@ const AdminBrands = () => {
                                             )}
                                         </div>
                                     </td>
-                                    <td className="px-6 py-4 font-medium text-gray-900">{brand?.name}</td>
-                                    <td className="px-6 py-4 text-gray-600">{brand.productCount}</td>
+                                    <td className="px-6 py-4 font-medium text-gray-900">
+                                        {brand?.name}
+                                    </td>
+                                    <td className="px-6 py-4 text-gray-600">
+                                        {brand.productCount}
+                                    </td>
                                     <td className="px-6 py-4">
                                         <span className="px-2.5 py-1 rounded-full text-xs font-semibold bg-green-100 text-green-700">
                                             {brand.status}
                                         </span>
                                     </td>
                                     <td className="px-6 py-4 text-right">
-
                                         <div className="flex items-center justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
                                             <button
                                                 onClick={() => handleEditBrand(brand)}

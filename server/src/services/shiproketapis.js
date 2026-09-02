@@ -3,7 +3,17 @@ const { data, body } = require("framer-motion/client");
 
 exports.getshippingcharg = async (data) => {
     const pickupPincode = process.env.PICKUP_PINCODE;
+ let dataparams = {
+            pickup_postcode: pickupPincode,
+            delivery_postcode: data.pincode,
+            weight: Number(data.weight),
+            cod: Number(data.cod),
+            length: Number(data.length),
+            breadth: Number(data.breadth),
+            height: Number(data.height)
+        }
 
+        console.log(dataparams)
 
 
     const url = "https://apiv2.shiprocket.in/v1/external/courier/serviceability";
@@ -22,6 +32,7 @@ exports.getshippingcharg = async (data) => {
             Authorization: `Bearer ${process.env.SHIPROCKET_TOKEN}`
         }
     });
+   
     return response.data;
 
 }

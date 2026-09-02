@@ -65,6 +65,7 @@ const checkUserCouponEligibility = async (coupon, user) => {
         const userEmail = user.email
         const couponEmails = coupon.applayCustomer
         const isUserEligible = couponEmails.includes(userEmail);
+        console.log(isUserEligible)
         if (isUserEligible) {
             userEligibility = true
         }
@@ -122,7 +123,6 @@ const checkProductCouponEligibility = (coupon, carts) => {
 }
 
 const matchProduct = (sku, carts) => {
-    console.log(sku)
     const matchproducts = carts.filter((cart) => {
         return sku.includes(cart.product.sku)
     })
@@ -131,7 +131,6 @@ const matchProduct = (sku, carts) => {
 }
 
 const GetVariants = (products) => {
-    console.log(products)
     const variants = []
     products.forEach((product) => {
         product.variant.variant.forEach((v) => {
@@ -207,7 +206,8 @@ exports.PercentageCoupenapplay = async (coupon, carts, user) => {
 
 exports.CartDiscountCoupenapplay = async(coupon, carts,user) => {
     
-    const userEligibility = checkUserCouponEligibility(coupon,user)
+    const userEligibility =await checkUserCouponEligibility(coupon,user)
+  
     if (!userEligibility) {
         return { success: false, message: "coupon not apply this user" }
     }
@@ -231,7 +231,7 @@ exports.CartDiscountCoupenapplay = async(coupon, carts,user) => {
 
 
     const variants = GetVariants(mproducts)
-    console.log(variants)
+ 
 
     if (!variants.length) {
         return { success: false, message: "varinat not found" }
@@ -241,7 +241,7 @@ exports.CartDiscountCoupenapplay = async(coupon, carts,user) => {
         return total + (variant.price || 0);
     }, 0);
 
-    console.log(totalPrice)
+   
 
     const purchaseEligibility = checkPurchaseCouponEligibility(coupon.minimumPurchase, totalPrice)
     if (!purchaseEligibility) {
@@ -255,7 +255,7 @@ exports.CartDiscountCoupenapplay = async(coupon, carts,user) => {
 }
 
 exports.ShippingDiscountCoupenapplay = async(coupon, carts,user)=>{
-    const userEligibility = checkUserCouponEligibility(coupon)
+    const userEligibility =await checkUserCouponEligibility(coupon)
     if (!userEligibility) {
         return { success: false, message: "coupon not apply this user" }
     }

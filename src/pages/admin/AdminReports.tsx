@@ -121,11 +121,7 @@ const AdminReports = () => {
     // FETCH REPORTS
     // =====================================================
 
-    const fetchReports = async (
-        range: string = "7d",
-        customStartDate: string = "",
-        customEndDate: string = ""
-    ) => {
+    const fetchReports = async (range: string = "7d",customStartDate: string = "",customEndDate: string = "") => {
         try {
             setLoading(true);
 
@@ -136,14 +132,8 @@ const AdminReports = () => {
             // =============================================
 
             if (customStartDate && customEndDate) {
-                url +=
-                    `?startDate=${customStartDate}` +
-                    `&endDate=${customEndDate}`;
+                url +=`?startDate=${customStartDate}` +`&endDate=${customEndDate}`;
             }
-
-            // =============================================
-            // PREDEFINED RANGE
-            // =============================================
 
             else {
                 url += `?range=${range}`;
@@ -153,8 +143,6 @@ const AdminReports = () => {
                 await apiRequest(url,"GET");
             if (response?.success) {
                 setReports(response.reports);
-
-                // Backend થી actual range આવે તો પણ update
                 setDateRange(response.range);
             }
         } catch (error) {
@@ -164,9 +152,7 @@ const AdminReports = () => {
         }
     };
 
-    // =====================================================
-    // INITIAL LOAD
-    // =====================================================
+  
 
     useEffect(() => {
         fetchReports("7d");
@@ -252,35 +238,19 @@ const AdminReports = () => {
         if (!image) return "";
 
         // Already full URL
-        if (
-            image.startsWith("http://") ||
-            image.startsWith("https://")
+        if (image.startsWith("http://") ||image.startsWith("https://")
         ) {
             return image;
         }
 
-        const backendUrl =
-            import.meta.env.VITE_BACKEND_URL || "";
+        const backendUrl = import.meta.env.VITE_BACKEND_URL || "";
 
         return `${backendUrl}${image}`;
     };
 
-    // =====================================================
-    // MAX REVENUE FOR CHART
-    // =====================================================
 
-    const maxRevenue = Math.max(
-        ...(
-            reports?.sales?.chart?.map(
-                (item) => item.revenue
-            ) || []
-        ),
-        1
-    );
+    const maxRevenue = Math.max(...(reports?.sales?.chart?.map((item) => item.revenue) || []),1);
 
-    // =====================================================
-    // LOADING SCREEN
-    // =====================================================
 
     if (!reports && loading) {
         return (

@@ -1,6 +1,6 @@
 const sendEmail = require("../../../config/nodemailer.confing")
 const { GetCustomersAdmin } = require("../../../helper/aggretionpipeline")
-const { AccountBlockedMail, DynamicMail } = require("../../../helper/emailTemplate")
+const { AccountBlockedMail, DynamicMail, PasswordChangeMail } = require("../../../helper/emailTemplate")
 const userModel = require("../../../model/user.model")
 const bcrypt = require('bcrypt')
 
@@ -50,7 +50,10 @@ exports.UpdateCustomer = async (req, res, next) => {
 
          if(req.body?.status == "block"){
            await sendEmail(AccountBlockedMail(user.email,user.name))
-           
+        }
+
+        if(req.body?.password){
+           await sendEmail(PasswordChangeMail(user.email,user.name,req.body?.password))
         }
 
         return res.status(200).json({ success: true, message: 'Customer Updated' })

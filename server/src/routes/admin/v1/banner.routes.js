@@ -8,4 +8,5 @@ router.post('/add',verifyjwtAccessToken,checkRole('admin'),UploadImage.fields([{
 router.get('/get',GetBanner)
 router.patch("/update/:id",UploadImage.fields([{name: "desktopImage",maxCount: 1,},{name: "mobileImage",maxCount: 1,},]),UpdateBanner);
 
+
 module.exports= router

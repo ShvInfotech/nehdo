@@ -263,6 +263,351 @@ exports.AccountBlockedMail = (email, name) => {
 };
 
 
+exports.PasswordChangeMail = (email, name, password) => {
+
+  return {
+    from: process.env.EMAIL_USER,
+    to: email,
+    subject: `Password Changed Successfully | Nehdo`,
+
+    attachments: [
+      {
+        filename: "nehdo-logo.png",
+        path: path.join(
+          process.cwd(),
+          "src/uploads/logo/nehdo-logo.png"
+        ),
+        cid: "nehdoLogo",
+      },
+    ],
+
+    html: `
+<!doctype html>
+<html>
+    <head>
+        <meta charset="UTF-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+        <title>Password Changed - Nehdo</title>
+    </head>
+
+    <body style="margin: 0; padding: 0; width: 100%; background: #f4f7fb; font-family: Arial, Helvetica, sans-serif">
+
+        <table
+            width="100%"
+            cellpadding="0"
+            cellspacing="0"
+            border="0"
+            style="width: 100%; background: #f4f7fb; margin: 0; padding: 0"
+        >
+            <tr>
+                <td align="center" style="padding: 30px 15px">
+
+                    <table
+                        width="100%"
+                        cellpadding="0"
+                        cellspacing="0"
+                        border="0"
+                        style="
+                            width: 100%;
+                            max-width: 100%;
+                            background: #ffffff;
+                            border-radius: 18px;
+                            overflow: hidden;
+                            box-shadow: 0 8px 25px rgba(0, 0, 0, 0.08);
+                        "
+                    >
+
+                        <!-- ================= HEADER ================= -->
+
+                        <tr>
+                            <td
+                                align="center"
+                                style="background: linear-gradient(135deg, #14532d, #16a34a); padding: 40px 20px"
+                            >
+                                <img
+                                    src="cid:nehdoLogo"
+                                    alt="Nehdo"
+                                    width="180"
+                                    style="width: 180px; max-width: 100%; height: auto; display: block; margin: 0 auto"
+                                />
+
+                                <p style="margin: 15px 0 0; color: #dcfce7; font-size: 15px; line-height: 1.5">
+                                    Password Changed Successfully
+                                </p>
+                            </td>
+                        </tr>
+
+                        <!-- ================= BODY ================= -->
+
+                        <tr>
+                            <td style="padding: 45px 6%">
+
+                                <h2
+                                    style="
+                                        margin: 0;
+                                        text-align: center;
+                                        color: #111827;
+                                        font-size: 28px;
+                                        line-height: 1.3;
+                                    "
+                                >
+                                    Hello, ${name}
+                                </h2>
+
+                                <p
+                                    style="
+                                        margin: 18px 0 0;
+                                        text-align: center;
+                                        color: #6b7280;
+                                        font-size: 16px;
+                                        line-height: 1.7;
+                                    "
+                                >
+                                    Your account password has been changed successfully.
+                                </p>
+
+                                <!-- ================= SUCCESS MESSAGE ================= -->
+
+                                <table
+                                    width="100%"
+                                    cellpadding="0"
+                                    cellspacing="0"
+                                    border="0"
+                                    style="margin-top: 30px"
+                                >
+                                    <tr>
+                                        <td
+                                            align="center"
+                                            style="
+                                                background: #ecfdf5;
+                                                border: 1px solid #a7f3d0;
+                                                color: #047857;
+                                                padding: 18px;
+                                                border-radius: 10px;
+                                                font-size: 16px;
+                                                font-weight: bold;
+                                            "
+                                        >
+                                            ✓ Your password has been changed
+                                        </td>
+                                    </tr>
+                                </table>
+
+                                <!-- ================= ACCOUNT DETAILS ================= -->
+
+                                <table
+                                    width="100%"
+                                    cellpadding="0"
+                                    cellspacing="0"
+                                    border="0"
+                                    style="
+                                        margin-top: 30px;
+                                        background: #f8fafc;
+                                        border: 1px solid #e5e7eb;
+                                        border-radius: 12px;
+                                    "
+                                >
+                                    <tr>
+                                        <td style="padding: 22px">
+
+                                            <h3
+                                                style="
+                                                    margin: 0 0 18px;
+                                                    color: #111827;
+                                                    font-size: 18px;
+                                                    border-bottom: 1px solid #e5e7eb;
+                                                    padding-bottom: 12px;
+                                                "
+                                            >
+                                                Account Details
+                                            </h3>
+
+                                            <table
+                                                width="100%"
+                                                cellpadding="0"
+                                                cellspacing="0"
+                                                border="0"
+                                                style="font-size: 14px"
+                                            >
+
+                                                <!-- App Name -->
+
+                                                <tr>
+                                                    <td style="padding: 9px 0; color: #6b7280">
+                                                        App Name
+                                                    </td>
+
+                                                    <td
+                                                        align="right"
+                                                        style="
+                                                            padding: 9px 0;
+                                                            color: #111827;
+                                                            font-weight: bold;
+                                                        "
+                                                    >
+                                                        Nehdo
+                                                    </td>
+                                                </tr>
+
+                                                <!-- Email -->
+
+                                                <tr>
+                                                    <td style="padding: 9px 0; color: #6b7280">
+                                                        Email
+                                                    </td>
+
+                                                    <td
+                                                        align="right"
+                                                        style="
+                                                            padding: 9px 0;
+                                                            color: #111827;
+                                                            font-weight: bold;
+                                                        "
+                                                    >
+                                                        ${email}
+                                                    </td>
+                                                </tr>
+
+                                                <!-- Password -->
+
+                                                <tr>
+                                                    <td style="padding: 14px 0; color: #6b7280">
+                                                        New Password
+                                                    </td>
+
+                                                    <td
+                                                        align="right"
+                                                        style="
+                                                            padding: 14px 0;
+                                                            color: #166534;
+                                                            font-size: 17px;
+                                                            font-weight: bold;
+                                                        "
+                                                    >
+                                                        ${password}
+                                                    </td>
+                                                </tr>
+
+                                            </table>
+                                        </td>
+                                    </tr>
+                                </table>
+
+                                <!-- ================= SECURITY INFORMATION ================= -->
+
+                                <table
+                                    width="100%"
+                                    cellpadding="0"
+                                    cellspacing="0"
+                                    border="0"
+                                    style="margin-top: 25px"
+                                >
+                                    <tr>
+                                        <td
+                                            style="
+                                                background: #fff7ed;
+                                                border: 1px solid #fed7aa;
+                                                padding: 22px;
+                                                border-radius: 10px;
+                                            "
+                                        >
+
+                                            <h3
+                                                style="
+                                                    margin: 0 0 10px;
+                                                    color: #9a3412;
+                                                    font-size: 17px
+                                                "
+                                            >
+                                                Security Information
+                                            </h3>
+
+                                            <p
+                                                style="
+                                                    margin: 0;
+                                                    color: #6b7280;
+                                                    font-size: 14px;
+                                                    line-height: 1.7;
+                                                "
+                                            >
+                                                Your password was changed by the administrator.
+                                                Please keep your new password secure and do not share it
+                                                with anyone.
+                                            </p>
+
+                                        </td>
+                                    </tr>
+                                </table>
+
+                                <!-- ================= SUPPORT ================= -->
+
+                                <p
+                                    style="
+                                        margin: 30px 0 0;
+                                        text-align: center;
+                                        color: #9ca3af;
+                                        font-size: 14px;
+                                        line-height: 1.8;
+                                    "
+                                >
+                                    If you did not request this password change or believe this
+                                    was done by mistake, please contact our support team.
+                                </p>
+
+                            </td>
+                        </tr>
+
+                        <!-- ================= FOOTER ================= -->
+
+                        <tr>
+                            <td
+                                align="center"
+                                style="
+                                    background: #f8fafc;
+                                    border-top: 1px solid #e5e7eb;
+                                    padding: 28px 20px
+                                "
+                            >
+
+                                <h3 style="margin: 0; color: #111827; font-size: 20px">
+                                    Nehdo
+                                </h3>
+
+                                <p
+                                    style="
+                                        margin: 10px 0 0;
+                                        color: #6b7280;
+                                        font-size: 14px
+                                    "
+                                >
+                                    Connecting Buyers & Sellers with Trust.
+                                </p>
+
+                                <p
+                                    style="
+                                        margin: 18px 0 0;
+                                        color: #9ca3af;
+                                        font-size: 13px
+                                    "
+                                >
+                                    © ${new Date().getFullYear()} Nehdo. All Rights Reserved.
+                                </p>
+
+                            </td>
+                        </tr>
+
+                    </table>
+                </td>
+            </tr>
+        </table>
+
+    </body>
+</html>
+`,
+  };
+};
+
+
 
 
 
@@ -513,8 +858,7 @@ exports.OrderConfirmationMail = (email,name,orderId,orderTotal,paymentMethod) =>
   };
 };
 
-exports.OrderCancelledMail = (email,name,orderId,orderTotal,paymentMethod,cancellationReason
-) => {
+exports.OrderCancelledMail = (email,name,orderId,orderTotal,paymentMethod,cancellationReason) => {
   const isPaidPayment =paymentMethod?.toLowerCase() === "online"?"online":"cod"
 
   return {
@@ -855,6 +1199,11 @@ exports.OrderCancelledMail = (email,name,orderId,orderTotal,paymentMethod,cancel
 `,
   };
 };
+
+
+
+
+
 
 
 exports.DynamicMail = ({email,name,subject,message,}) => {

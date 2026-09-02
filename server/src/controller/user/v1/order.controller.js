@@ -87,7 +87,8 @@ exports.CancelledOrder = async (req, res, next) => {
 
             let data = await RazorpayRefundApi(order)
             paymentdata.paymentId = data.payment_id
-            paymentdata.status = data.status == "pending" ? "processing" : data.status
+            paymentdata.status ="pending"
+            // paymentdata.status = data.status == "pending" ? "processing" : data.status
             paymentdata.refundId = data.id
 
             if (data.status == "processed") {

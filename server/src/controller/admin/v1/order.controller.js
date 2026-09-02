@@ -395,7 +395,7 @@ exports.CanceledOrderRequest = async (req, res, next) => {
 exports.ShippingWebhook = async (req, res, next) => {
     try {
 
-
+console.log(req.body)
         const apiKey = req.headers["x-api-key"];
 
         if (apiKey !== "123456abc") {

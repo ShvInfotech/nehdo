@@ -165,6 +165,9 @@ exports.CheckShiping = async (req, res, next) => {
         };
 
 
+        
+
+
         const data = await getshippingcharg(trackingData)
         if (data.status === 400 || data.status === 404) {
             return res.status(data.status).json({ success: false, message: data.message })
@@ -172,6 +175,7 @@ exports.CheckShiping = async (req, res, next) => {
         const bestCourier = data.data.available_courier_companies.reduce((best, current) =>
             current.rate < best.rate ? current : best
         );
+
 
         return res.status(200).json({ success: true, message: 'get charge', shipping: bestCourier.rate, estimated_delivery_days: bestCourier.estimated_delivery_days, courier_name: bestCourier.courier_name, id: bestCourier.courier_company_id })
 
