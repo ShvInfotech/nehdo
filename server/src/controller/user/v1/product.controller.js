@@ -1,11 +1,8 @@
-
-const { default: mongoose } = require("mongoose");
-const { userGetProductpipeline, userGetSingalsProductpipeline, userGetSingalsProductRatingpipeline } = require("../../../helper/aggretionpipeline");
+const mongoose = require("mongoose");
 const productModel = require("../../../model/product.model");
-const productVariantModel = require('../../../model/productvariant.model')
-
 const ratingModel = require('../../../model/rating.model')
 const { CustomeError } = require("../../../middleware/globelError");
+const { userGetProductpipeline, userGetSingalsProductRatingpipeline } = require("../../../helper/aggretionpipeline");
 
 exports.AllProduct = async (req, res, next) => {
     try {
@@ -73,7 +70,7 @@ exports.CreateReview = async (req, res, next) => {
         const { productIds, orderId, rating, review } = req.body || {};
 
         // Product IDs validation
-        if (!Array.isArray(productIds) ||productIds.length === 0) {
+        if (!Array.isArray(productIds) || productIds.length === 0) {
             return next(
                 CustomeError(422, "product id is required")
             );

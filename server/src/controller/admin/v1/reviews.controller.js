@@ -1,5 +1,5 @@
-const { CustomeError } = require("../../../middleware/globelError");
 const ratingModel = require("../../../model/rating.model")
+const { CustomeError } = require("../../../middleware/globelError");
 
 exports.GetReviews = async (req, res, next) => {
     try {
@@ -178,30 +178,30 @@ exports.GetReviews = async (req, res, next) => {
 };
 
 
-exports.UpdateReviews = async(req,res,next) =>{
+exports.UpdateReviews = async (req, res, next) => {
     try {
-        const id  = req.params.id
-           const rating = await ratingModel.findByIdAndUpdate(id,{...req.body})
-           if(!rating){
-           return next(CustomeError(404,"Review Not Found"))
-           }
-        return res.status(200).json({success:true,message:'Review Updated',rating})
+        const id = req.params.id
+        const rating = await ratingModel.findByIdAndUpdate(id, { ...req.body })
+        if (!rating) {
+            return next(CustomeError(404, "Review Not Found"))
+        }
+        return res.status(200).json({ success: true, message: 'Review Updated', rating })
     } catch (error) {
         return next(error)
     }
 }
 
 
-exports.DeleteReviews = async(req,res,next)=>{
+exports.DeleteReviews = async (req, res, next) => {
     try {
-         const id  = req.params.id
-           const rating = await ratingModel.findByIdAndDelete(id)
-           if(!rating){
-           return next(CustomeError(404,"Review Not Found"))
-           }
-        return res.status(200).json({success:true,message:'Review Deleted'})
+        const id = req.params.id
+        const rating = await ratingModel.findByIdAndDelete(id)
+        if (!rating) {
+            return next(CustomeError(404, "Review Not Found"))
+        }
+        return res.status(200).json({ success: true, message: 'Review Deleted' })
     } catch (error) {
-        
+
     }
 }
 
@@ -209,24 +209,8 @@ exports.DeleteReviews = async(req,res,next)=>{
 
 exports.ApproveAllReviews = async (req, res, next) => {
     try {
-        const result = await ratingModel.updateMany(
-            {
-                status: "pending"
-            },
-            {
-                $set: {
-                    status: "approved",
-                    updatedAt: new Date()
-                }
-            }
-        );
-
-        return res.status(200).json({
-            success: true,
-            message: "All pending reviews approved successfully",
-            modifiedCount: result.modifiedCount
-        });
-
+        const result = await ratingModel.updateMany({ status: "pending" }, { $set: { status: "approved", updatedAt: new Date() } });
+        return res.status(200).json({ success: true, message: "All pending reviews approved successfully", modifiedCount: result.modifiedCount });
     } catch (error) {
         return next(error);
     }

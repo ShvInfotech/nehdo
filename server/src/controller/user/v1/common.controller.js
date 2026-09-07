@@ -6,17 +6,18 @@ const productModel = require("../../../model/product.model")
 const productvariantModel = require('../../../model/productvariant.model')
 const productshippingModel = require('../../../model/productshipping.model')
 const productinventoryModel = require('../../../model/productinventory.model')
-const {  GetCartProductCouponApplay, GetCartProductShipingcharg, GetCartProductPaymentOrder, GetHeroBanners } = require("../../../helper/aggretionpipeline")
-const { PercentageCoupenapplay, CartDiscountCoupenapplay, FindPriceinProduct, generateOrderNumber, ShippingDiscountCoupenapplay } = require("../../../helper/helper")
-const { getshippingcharg } = require("../../../services/shiproketapis")
-const { razorpay, razorpaySignature } = require("../../../config/razorpay.config")
 const orderModel = require("../../../model/order.model")
 const categoryModel = require('../../../model/category.model')
 const brandModel = require('../../../model/brand.model')
 const bannerModel = require('../../../model/banner.model')
-
+const promoModel = require("../../../model/promo.model");
 const sendEmail = require("../../../config/nodemailer.confing")
+const { getshippingcharg } = require("../../../services/shiproketapis")
 const { OrderConfirmationMail } = require("../../../helper/emailTemplate")
+const { razorpay, razorpaySignature } = require("../../../config/razorpay.config")
+const { GetCartProductCouponApplay, GetCartProductShipingcharg, GetCartProductPaymentOrder, GetHeroBanners } = require("../../../helper/aggretionpipeline")
+const { PercentageCoupenapplay, CartDiscountCoupenapplay, FindPriceinProduct, generateOrderNumber, ShippingDiscountCoupenapplay, sendNotification } = require("../../../helper/helper")
+const userModel = require("../../../model/user.model")
 
 
 
@@ -165,7 +166,7 @@ exports.CheckShiping = async (req, res, next) => {
         };
 
 
-        
+
 
 
         const data = await getshippingcharg(trackingData)
@@ -320,14 +321,14 @@ exports.verifyPayment = async (req, res, next) => {
 
 
         const address = await addressModel.findById(req.body?.addressId)
-        const carts = await cartModel.find({_id: { $in: req.body?.cartIds },userId: req.user._id});
+        const carts = await cartModel.find({ _id: { $in: req.body?.cartIds }, userId: req.user._id });
 
         const orderItems = [];
 
         for (const cartItem of carts) {
 
 
-            const productVariant = await productvariantModel.findOne({productId: cartItem.productId});
+            const productVariant = await productvariantModel.findOne({ productId: cartItem.productId });
             const productShipping = await productshippingModel.findOne({ productId: cartItem.productId })
             if (!productVariant) {
                 return next(CustomeError(404, `Variant not found for product ${cartItem.productId}`))
@@ -336,11 +337,11 @@ exports.verifyPayment = async (req, res, next) => {
             const variantName = `${cartItem.color}/${cartItem.size}`;
             const selectedVariant = productVariant.variant.find((variant) => variant.name === variantName);
             if (!selectedVariant) {
-                return next(CustomeError(404,`Variant ${variantName} not found`))
+                return next(CustomeError(404, `Variant ${variantName} not found`))
             }
 
 
-            
+
 
             orderItems.push({
                 productId: cartItem.productId,
@@ -378,7 +379,7 @@ exports.verifyPayment = async (req, res, next) => {
                 }
             );
 
-            await productinventoryModel.findOneAndUpdate({ productId: cartItem.productId },{$inc: {stock: -Number(cartItem.quantity)}},{returnDocument: "after"});
+            await productinventoryModel.findOneAndUpdate({ productId: cartItem.productId }, { $inc: { stock: -Number(cartItem.quantity) } }, { returnDocument: "after" });
         }
 
         const shippingAddress = {
@@ -417,10 +418,12 @@ exports.verifyPayment = async (req, res, next) => {
         const order = await orderModel.create(orderData)
 
         if (order) {
-            await cartModel.deleteMany({_id: { $in: req.body?.cartIds },userId: req.user._id});
+            await cartModel.deleteMany({ _id: { $in: req.body?.cartIds }, userId: req.user._id });
         }
-
+        const admin = await userModel.findOne({ role: "admin" })
         await sendEmail(OrderConfirmationMail(req.user.email, req.user.name, order.orderNumber, order.totalAmount, order.payment.method))
+        await sendNotification(admin.deviceToken, "NEHDO", `new order recivied ${order.orderNumber}`)
+
         return res.status(200).json({ success: true, message: 'order create successfullly', order })
     } catch (error) {
         return next(error)
@@ -451,7 +454,7 @@ exports.GetCategory = async (req, res, next) => {
                     desc: "$description",
 
                     image: {
-                        $concat: [`http://${process.env.HOST}:${process.env.PORT}`, "$logo"],
+                        $concat: [process.env.BACKEND_DOMIN_URL, "$logo"],
                     },
 
                     gradient: {
@@ -507,7 +510,7 @@ exports.GetBrands = async (req, res, next) => {
 
                     src: {
                         $concat: [
-                            `http://${process.env.HOST}:${process.env.PORT}`,
+                            process.env.BACKEND_DOMIN_URL,
                             "$logo",
                         ],
                     },
@@ -528,17 +531,14 @@ exports.GetBrands = async (req, res, next) => {
 exports.GetBanners = async (req, res, next) => {
     try {
         const category = req.query.category
-        console.log("banner", category)
         if (category === "Promotional Strip") {
 
             const now = new Date();
 
-            const baseUrl = `${req.protocol}://${req.get("host")}`;
+            // const baseUrl = `${req.protocol}://${req.get("host")}`;
+            const baseUrl = process.env.BACKEND_DOMIN_URL;
 
             const banners = await bannerModel.aggregate([
-                // -----------------------------------------
-                // FILTER ACTIVE PROMOTIONAL STRIP BANNERS
-                // -----------------------------------------
                 {
                     $match: {
                         isDeleted: false,
@@ -546,13 +546,11 @@ exports.GetBanners = async (req, res, next) => {
                         placement: "Promotional Strip",
 
                         $or: [
-                            // Start date and end date both null
                             {
                                 startDate: null,
                                 endDate: null,
                             },
 
-                            // Only start date exists
                             {
                                 startDate: {
                                     $ne: null,
@@ -561,7 +559,6 @@ exports.GetBanners = async (req, res, next) => {
                                 endDate: null,
                             },
 
-                            // Only end date exists
                             {
                                 startDate: null,
                                 endDate: {
@@ -570,7 +567,6 @@ exports.GetBanners = async (req, res, next) => {
                                 },
                             },
 
-                            // Both dates exist
                             {
                                 startDate: {
                                     $ne: null,
@@ -585,9 +581,6 @@ exports.GetBanners = async (req, res, next) => {
                     },
                 },
 
-                // -----------------------------------------
-                // SORT BY PRIORITY
-                // -----------------------------------------
                 {
                     $sort: {
                         priority: 1,
@@ -595,9 +588,6 @@ exports.GetBanners = async (req, res, next) => {
                     },
                 },
 
-                // -----------------------------------------
-                // ONLY REQUIRED FIELDS
-                // -----------------------------------------
                 {
                     $project: {
                         _id: 1,
@@ -671,8 +661,6 @@ exports.GetBanners = async (req, res, next) => {
         if (category == "Hero Slider") {
 
 
-            const domain = process.env.BACKEND_URL ||
-                `${req.protocol}://${req.get("host")}`;
 
             const banners = await bannerModel.aggregate(GetHeroBanners());
             return res.status(200).json({ success: true, message: 'get banners', banners })
@@ -685,25 +673,99 @@ exports.GetBanners = async (req, res, next) => {
 
 
 
+
+
+
+exports.Getpromos = async (req, res, next) => {
+    try {
+        const now = new Date();
+
+        const promos = await promoModel.aggregate([
+            // =====================================================
+            // PROMO FILTER
+            // =====================================================
+            {
+                $match: {
+                    status: {
+                        $in: ["Active", "Scheduled"],
+                    },
+
+                    $or: [
+                        {
+                            startDate: null,
+                            endDate: null,
+                        },
+                        {
+                            startDate: {
+                                $ne: null,
+                                $lte: now,
+                            },
+                            endDate: null,
+                        },
+                        {
+                            startDate: null,
+                            endDate: {
+                                $ne: null,
+                                $gte: now,
+                            },
+                        },
+                        {
+                            startDate: {
+                                $ne: null,
+                                $lte: now,
+                            },
+                            endDate: {
+                                $ne: null,
+                                $gte: now,
+                            },
+                        },
+                    ],
+                },
+            },
+            {
+                $project: {
+                    _id: 0,
+                    description: 1,
+                },
+            },
+        ]);
+        const descriptions = promos.map((promo) => promo.description);
+        return res.status(200).json({ success: true, message: "get promos", promos: descriptions, });
+
+    } catch (error) {
+
+        return next(error)
+    }
+};
+
+
+
+
+
+
+
 exports.placecodeorder = async (req, res, next) => {
     try {
 
+        // await sendNotification(req.user.deviceToken,"nehdo" , `new order recivied ${Date.now()}`)
+
+        //  return
         if (!req.body?.cartIds && !req.body?.cartIds?.length) {
             return next(CustomeError(422, 'cart id required'))
         }
         const address = await addressModel.findById(req.body?.addressId)
-        const carts = await cartModel.find({_id: { $in: req.body?.cartIds },userId: req.user._id});
+        const carts = await cartModel.find({ _id: { $in: req.body?.cartIds }, userId: req.user._id });
 
         const orderItems = [];
 
         for (const cartItem of carts) {
 
-          
-            const productVariant = await productvariantModel.findOne({productId: cartItem.productId});
+
+            const productVariant = await productvariantModel.findOne({ productId: cartItem.productId });
             const productShipping = await productshippingModel.findOne({ productId: cartItem.productId })
 
             if (!productVariant) {
-                return next(CustomeError(404,`Variant not found for product ${cartItem.productId}`))
+                return next(CustomeError(404, `Variant not found for product ${cartItem.productId}`))
             }
 
             const product = await productModel.findById(cartItem.productId)
@@ -712,7 +774,7 @@ exports.placecodeorder = async (req, res, next) => {
             const selectedVariant = productVariant.variant.find((variant) => variant.name === variantName);
 
             if (!selectedVariant) {
-                return next(CustomeError(404,`Variant ${variantName} not found`))
+                return next(CustomeError(404, `Variant ${variantName} not found`))
             }
 
             if (cartItem.quantity > selectedVariant.stock) {
@@ -795,10 +857,14 @@ exports.placecodeorder = async (req, res, next) => {
         const order = await orderModel.create(orderData)
 
         if (order) {
-            await cartModel.deleteMany({_id: { $in: req.body?.cartIds },userId: req.user._id});
+            await cartModel.deleteMany({ _id: { $in: req.body?.cartIds }, userId: req.user._id });
         }
+const admin = await userModel.findOne({role:"admin"})
 
         await sendEmail(OrderConfirmationMail(req.user.email, req.user.name, order.orderNumber, order.totalAmount, order.payment.method))
+
+        await sendNotification(admin?.deviceToken, "NEHDO", `new order recivied ${order.orderNumber}`)
+
         return res.status(200).json({ success: true, message: 'order create successfullly', order })
     } catch (error) {
         return next(error)

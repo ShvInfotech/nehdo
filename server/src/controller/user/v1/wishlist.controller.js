@@ -1,6 +1,6 @@
-const mongoose  = require("mongoose")
-const { CustomeError } = require("../../../middleware/globelError")
+const mongoose = require("mongoose")
 const wishlistModel = require("../../../model/wishlist.model")
+const { CustomeError } = require("../../../middleware/globelError")
 const { GetWishlistpipiline } = require("../../../helper/aggretionpipeline")
 
 
@@ -52,27 +52,27 @@ exports.AddWishlist = async (req, res, next) => {
   }
 };
 
-exports.GetWishlist = async(req,res,next)=>{
-    try {
-        
-        const wishlists = await wishlistModel.aggregate(GetWishlistpipiline(req.user._id))
+exports.GetWishlist = async (req, res, next) => {
+  try {
 
-        return res.status(200).json({success:true,message:"get wishlists",wishlists})
-    } catch (error) {
-        return next(error)
-    }
+    const wishlists = await wishlistModel.aggregate(GetWishlistpipiline(req.user._id))
+
+    return res.status(200).json({ success: true, message: "get wishlists", wishlists })
+  } catch (error) {
+    return next(error)
+  }
 }
 
-exports.DeleteWishlist = async(req,res,next)=>{
-    try {
-        const id = req.params.id
-        const wishlist = await wishlistModel.findByIdAndDelete(id) 
-        if(wishlist){
-            return res.status(200).json({success:true,message:"product remove from wishlist"})
-        }else{
-            return next(CustomeError(404,'wishlist not found'))
-        }
-    } catch (error) {
-        return next(error)
+exports.DeleteWishlist = async (req, res, next) => {
+  try {
+    const id = req.params.id
+    const wishlist = await wishlistModel.findByIdAndDelete(id)
+    if (wishlist) {
+      return res.status(200).json({ success: true, message: "product remove from wishlist" })
+    } else {
+      return next(CustomeError(404, 'wishlist not found'))
     }
+  } catch (error) {
+    return next(error)
+  }
 }

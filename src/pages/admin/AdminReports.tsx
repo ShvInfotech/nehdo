@@ -125,7 +125,7 @@ const AdminReports = () => {
         try {
             setLoading(true);
 
-            let url = "/admin/api/v1/dashboard/get-eeports";
+            let url = "/admin/api/v1/dashboard/get-reports";
 
             // =============================================
             // CUSTOM DATE

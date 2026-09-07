@@ -5,7 +5,7 @@ const shippingSchema = mongoose.Schema({
     productId: {
         type: mongoose.Schema.Types.ObjectId,
         ref: 'products',
-        required:true
+        required: true
     },
     shipping: {
         type: Boolean,
@@ -13,7 +13,7 @@ const shippingSchema = mongoose.Schema({
     },
     weight: {
         type: Number,
-        min:0.1,
+        min: 0.1,
         default: 0.1
     },
     dimensions: {
@@ -22,7 +22,7 @@ const shippingSchema = mongoose.Schema({
             width: { type: Number, default: 0 },
             height: { type: Number, default: 0 }
         },
-         _id: false
+        _id: false
     },
     HSCode: {
         type: String,
@@ -30,9 +30,9 @@ const shippingSchema = mongoose.Schema({
     }
 },
     {
-
-        versionKey: false
+        versionKey: false,
+        timestamps: true,
     }
 )
 
-module.exports = mongoose.model('productshippings',shippingSchema)
+module.exports = mongoose.model('productshippings', shippingSchema)

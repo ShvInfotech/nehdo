@@ -71,6 +71,7 @@ const bannerSchema = new mongoose.Schema(
         },
     },
     {
+        versionKey: false,
         timestamps: true,
     }
 );

@@ -1,16 +1,16 @@
-const { CustomeError } = require("../../../middleware/globelError");
-const { generateJwtToken, generatehashToken } = require("../../../middleware/jwtToken");
+const mongoose = require("mongoose");
+const validator = require("validator");
+const sendEmail = require("../../../config/nodemailer.confing");
+const jwt = require('jsonwebtoken');
 const userModel = require('../../../model/user.model')
 const bcrypt = require('bcrypt')
-const validator = require("validator");
 const firebaseadmin = require("../../../config/firebase");
-const { getAuth } = require("firebase-admin/auth");
-const mongoose = require("mongoose");
-const { DeleteImage } = require("../../../helper/helper");
-const jwt = require('jsonwebtoken');
-const sendEmail = require("../../../config/nodemailer.confing");
-const { ForgetPasswordMail } = require("../../../helper/emailTemplate");
 const addressModel = require("../../../model/address.model");
+const { DeleteImage } = require("../../../helper/helper");
+const { ForgetPasswordMail } = require("../../../helper/emailTemplate");
+const { getAuth } = require("firebase-admin/auth");
+const { generateJwtToken, generatehashToken } = require("../../../middleware/jwtToken");
+const { CustomeError } = require("../../../middleware/globelError");
 
 exports.UserRegister = async (req, res, next) => {
     try {
@@ -68,7 +68,7 @@ exports.UserRegister = async (req, res, next) => {
             )
             .select(['name', 'email', 'phone', 'role', 'profile']);
         if (user.profile !== "") {
-            user.profile = `http://${process.env.HOST}:${process.env.PORT}${user.profile}`;
+            user.profile = `${process.env.BACKEND_DOMIN_URL}${user.profile}`;
         }
 
         const address = await addressModel.find({ userId: user._id })
@@ -109,10 +109,10 @@ exports.UserLogin = async (req, res, next) => {
         }
 
         if (!user.provider.includes('local')) {
-    return next(CustomeError(404, "user not found"))
-}
+            return next(CustomeError(404, "user not found"))
+        }
 
-        if(user.status !== "active"){
+        if (user.status !== "active") {
             return next(CustomeError(404, "your account is blocked by admin"))
 
         }
@@ -143,7 +143,7 @@ exports.UserLogin = async (req, res, next) => {
             )
             .select(['name', 'email', 'phone', 'role', 'profile']);
         if (user.profile) {
-            user.profile = `http://${process.env.HOST}:${process.env.PORT}${user.profile}`;
+            user.profile = `${process.env.BACKEND_DOMIN_URL}${user.profile}`;
         }
 
         const address = await addressModel.find({ userId: user._id })
@@ -177,7 +177,7 @@ exports.GoogelLogin = async (req, res, next) => {
             user = await userModel.create({ name: decoded.name, email: decoded.email, provider: ['google'], googleId: decoded.sub })
         }
 
-        if(user.status !== "active"){
+        if (user.status !== "active") {
             return next(CustomeError(404, "your account is blocked by admin"))
 
         }
@@ -210,7 +210,7 @@ exports.GoogelLogin = async (req, res, next) => {
         const address = await addressModel.find({ userId: user._id })
         const userData = user.toObject();
         if (userData.profile) {
-            userData.profile = `http://${process.env.HOST}:${process.env.PORT}${userData.profile}`;
+            userData.profile = `${process.env.BACKEND_DOMIN_URL}${userData.profile}`;
         }
         userData.address = address;
 
@@ -273,7 +273,7 @@ exports.UpdateUserProfile = async (req, res, next) => {
 
         if (user.profile !== '') {
             user.profile =
-                `http://${process.env.HOST}:${process.env.PORT}${user.profile}`;
+                `${process.env.BACKEND_DOMIN_URL}${user.profile}`;
         }
 
         const address = await addressModel.find({ userId: user._id });
@@ -304,7 +304,7 @@ exports.ForgotPassword = async (req, res, next) => {
         }
 
         let token = jwt.sign({ userId: user._id }, process.env.PASSWORD_JWT_SECRET, { expiresIn: "10m" })
-        token = `http://${process.env.HOST}:${process.env.PORT}/user/api/v1/auth/reset-password/${token}`
+        token = `${process.env.BACKEND_DOMIN_URL}/user/api/v1/auth/reset-password/${token}`
         sendEmail(ForgetPasswordMail(user.email, user.name, token))
 
 
@@ -376,15 +376,7 @@ exports.LogOut = async (req, res, next) => {
         const token = req.token
 
         if (token) {
-            await userModel.findByIdAndUpdate(
-                req.user._id,
-                {
-                    $pull: {
-                        accessToken: token
-                    }
-                },
-                { returnDocument: 'after' }
-            );
+            await userModel.findByIdAndUpdate(req.user._id, { $pull: { accessToken: token } }, { returnDocument: 'after' });
         }
 
         return res.status(200).json({ success: true, message: 'logout' })

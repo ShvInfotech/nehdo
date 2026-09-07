@@ -1,6 +1,6 @@
 const mongoose = require('mongoose')
-const { CustomeError } = require('../../../middleware/globelError')
 const brandModel = require('../../../model/brand.model')
+const { CustomeError } = require('../../../middleware/globelError')
 const { DeleteImage } = require('../../../helper/helper')
 
 exports.AddBrand = async (req, res, next) => {
@@ -19,7 +19,7 @@ exports.AddBrand = async (req, res, next) => {
         const brand = await brandModel.create({ ...req.body, logo: brandlogo })
 
         if (brand.logo) {
-            brand.logo = `http://${process.env.HOST}:${process.env.PORT}${brand.logo}`;
+            brand.logo = `${process.env.BACKEND_DOMIN_URL}:${process.env.PORT}${brand.logo}`;
         }
 
         return res.status(200).json({ success: true, message: 'brand added successfully', brand })
@@ -33,24 +33,21 @@ exports.GetBrand = async (req, res, next) => {
     try {
 
         const brands = await brandModel.aggregate([
-            // Products join
             {
                 $lookup: {
-                    from: 'products',          // product collection name
-                    localField: '_id',         // brand _id
-                    foreignField: 'brandId',   // product.brandId
+                    from: 'products',
+                    localField: '_id',
+                    foreignField: 'brandId',
                     as: 'products'
                 }
             },
 
-            // Product count add
             {
                 $addFields: {
                     productCount: { $size: '$products' }
                 }
             },
 
-            // Logo URL add
             {
                 $addFields: {
                     logo: {
@@ -64,7 +61,7 @@ exports.GetBrand = async (req, res, next) => {
                             '',
                             {
                                 $concat: [
-                                    `http://${process.env.HOST}:${process.env.PORT}`,
+                                    process.env.BACKEND_DOMIN_URL,
                                     '$logo'
                                 ]
                             }
@@ -73,12 +70,11 @@ exports.GetBrand = async (req, res, next) => {
                 }
             },
 
-            // Unwanted fields remove
             {
                 $project: {
                     createdAt: 0,
                     updatedAt: 0,
-                    products: 0 // joined array hide
+                    products: 0
                 }
             }
         ]);
@@ -110,7 +106,7 @@ exports.UpdateBrand = async (req, res, next) => {
 
         brand = await brandModel.findByIdAndUpdate(id, { ...req.body, logo: brandlogo }, { returnDocument: 'after' }).select({ createdAt: 0, updatedAt: 0 })
         if (brand.logo) {
-            brand.logo = `http://${process.env.HOST}:${process.env.PORT}${brand.logo}`;
+            brand.logo = `${process.env.BACKEND_DOMIN_URL}${brand.logo}`;
         }
         return res.status(200).json({ success: true, message: 'brand update successfully', brand })
 

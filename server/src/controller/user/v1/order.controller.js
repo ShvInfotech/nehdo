@@ -1,11 +1,11 @@
-const { CustomeError } = require("../../../middleware/globelError");
 const orderModel = require("../../../model/order.model");
 const userModel = require("../../../model/user.model");
-const { RazorpayRefundApi } = require("../../../services/razorpayapi");
 const orderRequestsModel = require('../../../model/orderRequests.model');
-const { ShiprocketCancel, getReturnshippingcharg, ShiproketReturnCreate, AssignCourierAndAWB } = require("../../../services/shiproketapis");
 const sendEmail = require("../../../config/nodemailer.confing");
+const { CustomeError } = require("../../../middleware/globelError");
+const { RazorpayRefundApi } = require("../../../services/razorpayapi");
 const { OrderCancelledMail } = require("../../../helper/emailTemplate");
+const { ShiprocketCancel, getReturnshippingcharg, ShiproketReturnCreate, AssignCourierAndAWB } = require("../../../services/shiproketapis");
 
 
 exports.GetOrders = async (req, res, next) => {
@@ -16,7 +16,7 @@ exports.GetOrders = async (req, res, next) => {
             ...order.toObject(),
             items: order.items.map(item => ({
                 ...item.toObject(),
-                image: item.image ? `http://${process.env.HOST}:${process.env.PORT}${item.image}` : ''
+                image: item.image ? `${process.env.BACKEND_DOMIN_URL}${item.image}` : ''
             }))
         }));
 
@@ -87,7 +87,7 @@ exports.CancelledOrder = async (req, res, next) => {
 
             let data = await RazorpayRefundApi(order)
             paymentdata.paymentId = data.payment_id
-            paymentdata.status ="pending"
+            paymentdata.status = "pending"
             // paymentdata.status = data.status == "pending" ? "processing" : data.status
             paymentdata.refundId = data.id
 
@@ -109,10 +109,10 @@ exports.CancelledOrder = async (req, res, next) => {
 
         const data = await orderRequestsModel.create(orderrequirestdata)
 
-        await orderModel.findByIdAndUpdate(order._id,{status:"cancelled"})
+        await orderModel.findByIdAndUpdate(order._id, { status: "cancelled" })
 
-            await sendEmail(OrderCancelledMail(req.user.email,req.user.name,order.orderNumber,order.totalAmount,order.payment.method,req.body.reason || "other"))
-        
+        await sendEmail(OrderCancelledMail(req.user.email, req.user.name, order.orderNumber, order.totalAmount, order.payment.method, req.body.reason || "other"))
+
 
         return res.status(200).json({ success: true, message: 'order cancelled successfully', data })
 
@@ -154,10 +154,10 @@ exports.ReturnOrder = async (req, res, next) => {
             return next(CustomeError(400, "Order cannot be retrun at this stage"))
         }
 
-        const alreadyRequested = await orderRequestsModel.findOne({orderId:order._id}) 
+        const alreadyRequested = await orderRequestsModel.findOne({ orderId: order._id })
 
 
-        if(alreadyRequested){
+        if (alreadyRequested) {
             return next(CustomeError(400, "Order alreaqdy processed"))
         }
 
@@ -289,7 +289,7 @@ exports.ReturnOrder = async (req, res, next) => {
             status: confirmorderData.status || "RETURN PENDING",
             shiprocketOrderId: confirmorderData.order_id,
             shiprocketShipmentId: confirmorderData.shipment_id,
-            trackingNumber:  '12345' //awsNumber 
+            trackingNumber: '12345' //awsNumber 
         }
 
 
@@ -318,7 +318,7 @@ exports.ReturnOrder = async (req, res, next) => {
         }
 
         const returnRequest = await orderRequestsModel.create(orderRequestsData)
-        await orderModel.findByIdAndUpdate(order._id,{status:"cancelled"})
+        await orderModel.findByIdAndUpdate(order._id, { status: "cancelled" })
 
         return res.status(200).json({ success: true, message: "order return successfully", returnRequest })
     } catch (error) {

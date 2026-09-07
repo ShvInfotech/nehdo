@@ -1,6 +1,6 @@
 const mongoose = require("mongoose")
-const { CustomeError } = require("../../../middleware/globelError")
 const cartModel = require("../../../model/cart.model")
+const { CustomeError } = require("../../../middleware/globelError")
 const { GetCartPipeline } = require("../../../helper/aggretionpipeline")
 
 
@@ -36,29 +36,19 @@ exports.AddCart = async (req, res, next) => {
         color: req.body.color
       },
       {
-        $inc: {
-          quantity: Number(req.body.quantity || 1)
-        }
+        $inc: { quantity: Number(req.body.quantity || 1) }
       },
       {
-        new: true
+        returnDocument: 'after'
       }
     );
 
-    // same variant na hoy to navi row create karo
-    if (!cart) {
 
-      cart = await cartModel.create({
-        ...req.body,
-        userId: req.user._id
-      });
+    if (!cart) {
+      cart = await cartModel.create({ ...req.body, userId: req.user._id });
     }
 
-    return res.status(200).json({
-      success: true,
-      message: 'product add to cart',
-      cart
-    });
+    return res.status(200).json({ success: true, message: 'product add to cart', cart });
 
   } catch (error) {
     return next(error);
@@ -67,12 +57,12 @@ exports.AddCart = async (req, res, next) => {
 
 
 exports.Getcart = async (req, res, next) => {
-    try {
-        const carts = await cartModel.aggregate(GetCartPipeline(req.user._id))
-        return res.status(200).json({ success: true, message: "get carts", carts })
-    } catch (error) {
-        return next(error)
-    }
+  try {
+    const carts = await cartModel.aggregate(GetCartPipeline(req.user._id))
+    return res.status(200).json({ success: true, message: "get carts", carts })
+  } catch (error) {
+    return next(error)
+  }
 }
 
 exports.Updatecart = async (req, res, next) => {
@@ -100,7 +90,6 @@ exports.Updatecart = async (req, res, next) => {
       return next(CustomeError(404, 'cart not found'));
     }
 
-    // quantity 0 hoy to delete
     if (quantity <= 0) {
 
       await cartModel.findByIdAndDelete(id);
@@ -111,39 +100,31 @@ exports.Updatecart = async (req, res, next) => {
       });
     }
 
-    // direct quantity set karo
-    cart = await cartModel.findByIdAndUpdate(
-      id,
-      { quantity },
-      { new: true }
+
+    cart = await cartModel.findByIdAndUpdate(id, { quantity }, { returnDocument: "after" }
     );
 
-    return res.status(200).json({
-      success: true,
-      message: 'cart update successfully',
-      cart
-    });
-
+    return res.status(200).json({ success: true, message: 'cart update successfully', cart });
   } catch (error) {
     return next(error);
   }
 };
 
 exports.Deletecart = async (req, res, next) => {
-    try {
-        const id = req.params.id
+  try {
+    const id = req.params.id
 
-        if (!mongoose.isValidObjectId(id)) {
-            return next(CustomeError(409, "cart id is invalid"))
-        }
-
-        const cart = await cartModel.findByIdAndDelete(id)
-        if (cart) {
-            return res.status(200).json({ success: true, message: "cart delete successfully" })
-        } else {
-            return next(CustomeError(404, 'cart not found'))
-        }
-    } catch (error) {
-        return next(error)
+    if (!mongoose.isValidObjectId(id)) {
+      return next(CustomeError(409, "cart id is invalid"))
     }
+
+    const cart = await cartModel.findByIdAndDelete(id)
+    if (cart) {
+      return res.status(200).json({ success: true, message: "cart delete successfully" })
+    } else {
+      return next(CustomeError(404, 'cart not found'))
+    }
+  } catch (error) {
+    return next(error)
+  }
 }

@@ -1,32 +1,17 @@
-// import { initializeApp } from "firebase/app";
-// import { getAuth, GoogleAuthProvider } from "firebase/auth";
-// import { getMessaging } from "firebase/messaging";
-
-// const firebaseConfig = JSON.parse(import.meta.env.VITE_FIREBASE_CONFIG);
-
-// const app = initializeApp(firebaseConfig);
-
-// export const auth = getAuth(app);
-// export const googleProvider = new GoogleAuthProvider();
-
-// // Messaging browser support check pachi use karvu
-// export const messaging = getMessaging(app);
-
 import { initializeApp } from "firebase/app";
 import { getAuth, GoogleAuthProvider } from "firebase/auth";
-import { getMessaging, isSupported } from "firebase/messaging";
+import { getMessaging } from "firebase/messaging";
 
-const firebaseConfig = JSON.parse(import.meta.env.VITE_FIREBASE_CONFIG);
-
-const app = initializeApp(firebaseConfig);
+const app = initializeApp({
+  apiKey: "AIzaSyDeH8SssDLeu5Ggbj8toClBq2zGE-6Ku-c",
+  authDomain: "nehdo-23bd4.firebaseapp.com",
+  projectId: "nehdo-23bd4",
+  storageBucket: "nehdo-23bd4.firebasestorage.app",
+  messagingSenderId: "784435496062",
+  appId: "1:784435496062:web:c50536275ff566ea93442f",
+});
 
 export const auth = getAuth(app);
 export const googleProvider = new GoogleAuthProvider();
 
-export let messaging:any = null;
-
-isSupported().then((supported) => {
-    if (supported) {
-        messaging = getMessaging(app);
-    }
-});
+export const messaging = getMessaging(app);

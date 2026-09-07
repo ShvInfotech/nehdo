@@ -88,7 +88,7 @@ const productSchema = mongoose.Schema({
     // seo
     slug: {
         type: String,
-        required:true,
+        required: true,
         unique: true,
     },
     metaTitle: {

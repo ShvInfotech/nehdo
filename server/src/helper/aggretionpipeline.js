@@ -80,7 +80,7 @@ exports.getproductspipeline = () => {
                         { $gt: [{ $size: "$productImage" }, 0] },
                         {
                             $concat: [
-                                `http://${process.env.HOST}:${process.env.PORT}`,
+                                process.env.BACKEND_DOMIN_URL,
                                 { $arrayElemAt: ["$productImage", 0] }
                             ]
                         },
@@ -112,102 +112,7 @@ exports.getproductpaginationpipeline = (page = 1, limit = 10) => {
 };
 
 
-exports.getproductslugpipeline = (slug) => {
-    return [
-        {
-            $match: {
-                slug: slug
-            }
-        },
-        {
-            $lookup: {
-                from: "categories",
-                localField: "categoryId",
-                foreignField: "_id",
-                as: "category"
-            }
-        },
-        {
-            $unwind: {
-                path: "$category",
-                preserveNullAndEmptyArrays: true
-            }
-        },
-        {
-            $lookup: {
-                from: "subcategories",
-                localField: "subcategoryId",
-                foreignField: "_id",
-                as: "subcategory"
-            }
-        },
-        {
-            $unwind: {
-                path: "$subcategory",
-                preserveNullAndEmptyArrays: true
-            }
-        },
 
-        {
-            $lookup: {
-                from: "brands",
-                localField: "brandId",
-                foreignField: "_id",
-                as: "brand"
-            }
-        },
-        {
-            $unwind: {
-                path: "$brand",
-                preserveNullAndEmptyArrays: true
-            }
-        },
-        {
-            $lookup: {
-                from: "productinventorys",
-                localField: "_id",
-                foreignField: "productId",
-                as: "inventory"
-            }
-        },
-        {
-            $unwind: {
-                path: "$inventory",
-                preserveNullAndEmptyArrays: true
-            }
-        },
-        {
-            $lookup: {
-                from: "productvariants",
-                localField: "_id",
-                foreignField: "productId",
-                as: "variant"
-            }
-        },
-        {
-            $unwind: {
-                path: "$variant",
-                preserveNullAndEmptyArrays: true
-            }
-        },
-        {
-            $project: {
-                name: 1,
-                price: 1,
-                salePrice: 1,
-                productImage: 1,
-                status: 1,
-                flags: 1,
-                stock: "$inventory.stock",
-                category: "$category.name",
-                subcategory: "$subcategory.name",
-                brand: "$brand.name",
-                size: "$variant.size",
-                color: "$variant.colorOptions"
-            }
-        }
-    ];
-}
 
 
 
@@ -505,7 +410,7 @@ exports.userGetProductpipeline = ({
                     },
                     then: {
                         $concat: [
-                            `http://${process.env.HOST}:${process.env.PORT}`,
+                            process.env.BACKEND_DOMIN_URL,
                             {
                                 $arrayElemAt: [
                                     "$productImage",
@@ -526,7 +431,7 @@ exports.userGetProductpipeline = ({
                             as: "img",
                             in: {
                                 $concat: [
-                                    `http://${process.env.HOST}:${process.env.PORT}`,
+                                    process.env.BACKEND_DOMIN_URL,
                                     "$$img"
                                 ]
                             }
@@ -677,7 +582,7 @@ exports.userGetSingalsProductpipeline = (id) => {
                 salePrice: 1,
                 longDescription: 1,
                 shortDescription: 1,
-                productImage: { $map: { input: { $ifNull: ["$productImage", []] }, as: "image", in: { $concat: [`http://${process.env.HOST}:${process.env.PORT}`, "$$image"] } } },
+                productImage: { $map: { input: { $ifNull: ["$productImage", []] }, as: "image", in: { $concat: [process.env.BACKEND_DOMIN_URL, "$$image"] } } },
                 category: "$category.name",
                 subcategory: "$subcategory.name",
                 brand: "$brand.name",
@@ -831,7 +736,7 @@ exports.GetCartPipeline = (id) => {
                 originalPrice: "$product.price",
                 brand: "$brand.name",
                 shipping: { $ifNull: ["$shippingInfo.shipping", true] },
-                productImage: { $concat: [`http://${process.env.HOST}:${process.env.PORT}`, { $ifNull: [{ $arrayElemAt: ["$product.productImage", 0] }, ""] }] }
+                productImage: { $concat: [process.env.BACKEND_DOMIN_URL, { $ifNull: [{ $arrayElemAt: ["$product.productImage", 0] }, ""] }] }
             }
         }
 
@@ -1046,7 +951,7 @@ exports.GetCustomersAdmin = () => {
                         },
                         {
                             $concat: [
-                                `http://${process.env.HOST}:${process.env.PORT}`,
+                                process.env.BACKEND_DOMIN_URL,
                                 "$profile"
                             ]
                         },
@@ -1420,7 +1325,7 @@ exports.GetHeroBanners = () => {
                 desktopImage: {
                     $cond: [
                         { $and: [{ $ne: ["$desktopImage", null,], }, { $ne: ["$desktopImage", "",], },], },
-                        { $concat: [`http://${process.env.HOST}:${process.env.PORT}`, "$desktopImage",], }, "",
+                        { $concat: [process.env.BACKEND_DOMIN_URL, "$desktopImage",], }, "",
                     ],
                 },
 
@@ -1430,7 +1335,7 @@ exports.GetHeroBanners = () => {
                 mobileImage: {
                     $cond: [
                         { $and: [{ $ne: ["$mobileImage", null,], }, { $ne: ["$mobileImage", "",], },], },
-                        { $concat: [`http://${process.env.HOST}:${process.env.PORT}`, "$mobileImage",], }, "",
+                        { $concat: [process.env.BACKEND_DOMIN_URL, "$mobileImage",], }, "",
                     ],
                 },
 
@@ -1450,7 +1355,7 @@ exports.GetHeroBanners = () => {
                             image: {
                                 $cond: [
                                     { $and: [{ $ne: ["$product.image", null,], }, { $ne: ["$product.image", "",], },], },
-                                    { $concat: [`http://${process.env.HOST}:${process.env.PORT}`, "$product.image",], }, "",
+                                    { $concat: [process.env.BACKEND_DOMIN_URL, "$product.image",], }, "",
                                 ],
                             },
                         },

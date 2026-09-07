@@ -1,5 +1,4 @@
 const mongoose = require('mongoose')
-const { CustomeError } = require('../../../middleware/globelError')
 const productModel = require('../../../model/product.model')
 const productVariantModel = require('../../../model/productvariant.model')
 const productInventoryModel = require('../../../model/productinventory.model')
@@ -9,7 +8,7 @@ const subcategoryModel = require('../../../model/subcategory.model')
 const brandModel = require('../../../model/brand.model')
 const { generateSKU, generateBarcode, generateSlug, DeleteImage } = require('../../../helper/helper')
 const { getproductspipeline, getproductslugpipeline, getproductpaginationpipeline } = require('../../../helper/aggretionpipeline')
-const { i } = require('framer-motion/client')
+const { CustomeError } = require('../../../middleware/globelError')
 
 
 
@@ -269,7 +268,7 @@ exports.EditProducts = async (req, res, next) => {
         const product = await productModel.findById(id)
         if (product.productImage.length) {
             product.productImage = product.productImage.map(
-                image => `http://${process.env.HOST}:${process.env.PORT}${image}`
+                image => `${process.env.BACKEND_DOMIN_URL}${image}`
             );
         }
         if (!product) {
@@ -300,7 +299,7 @@ exports.UpdateProduct = async (req, res, next) => {
         }
 
         let productData = product
-        
+
 
         if (req.body?.name) {
             productData.name = req.body?.name
@@ -501,17 +500,7 @@ exports.UpdateProduct = async (req, res, next) => {
 
 
 
-exports.GetProductUsingSlug = async (req, res, next) => {
-    try {
-        const slug = req.params.slug
-        // const product = await productModel.findOne({slug:slug})
-        const product = await productModel.aggregate(getproductslugpipeline(slug));
 
-        return res.status(200).json({ success: true, product })
-    } catch (error) {
-        return next(error)
-    }
-}
 
 
 

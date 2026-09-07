@@ -1,5 +1,5 @@
-const { CustomeError } = require("../../../middleware/globelError")
 const addressModel = require("../../../model/address.model")
+const { CustomeError } = require("../../../middleware/globelError")
 
 
 exports.AddAddress = async (req, res, next) => {
@@ -36,11 +36,11 @@ exports.AddAddress = async (req, res, next) => {
     }
 }
 
-exports.GetAddress = async(req,res,next)=>{
+exports.GetAddress = async (req, res, next) => {
     try {
-        const address = await addressModel.find({userId:req.user._id})
+        const address = await addressModel.find({ userId: req.user._id })
 
-        return res.status(200).json({success:true,message:'get addresses',address})
+        return res.status(200).json({ success: true, message: 'get addresses', address })
     } catch (error) {
         return next(error)
     }
@@ -78,7 +78,7 @@ exports.DeleteAddress = async (req, res, next) => {
                 });
             }
         }
-        return res.status(200).json({ success: true, message: 'address delete successfully',address })
+        return res.status(200).json({ success: true, message: 'address delete successfully', address })
 
     } catch (error) {
         return next(error)

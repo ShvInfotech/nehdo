@@ -2,6 +2,11 @@ const cron = require('node-cron')
 const couponModel = require('../model/coupon.model');
 const bannerModel = require('../model/banner.model');
 
+
+
+
+const promoModel = require("../model/promo.model");
+// cron.schedule("* * * * *"
 cron.schedule("0 0 * * *",async () => {
         try {
             const now = new Date();
@@ -15,6 +20,7 @@ cron.schedule("0 0 * * *",async () => {
                         $ne: null,
                         $lte: now,
                     },
+
                     status: "active",
                 },
                 {
@@ -48,10 +54,27 @@ cron.schedule("0 0 * * *",async () => {
             );
 
             // ==========================================
-            // BANNER START DATE -> ACTIVE
-            // Only activate if endDate is null
-            // OR endDate is still in future
+            // PROMO END DATE -> INACTIVE
             // ==========================================
+            const expiredPromos = await promoModel.updateMany(
+                {
+                    endDate: {
+                        $ne: null,
+                        $lte: now,
+                    },
+
+                    status: {
+                        $in: ["Active", "Scheduled"],
+                    },
+                },
+                {
+                    $set: {
+                        status: "Inactive",
+                    },
+                }
+            );
+
+
             const activeBanners = await bannerModel.updateMany(
                 {
                     startDate: {
@@ -81,6 +104,34 @@ cron.schedule("0 0 * * *",async () => {
                 }
             );
 
+    
+            const activePromos = await promoModel.updateMany(
+                {
+                    startDate: {
+                        $ne: null,
+                        $lte: now,
+                    },
+
+                    status: "Scheduled",
+
+                    $or: [
+                        {
+                            endDate: null,
+                        },
+                        {
+                            endDate: {
+                                $gt: now,
+                            },
+                        },
+                    ],
+                },
+                {
+                    $set: {
+                        status: "Active",
+                    },
+                }
+            );
+
             console.log("=================================");
             console.log("Cron executed:", now);
             console.log(
@@ -91,6 +142,12 @@ cron.schedule("0 0 * * *",async () => {
             );
             console.log(
                 `Banners inactivated: ${expiredBanners.modifiedCount}`
+            );
+            console.log(
+                `Promos activated: ${activePromos.modifiedCount}`
+            );
+            console.log(
+                `Promos inactivated: ${expiredPromos.modifiedCount}`
             );
             console.log("=================================");
 

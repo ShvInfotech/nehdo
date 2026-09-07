@@ -31,10 +31,11 @@ const addressSchema = mongoose.Schema({
     }
 
 },
-{
-    versionKey:false
-}
+    {
+        versionKey: false,
+        timestamps: true,
+    }
 )
 
 
-module.exports = mongoose.model('addresses',addressSchema)
+module.exports = mongoose.model('addresses', addressSchema)

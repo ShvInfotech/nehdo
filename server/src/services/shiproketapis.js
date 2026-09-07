@@ -1,5 +1,4 @@
 const axios = require("axios");
-const { data, body } = require("framer-motion/client");
 
 exports.getshippingcharg = async (data) => {
     const pickupPincode = process.env.PICKUP_PINCODE;

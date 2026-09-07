@@ -14,9 +14,9 @@ const categorySchema = mongoose.Schema({
         trim: true
 
     },
-    logo:{
-        type:String,
-        default:''
+    logo: {
+        type: String,
+        default: ''
     },
     description: {
         type: String,
@@ -51,4 +51,4 @@ const categorySchema = mongoose.Schema({
         timestamps: true
     })
 
-    module.exports = mongoose.model('categories', categorySchema)
+module.exports = mongoose.model('categories', categorySchema)

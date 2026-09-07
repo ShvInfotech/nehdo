@@ -1,3 +1,4 @@
+
 import React, { useEffect, useMemo, useState } from "react";
 import {
   IoSearchOutline,
@@ -9,7 +10,6 @@ import {
   IoPersonOutline,
   IoInformationCircleOutline,
   IoCubeOutline,
-  IoPrintOutline,
   IoBusinessOutline,
 } from "react-icons/io5";
 import { apiRequest } from "../../services/apiService";
@@ -27,14 +27,24 @@ interface BankDetails {
 interface Refund {
   isRequired: boolean;
 
-  provider: "razorpay" | "upi" | "bank_transfer" | "manual" | null;
+  provider:
+    | "razorpay"
+    | "upi"
+    | "bank_transfer"
+    | "manual"
+    | null;
 
   paymentId: string | null;
   refundId: string | null;
 
   amount: number;
 
-  status: "not_required" | "pending" | "processing" | "processed" | "failed";
+  status:
+    | "not_required"
+    | "pending"
+    | "processing"
+    | "processed"
+    | "failed";
 
   refundedAt: string | null;
 
@@ -68,11 +78,20 @@ interface OrderRequest {
 
   type: "cancel" | "return" | "rto";
 
-  initiatedBy: "customer" | "admin" | "courier" | "system";
+  initiatedBy:
+    | "customer"
+    | "admin"
+    | "courier"
+    | "system";
 
   reason: string | null;
 
-  status: "requested" | "approved" | "rejected" | "processing" | "completed";
+  status:
+    | "requested"
+    | "approved"
+    | "rejected"
+    | "processing"
+    | "completed";
 
   refund: Refund;
 
@@ -164,7 +183,9 @@ const getRefundStatusColor = (status: string) => {
 // ORDER TRACKING STATUS COLORS
 // =====================================================
 
-const getOrderTrackingStatusColor = (status?: string | null) => {
+const getOrderTrackingStatusColor = (
+  status?: string | null,
+) => {
   if (!status) {
     return "bg-gray-100 text-gray-600";
   }
@@ -201,7 +222,9 @@ const getOrderTrackingStatusColor = (status?: string | null) => {
 // =====================================================
 
 const formatDate = (date?: string | null) => {
-  if (!date) return "-";
+  if (!date) {
+    return "-";
+  }
 
   const parsedDate = new Date(date);
 
@@ -222,11 +245,17 @@ const formatDate = (date?: string | null) => {
 // BANK DETAILS CHECK
 // =====================================================
 
-const hasBankDetails = (bankDetails?: BankDetails | null) => {
-  if (!bankDetails) return false;
+const hasBankDetails = (
+  bankDetails?: BankDetails | null,
+) => {
+  if (!bankDetails) {
+    return false;
+  }
 
   return Boolean(
-    bankDetails.holderName || bankDetails.accountNumber || bankDetails.ifscCode,
+    bankDetails.holderName ||
+      bankDetails.accountNumber ||
+      bankDetails.ifscCode,
   );
 };
 
@@ -235,19 +264,29 @@ const hasBankDetails = (bankDetails?: BankDetails | null) => {
 // =====================================================
 
 const AdminCancelledOrders = () => {
-  const [cancelledOrders, setCancelledOrders] = useState<OrderRequest[]>([]);
+  const [cancelledOrders, setCancelledOrders] =
+    useState<OrderRequest[]>([]);
 
-  const [selectedRequest, setSelectedRequest] = useState<OrderRequest | null>(
-    null,
-  );
+  const [selectedRequest, setSelectedRequest] =
+    useState<OrderRequest | null>(null);
 
   const [searchTerm, setSearchTerm] = useState("");
 
-  const [activeStatus, setActiveStatus] = useState<string>("all");
+  const [activeStatus, setActiveStatus] =
+    useState<string>("all");
 
-  const [activeType, setActiveType] = useState<string>("all");
+  const [activeType, setActiveType] =
+    useState<string>("all");
 
   const [loading, setLoading] = useState(false);
+
+  // =====================================================
+  // PAGINATION
+  // =====================================================
+
+  const [currentPage, setCurrentPage] = useState(1);
+
+  const rowsPerPage = 25;
 
   // =====================================================
   // FETCH CANCELLED / RETURN / RTO ORDERS
@@ -261,13 +300,19 @@ const AdminCancelledOrders = () => {
     try {
       setLoading(true);
 
-      const response = await apiRequest("/admin/api/v1/order/canceled", "GET");
+      const response = await apiRequest(
+        "/admin/api/v1/order/canceled",
+        "GET",
+      );
 
       if (response?.success) {
         setCancelledOrders(response.orders || []);
       }
     } catch (error) {
-      console.error("Failed to fetch cancelled orders:", error);
+      console.error(
+        "Failed to fetch cancelled orders:",
+        error,
+      );
     } finally {
       setLoading(false);
     }
@@ -283,14 +328,17 @@ const AdminCancelledOrders = () => {
     return cancelledOrders.filter((request) => {
       // STATUS
       const matchesStatus =
-        activeStatus === "all" || request.status === activeStatus;
+        activeStatus === "all" ||
+        request.status === activeStatus;
 
       if (!matchesStatus) {
         return false;
       }
 
       // TYPE
-      const matchesType = activeType === "all" || request.type === activeType;
+      const matchesType =
+        activeType === "all" ||
+        request.type === activeType;
 
       if (!matchesType) {
         return false;
@@ -301,41 +349,59 @@ const AdminCancelledOrders = () => {
         return true;
       }
 
-      const orderId = request.orderId?.toLowerCase() || "";
+      const orderId =
+        request.orderId?.toLowerCase() || "";
 
-      const orderNumber = request.orderNumber?.toLowerCase() || "";
+      const orderNumber =
+        request.orderNumber?.toLowerCase() || "";
 
-      const requestId = request._id?.toLowerCase() || "";
+      const requestId =
+        request._id?.toLowerCase() || "";
 
-      const userId = request.userId?.toLowerCase() || "";
+      const userId =
+        request.userId?.toLowerCase() || "";
 
-      const userName = request.user?.name?.toLowerCase() || "";
+      const userName =
+        request.user?.name?.toLowerCase() || "";
 
-      const userEmail = request.user?.email?.toLowerCase() || "";
+      const userEmail =
+        request.user?.email?.toLowerCase() || "";
 
-      const userPhone = request.user?.phone?.toLowerCase() || "";
+      const userPhone =
+        request.user?.phone?.toLowerCase() || "";
 
-      const reason = request.reason?.toLowerCase() || "";
+      const reason =
+        request.reason?.toLowerCase() || "";
 
-      const initiatedBy = request.initiatedBy?.toLowerCase() || "";
+      const initiatedBy =
+        request.initiatedBy?.toLowerCase() || "";
 
-      const refundId = request.refund?.refundId?.toLowerCase() || "";
+      const refundId =
+        request.refund?.refundId?.toLowerCase() || "";
 
-      const paymentId = request.refund?.paymentId?.toLowerCase() || "";
+      const paymentId =
+        request.refund?.paymentId?.toLowerCase() || "";
 
-      const provider = request.refund?.provider?.toLowerCase() || "";
+      const provider =
+        request.refund?.provider?.toLowerCase() || "";
 
-      const type = request.type?.toLowerCase() || "";
+      const type =
+        request.type?.toLowerCase() || "";
 
-      const trackingNumber = request.order?.trackingNumber?.toLowerCase() || "";
+      const trackingNumber =
+        request.order?.trackingNumber?.toLowerCase() ||
+        "";
 
       const shiprocketOrderId =
-        request.order?.shiprocketOrderId?.toLowerCase() || "";
+        request.order?.shiprocketOrderId?.toLowerCase() ||
+        "";
 
       const shiprocketShipmentId =
-        request.order?.shiprocketShipmentId?.toLowerCase() || "";
+        request.order?.shiprocketShipmentId?.toLowerCase() ||
+        "";
 
-      const orderStatus = request.order?.status?.toLowerCase() || "";
+      const orderStatus =
+        request.order?.status?.toLowerCase() || "";
 
       return (
         orderId.includes(search) ||
@@ -357,7 +423,33 @@ const AdminCancelledOrders = () => {
         orderStatus.includes(search)
       );
     });
-  }, [cancelledOrders, searchTerm, activeStatus, activeType]);
+  }, [
+    cancelledOrders,
+    searchTerm,
+    activeStatus,
+    activeType,
+  ]);
+
+  // =====================================================
+  // RESET PAGINATION WHEN FILTER CHANGES
+  // =====================================================
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchTerm, activeStatus, activeType]);
+
+  // =====================================================
+  // PAGINATION DATA
+  // =====================================================
+
+  const totalPages = Math.ceil(
+    filteredOrders.length / rowsPerPage,
+  );
+
+  const paginatedOrders = filteredOrders.slice(
+    (currentPage - 1) * rowsPerPage,
+    currentPage * rowsPerPage,
+  );
 
   // =====================================================
   // STATUS COUNT
@@ -368,7 +460,9 @@ const AdminCancelledOrders = () => {
       return cancelledOrders.length;
     }
 
-    return cancelledOrders.filter((item) => item.status === status).length;
+    return cancelledOrders.filter(
+      (item) => item.status === status,
+    ).length;
   };
 
   // =====================================================
@@ -380,18 +474,22 @@ const AdminCancelledOrders = () => {
       return cancelledOrders.length;
     }
 
-    return cancelledOrders.filter((item) => item.type === type).length;
+    return cancelledOrders.filter(
+      (item) => item.type === type,
+    ).length;
   };
 
   // =====================================================
   // PRINT BANK DETAILS
   // =====================================================
 
-  const printBankDetails = (request: OrderRequest) => {
+  const printBankDetails = (
+    request: OrderRequest,
+  ) => {
     const bank = request.refund?.bankDetails;
-console.log(request)
 
-    
+    console.log(bank);
+    console.log(request);
   };
 
   // =====================================================
@@ -401,7 +499,9 @@ console.log(request)
   if (selectedRequest) {
     const request = selectedRequest;
 
-    const isReturnOrRto = request.type === "return" || request.type === "rto";
+    const isReturnOrRto =
+      request.type === "return" ||
+      request.type === "rto";
 
     const showBankDetails =
       request.refund?.provider === "manual" &&
@@ -409,15 +509,15 @@ console.log(request)
 
     return (
       <div className="space-y-6">
-        {/* =====================================================
-                    HEADER
-                ===================================================== */}
+        {/* HEADER */}
 
         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
           <div className="flex items-center gap-3">
             <button
               type="button"
-              onClick={() => setSelectedRequest(null)}
+              onClick={() =>
+                setSelectedRequest(null)
+              }
               className="p-2 hover:bg-gray-100 rounded-lg transition"
             >
               <IoChevronBackOutline size={22} />
@@ -451,29 +551,28 @@ console.log(request)
                 request.status,
               )}`}
             >
-              {requestStatusLabels[request.status] || request.status}
+              {requestStatusLabels[
+                request.status
+              ] || request.status}
             </span>
           </div>
         </div>
 
-        {/* =====================================================
-                    MAIN GRID
-                ===================================================== */}
+        {/* MAIN GRID */}
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          {/* =================================================
-                        LEFT
-                    ================================================= */}
+          {/* LEFT */}
 
           <div className="lg:col-span-2 space-y-6">
-            {/* =================================================
-                            REQUEST INFORMATION
-                        ================================================= */}
+            {/* REQUEST INFORMATION */}
 
             <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
               <div className="flex items-center gap-2 mb-5">
                 <div className="w-9 h-9 rounded-lg bg-red-50 flex items-center justify-center">
-                  <IoCloseOutline size={20} className="text-red-600" />
+                  <IoCloseOutline
+                    size={20}
+                    className="text-red-600"
+                  />
                 </div>
 
                 <h2 className="text-lg font-bold text-gray-900">
@@ -482,8 +581,6 @@ console.log(request)
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
-                {/* ORDER NUMBER */}
-
                 <div>
                   <p className="text-xs font-semibold text-gray-400 uppercase">
                     Order Number
@@ -493,8 +590,6 @@ console.log(request)
                     {request.orderNumber}
                   </p>
                 </div>
-
-                {/* ORDER ID */}
 
                 <div>
                   <p className="text-xs font-semibold text-gray-400 uppercase">
@@ -506,19 +601,16 @@ console.log(request)
                   </p>
                 </div>
 
-                {/* TYPE */}
-
                 <div>
                   <p className="text-xs font-semibold text-gray-400 uppercase">
                     Type
                   </p>
 
                   <p className="text-sm font-semibold text-gray-900 mt-1 capitalize">
-                    {typeLabels[request.type] || request.type}
+                    {typeLabels[request.type] ||
+                      request.type}
                   </p>
                 </div>
-
-                {/* INITIATED BY */}
 
                 <div>
                   <p className="text-xs font-semibold text-gray-400 uppercase">
@@ -526,7 +618,10 @@ console.log(request)
                   </p>
 
                   <div className="flex items-center gap-2 mt-1">
-                    <IoPersonOutline size={16} className="text-gray-400" />
+                    <IoPersonOutline
+                      size={16}
+                      className="text-gray-400"
+                    />
 
                     <p className="text-sm font-medium text-gray-900 capitalize">
                       {request.initiatedBy}
@@ -534,19 +629,17 @@ console.log(request)
                   </div>
                 </div>
 
-                {/* REQUEST DATE */}
-
                 <div>
                   <p className="text-xs font-semibold text-gray-400 uppercase">
                     Request Date
                   </p>
 
                   <p className="text-sm font-medium text-gray-900 mt-1">
-                    {formatDate(request.createdAt)}
+                    {formatDate(
+                      request.createdAt,
+                    )}
                   </p>
                 </div>
-
-                {/* REASON */}
 
                 <div className="sm:col-span-2">
                   <p className="text-xs font-semibold text-gray-400 uppercase">
@@ -555,22 +648,24 @@ console.log(request)
 
                   <div className="mt-2 p-4 bg-gray-50 border border-gray-100 rounded-xl">
                     <p className="text-sm text-gray-700">
-                      {request.reason || "No reason provided"}
+                      {request.reason ||
+                        "No reason provided"}
                     </p>
                   </div>
                 </div>
               </div>
             </div>
 
-            {/* =================================================
-                            ORDER DETAILS - RETURN + RTO
-                        ================================================= */}
+            {/* ORDER DETAILS */}
 
             {isReturnOrRto && (
               <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
                 <div className="flex items-center gap-2 mb-5">
                   <div className="w-9 h-9 rounded-lg bg-purple-50 flex items-center justify-center">
-                    <IoCubeOutline size={20} className="text-purple-600" />
+                    <IoCubeOutline
+                      size={20}
+                      className="text-purple-600"
+                    />
                   </div>
 
                   <div>
@@ -587,8 +682,6 @@ console.log(request)
                 </div>
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
-                  {/* ORDER ID */}
-
                   <div>
                     <p className="text-xs font-semibold text-gray-400 uppercase">
                       Order ID
@@ -599,8 +692,6 @@ console.log(request)
                     </p>
                   </div>
 
-                  {/* ORDER NUMBER */}
-
                   <div>
                     <p className="text-xs font-semibold text-gray-400 uppercase">
                       Order Number
@@ -610,8 +701,6 @@ console.log(request)
                       {request.orderNumber || "-"}
                     </p>
                   </div>
-
-                  {/* ORDER STATUS */}
 
                   <div>
                     <p className="text-xs font-semibold text-gray-400 uppercase">
@@ -624,12 +713,11 @@ console.log(request)
                           request.order?.status,
                         )}`}
                       >
-                        {request.order?.status || "-"}
+                        {request.order?.status ||
+                          "-"}
                       </span>
                     </div>
                   </div>
-
-                  {/* TRACKING NUMBER */}
 
                   <div>
                     <p className="text-xs font-semibold text-gray-400 uppercase">
@@ -637,11 +725,10 @@ console.log(request)
                     </p>
 
                     <p className="text-sm font-semibold text-brand mt-1 break-all">
-                      {request.order?.trackingNumber || "-"}
+                      {request.order
+                        ?.trackingNumber || "-"}
                     </p>
                   </div>
-
-                  {/* SHIPROCKET ORDER ID */}
 
                   <div>
                     <p className="text-xs font-semibold text-gray-400 uppercase">
@@ -649,11 +736,10 @@ console.log(request)
                     </p>
 
                     <p className="text-sm font-medium text-gray-900 mt-1 break-all">
-                      {request.order?.shiprocketOrderId || "-"}
+                      {request.order
+                        ?.shiprocketOrderId || "-"}
                     </p>
                   </div>
-
-                  {/* SHIPROCKET SHIPMENT ID */}
 
                   <div>
                     <p className="text-xs font-semibold text-gray-400 uppercase">
@@ -661,11 +747,11 @@ console.log(request)
                     </p>
 
                     <p className="text-sm font-medium text-gray-900 mt-1 break-all">
-                      {request.order?.shiprocketShipmentId || "-"}
+                      {request.order
+                        ?.shiprocketShipmentId ||
+                        "-"}
                     </p>
                   </div>
-
-                  {/* DELIVERED AT */}
 
                   <div>
                     <p className="text-xs font-semibold text-gray-400 uppercase">
@@ -673,16 +759,16 @@ console.log(request)
                     </p>
 
                     <p className="text-sm font-medium text-gray-900 mt-1">
-                      {formatDate(request.order?.deliveredAt)}
+                      {formatDate(
+                        request.order?.deliveredAt,
+                      )}
                     </p>
                   </div>
                 </div>
               </div>
             )}
 
-            {/* =================================================
-                            REQUEST STATUS
-                        ================================================= */}
+            {/* REQUEST STATUS */}
 
             <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
               <h2 className="text-lg font-bold text-gray-900 mb-5">
@@ -690,48 +776,61 @@ console.log(request)
               </h2>
 
               <div className="flex items-center gap-2 overflow-x-auto pb-2">
-                {["requested", "approved", "processing", "completed"].map(
-                  (status, index) => {
-                    const flowIndex = [
-                      "requested",
-                      "approved",
-                      "processing",
-                      "completed",
-                    ].indexOf(request.status);
+                {[
+                  "requested",
+                  "approved",
+                  "processing",
+                  "completed",
+                ].map((status, index) => {
+                  const flowIndex = [
+                    "requested",
+                    "approved",
+                    "processing",
+                    "completed",
+                  ].indexOf(request.status);
 
-                    const currentIndex = flowIndex;
+                  const currentIndex = flowIndex;
 
-                    const isPast = index < currentIndex;
+                  const isPast =
+                    index < currentIndex;
 
-                    const isCurrent = status === request.status;
+                  const isCurrent =
+                    status === request.status;
 
-                    return (
-                      <React.Fragment key={status}>
-                        {index > 0 && (
-                          <div
-                            className={`h-0.5 w-8 flex-shrink-0 ${
-                              index <= currentIndex ? "bg-brand" : "bg-gray-200"
-                            }`}
+                  return (
+                    <React.Fragment key={status}>
+                      {index > 0 && (
+                        <div
+                          className={`h-0.5 w-8 flex-shrink-0 ${
+                            index <= currentIndex
+                              ? "bg-brand"
+                              : "bg-gray-200"
+                          }`}
+                        />
+                      )}
+
+                      <div
+                        className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold whitespace-nowrap ${
+                          isCurrent
+                            ? "bg-brand text-white"
+                            : isPast
+                              ? "bg-brand/10 text-brand"
+                              : "bg-gray-100 text-gray-400"
+                        }`}
+                      >
+                        {isPast && (
+                          <IoCheckmarkCircleOutline
+                            size={14}
                           />
                         )}
 
-                        <div
-                          className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold whitespace-nowrap ${
-                            isCurrent
-                              ? "bg-brand text-white"
-                              : isPast
-                                ? "bg-brand/10 text-brand"
-                                : "bg-gray-100 text-gray-400"
-                          }`}
-                        >
-                          {isPast && <IoCheckmarkCircleOutline size={14} />}
-
-                          {requestStatusLabels[status]}
-                        </div>
-                      </React.Fragment>
-                    );
-                  },
-                )}
+                        {requestStatusLabels[
+                          status
+                        ]}
+                      </div>
+                    </React.Fragment>
+                  );
+                })}
 
                 {request.status === "rejected" && (
                   <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold whitespace-nowrap bg-red-100 text-red-700">
@@ -748,21 +847,24 @@ console.log(request)
                   </p>
 
                   <p className="text-sm font-medium text-gray-900 mt-1">
-                    {formatDate(request.completedAt)}
+                    {formatDate(
+                      request.completedAt,
+                    )}
                   </p>
                 </div>
               )}
             </div>
 
-            {/* =================================================
-                            REFUND INFORMATION
-                        ================================================= */}
+            {/* REFUND INFORMATION */}
 
             <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
               <div className="flex items-center justify-between mb-5">
                 <div className="flex items-center gap-2">
                   <div className="w-9 h-9 rounded-lg bg-blue-50 flex items-center justify-center">
-                    <IoCardOutline size={19} className="text-blue-600" />
+                    <IoCardOutline
+                      size={19}
+                      className="text-blue-600"
+                    />
                   </div>
 
                   <h2 className="text-lg font-bold text-gray-900">
@@ -775,7 +877,11 @@ console.log(request)
                     request.refund?.status,
                   )}`}
                 >
-                  {refundStatusLabels[request.refund?.status]}
+                  {
+                    refundStatusLabels[
+                      request.refund?.status
+                    ]
+                  }
                 </span>
               </div>
 
@@ -793,26 +899,26 @@ console.log(request)
                       </p>
 
                       <p className="text-xs text-gray-500 mt-1">
-                        No refund is required for this request.
+                        No refund is required for
+                        this request.
                       </p>
                     </div>
                   </div>
                 </div>
               ) : (
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
-                  {/* AMOUNT */}
-
                   <div>
                     <p className="text-xs font-semibold text-gray-400 uppercase">
                       Refund Amount
                     </p>
 
                     <p className="text-xl font-bold text-brand mt-1">
-                      ₹{Number(request.refund.amount || 0).toFixed(2)}
+                      ₹
+                      {Number(
+                        request.refund.amount || 0,
+                      ).toFixed(2)}
                     </p>
                   </div>
-
-                  {/* PROVIDER */}
 
                   <div>
                     <p className="text-xs font-semibold text-gray-400 uppercase">
@@ -820,11 +926,10 @@ console.log(request)
                     </p>
 
                     <p className="text-sm font-semibold text-gray-900 mt-1 uppercase">
-                      {request.refund.provider || "-"}
+                      {request.refund.provider ||
+                        "-"}
                     </p>
                   </div>
-
-                  {/* PAYMENT ID */}
 
                   <div>
                     <p className="text-xs font-semibold text-gray-400 uppercase">
@@ -832,11 +937,10 @@ console.log(request)
                     </p>
 
                     <p className="text-sm font-medium text-gray-900 mt-1 break-all">
-                      {request.refund.paymentId || "-"}
+                      {request.refund.paymentId ||
+                        "-"}
                     </p>
                   </div>
-
-                  {/* REFUND ID */}
 
                   <div>
                     <p className="text-xs font-semibold text-gray-400 uppercase">
@@ -844,11 +948,10 @@ console.log(request)
                     </p>
 
                     <p className="text-sm font-medium text-gray-900 mt-1 break-all">
-                      {request.refund.refundId || "-"}
+                      {request.refund.refundId ||
+                        "-"}
                     </p>
                   </div>
-
-                  {/* REFUND STATUS */}
 
                   <div>
                     <p className="text-xs font-semibold text-gray-400 uppercase">
@@ -860,11 +963,13 @@ console.log(request)
                         request.refund.status,
                       )}`}
                     >
-                      {refundStatusLabels[request.refund.status]}
+                      {
+                        refundStatusLabels[
+                          request.refund.status
+                        ]
+                      }
                     </span>
                   </div>
-
-                  {/* REFUNDED AT */}
 
                   <div>
                     <p className="text-xs font-semibold text-gray-400 uppercase">
@@ -872,23 +977,26 @@ console.log(request)
                     </p>
 
                     <p className="text-sm font-medium text-gray-900 mt-1">
-                      {formatDate(request.refund.refundedAt)}
+                      {formatDate(
+                        request.refund.refundedAt,
+                      )}
                     </p>
                   </div>
                 </div>
               )}
             </div>
 
-            {/* =================================================
-                            BANK DETAILS
-                        ================================================= */}
+            {/* BANK DETAILS */}
 
             {showBankDetails && (
               <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-5">
                   <div className="flex items-center gap-2">
                     <div className="w-9 h-9 rounded-lg bg-green-50 flex items-center justify-center">
-                      <IoBusinessOutline size={19} className="text-green-600" />
+                      <IoBusinessOutline
+                        size={19}
+                        className="text-green-600"
+                      />
                     </div>
 
                     <div>
@@ -904,7 +1012,9 @@ console.log(request)
 
                   <button
                     type="button"
-                    onClick={() => printBankDetails(request)}
+                    onClick={() =>
+                      printBankDetails(request)
+                    }
                     className="inline-flex items-center justify-center gap-2 px-4 py-2.5 bg-brand text-white rounded-xl text-sm font-semibold hover:opacity-90 transition"
                   >
                     Pay now
@@ -912,19 +1022,16 @@ console.log(request)
                 </div>
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
-                  {/* HOLDER */}
-
                   <div>
                     <p className="text-xs font-semibold text-gray-400 uppercase">
                       Account Holder
                     </p>
 
                     <p className="text-sm font-semibold text-gray-900 mt-1">
-                      {request.refund.bankDetails?.holderName || "-"}
+                      {request.refund.bankDetails
+                        ?.holderName || "-"}
                     </p>
                   </div>
-
-                  {/* ACCOUNT NUMBER */}
 
                   <div>
                     <p className="text-xs font-semibold text-gray-400 uppercase">
@@ -932,11 +1039,10 @@ console.log(request)
                     </p>
 
                     <p className="text-sm font-semibold text-gray-900 mt-1 break-all">
-                      {request.refund.bankDetails?.accountNumber || "-"}
+                      {request.refund.bankDetails
+                        ?.accountNumber || "-"}
                     </p>
                   </div>
-
-                  {/* IFSC */}
 
                   <div>
                     <p className="text-xs font-semibold text-gray-400 uppercase">
@@ -944,11 +1050,10 @@ console.log(request)
                     </p>
 
                     <p className="text-sm font-semibold text-gray-900 mt-1 uppercase">
-                      {request.refund.bankDetails?.ifscCode || "-"}
+                      {request.refund.bankDetails
+                        ?.ifscCode || "-"}
                     </p>
                   </div>
-
-                  {/* ORDER ID */}
 
                   <div>
                     <p className="text-xs font-semibold text-gray-400 uppercase">
@@ -963,8 +1068,9 @@ console.log(request)
 
                 <div className="mt-5 p-4 bg-yellow-50 border border-yellow-100 rounded-xl">
                   <p className="text-xs text-yellow-700">
-                    This bank account is used for manual refund processing.
-                    Verify the account details before transferring the refund
+                    This bank account is used for manual
+                    refund processing. Verify the account
+                    details before transferring the refund
                     amount.
                   </p>
                 </div>
@@ -972,14 +1078,10 @@ console.log(request)
             )}
           </div>
 
-          {/* =====================================================
-                        RIGHT SIDEBAR
-                    ===================================================== */}
+          {/* RIGHT SIDEBAR */}
 
           <div className="space-y-6">
-            {/* =================================================
-                            REQUEST SUMMARY
-                        ================================================= */}
+            {/* REQUEST SUMMARY */}
 
             <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
               <h2 className="text-lg font-bold text-gray-900 mb-5">
@@ -988,7 +1090,9 @@ console.log(request)
 
               <div className="space-y-4">
                 <div className="flex justify-between gap-4">
-                  <span className="text-sm text-gray-500">Order Number</span>
+                  <span className="text-sm text-gray-500">
+                    Order Number
+                  </span>
 
                   <span className="text-sm font-semibold text-brand text-right">
                     {request.orderNumber}
@@ -996,7 +1100,9 @@ console.log(request)
                 </div>
 
                 <div className="flex justify-between gap-4">
-                  <span className="text-sm text-gray-500">Type</span>
+                  <span className="text-sm text-gray-500">
+                    Type
+                  </span>
 
                   <span className="text-sm font-semibold text-gray-900">
                     {typeLabels[request.type]}
@@ -1004,7 +1110,9 @@ console.log(request)
                 </div>
 
                 <div className="flex justify-between gap-4">
-                  <span className="text-sm text-gray-500">Initiated By</span>
+                  <span className="text-sm text-gray-500">
+                    Initiated By
+                  </span>
 
                   <span className="text-sm font-semibold text-gray-900 capitalize">
                     {request.initiatedBy}
@@ -1012,39 +1120,47 @@ console.log(request)
                 </div>
 
                 <div className="flex justify-between gap-4">
-                  <span className="text-sm text-gray-500">Status</span>
+                  <span className="text-sm text-gray-500">
+                    Status
+                  </span>
 
                   <span
                     className={`px-2.5 py-1 rounded-full text-xs font-semibold ${getRequestStatusColor(
                       request.status,
                     )}`}
                   >
-                    {requestStatusLabels[request.status]}
+                    {
+                      requestStatusLabels[
+                        request.status
+                      ]
+                    }
                   </span>
                 </div>
 
                 <div className="border-t border-gray-100 pt-4 flex justify-between gap-4">
-                  <span className="text-sm text-gray-500">Refund</span>
+                  <span className="text-sm text-gray-500">
+                    Refund
+                  </span>
 
                   <span className="text-sm font-bold text-gray-900">
                     {request.refund?.isRequired
-                      ? `₹${Number(request.refund.amount || 0).toFixed(2)}`
+                      ? `₹${Number(
+                          request.refund.amount || 0,
+                        ).toFixed(2)}`
                       : "Not Required"}
                   </span>
                 </div>
               </div>
             </div>
 
-            {/* =================================================
-                            CUSTOMER
-                        ================================================= */}
+            {/* CUSTOMER */}
 
             <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
-              <h2 className="text-lg font-bold text-gray-900 mb-4">Customer</h2>
+              <h2 className="text-lg font-bold text-gray-900 mb-4">
+                Customer
+              </h2>
 
               <div className="space-y-4">
-                {/* PROFILE */}
-
                 <div className="flex items-center gap-3">
                   {request.user?.profile ? (
                     <img
@@ -1054,7 +1170,10 @@ console.log(request)
                     />
                   ) : (
                     <div className="w-14 h-14 rounded-xl bg-brand/10 flex items-center justify-center">
-                      <IoPersonOutline size={26} className="text-brand" />
+                      <IoPersonOutline
+                        size={26}
+                        className="text-brand"
+                      />
                     </div>
                   )}
 
@@ -1069,8 +1188,6 @@ console.log(request)
                   </div>
                 </div>
 
-                {/* USER ID */}
-
                 <div>
                   <p className="text-xs font-semibold text-gray-400 uppercase">
                     User ID
@@ -1081,8 +1198,6 @@ console.log(request)
                   </p>
                 </div>
 
-                {/* EMAIL */}
-
                 <div>
                   <p className="text-xs font-semibold text-gray-400 uppercase">
                     Email
@@ -1092,8 +1207,6 @@ console.log(request)
                     {request.user?.email || "-"}
                   </p>
                 </div>
-
-                {/* PHONE */}
 
                 <div>
                   <p className="text-xs font-semibold text-gray-400 uppercase">
@@ -1107,19 +1220,20 @@ console.log(request)
               </div>
             </div>
 
-            {/* =================================================
-                            TIMELINE
-                        ================================================= */}
+            {/* TIMELINE */}
 
             <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
-              <h2 className="text-lg font-bold text-gray-900 mb-5">Timeline</h2>
+              <h2 className="text-lg font-bold text-gray-900 mb-5">
+                Timeline
+              </h2>
 
               <div className="space-y-5">
-                {/* REQUESTED */}
-
                 <div className="flex gap-3">
                   <div className="w-8 h-8 rounded-full bg-orange-100 flex items-center justify-center flex-shrink-0">
-                    <IoTimeOutline size={16} className="text-orange-600" />
+                    <IoTimeOutline
+                      size={16}
+                      className="text-orange-600"
+                    />
                   </div>
 
                   <div>
@@ -1132,12 +1246,12 @@ console.log(request)
                     </p>
 
                     <p className="text-xs text-gray-500 mt-1">
-                      {formatDate(request.createdAt)}
+                      {formatDate(
+                        request.createdAt,
+                      )}
                     </p>
                   </div>
                 </div>
-
-                {/* COMPLETED */}
 
                 {request.completedAt && (
                   <div className="flex gap-3">
@@ -1154,18 +1268,21 @@ console.log(request)
                       </p>
 
                       <p className="text-xs text-gray-500 mt-1">
-                        {formatDate(request.completedAt)}
+                        {formatDate(
+                          request.completedAt,
+                        )}
                       </p>
                     </div>
                   </div>
                 )}
 
-                {/* REJECTED */}
-
                 {request.status === "rejected" && (
                   <div className="flex gap-3">
                     <div className="w-8 h-8 rounded-full bg-red-100 flex items-center justify-center flex-shrink-0">
-                      <IoCloseOutline size={16} className="text-red-600" />
+                      <IoCloseOutline
+                        size={16}
+                        className="text-red-600"
+                      />
                     </div>
 
                     <div>
@@ -1196,7 +1313,6 @@ console.log(request)
       value: "all",
       label: "All",
     },
-
     {
       value: "processing",
       label: "Processing",
@@ -1240,9 +1356,7 @@ console.log(request)
 
   return (
     <div className="space-y-6">
-      {/* =================================================
-                PAGE HEADER
-            ================================================= */}
+      {/* PAGE HEADER */}
 
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
         <div>
@@ -1256,7 +1370,9 @@ console.log(request)
         </div>
 
         <div className="px-4 py-2 bg-white border border-gray-100 rounded-xl shadow-sm">
-          <p className="text-xs text-gray-400">Total Requests</p>
+          <p className="text-xs text-gray-400">
+            Total Requests
+          </p>
 
           <p className="text-lg font-bold text-gray-900">
             {cancelledOrders.length}
@@ -1264,21 +1380,19 @@ console.log(request)
         </div>
       </div>
 
-      {/* =================================================
-                MAIN CONTAINER
-            ================================================= */}
+      {/* MAIN CONTAINER */}
 
       <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
-        {/* =================================================
-                    STATUS TABS
-                ================================================= */}
+        {/* STATUS TABS */}
 
         <div className="flex gap-2 overflow-x-auto px-4 border-b border-gray-100">
           {tabs.map((tab) => (
             <button
               key={tab.value}
               type="button"
-              onClick={() => setActiveStatus(tab.value)}
+              onClick={() =>
+                setActiveStatus(tab.value)
+              }
               className={`px-4 py-3 text-sm font-semibold whitespace-nowrap border-b-2 ${
                 activeStatus === tab.value
                   ? "border-brand text-brand"
@@ -1294,9 +1408,7 @@ console.log(request)
           ))}
         </div>
 
-        {/* =================================================
-                    SEARCH + TYPE
-                ================================================= */}
+        {/* SEARCH + TYPE */}
 
         <div className="p-4 border-b border-gray-100 flex flex-col lg:flex-row items-center justify-between gap-4">
           <div className="flex flex-col sm:flex-row items-center gap-3 w-full lg:w-auto">
@@ -1311,7 +1423,9 @@ console.log(request)
               <input
                 type="text"
                 value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
+                onChange={(e) =>
+                  setSearchTerm(e.target.value)
+                }
                 placeholder="Search order, customer, tracking..."
                 className="w-full pl-10 pr-10 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:outline-none focus:border-brand focus:ring-1 focus:ring-brand"
               />
@@ -1319,7 +1433,9 @@ console.log(request)
               {searchTerm && (
                 <button
                   type="button"
-                  onClick={() => setSearchTerm("")}
+                  onClick={() =>
+                    setSearchTerm("")
+                  }
                   className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-700"
                 >
                   <IoCloseOutline size={18} />
@@ -1332,12 +1448,18 @@ console.log(request)
             <div className="relative w-full sm:w-44">
               <select
                 value={activeType}
-                onChange={(e) => setActiveType(e.target.value)}
+                onChange={(e) =>
+                  setActiveType(e.target.value)
+                }
                 className="w-full appearance-none px-4 py-2.5 pr-10 bg-gray-50 border border-gray-200 rounded-xl text-sm font-medium text-gray-700 focus:outline-none focus:border-brand focus:ring-1 focus:ring-brand cursor-pointer"
               >
                 {typeOptions.map((type) => (
-                  <option key={type.value} value={type.value}>
-                    {type.label} ({getTypeCount(type.value)})
+                  <option
+                    key={type.value}
+                    value={type.value}
+                  >
+                    {type.label} (
+                    {getTypeCount(type.value)})
                   </option>
                 ))}
               </select>
@@ -1373,14 +1495,14 @@ console.log(request)
           </div>
         </div>
 
-        {/* =================================================
-                    ACTIVE TYPE FILTER
-                ================================================= */}
+        {/* ACTIVE TYPE FILTER */}
 
         {activeType !== "all" && (
           <div className="px-4 py-3 bg-gray-50 border-b border-gray-100 flex items-center justify-between">
             <div className="flex items-center gap-2">
-              <span className="text-xs text-gray-500">Type:</span>
+              <span className="text-xs text-gray-500">
+                Type:
+              </span>
 
               <span className="px-2.5 py-1 bg-brand/10 text-brand rounded-full text-xs font-semibold">
                 {typeLabels[activeType]}
@@ -1389,7 +1511,9 @@ console.log(request)
 
             <button
               type="button"
-              onClick={() => setActiveType("all")}
+              onClick={() =>
+                setActiveType("all")
+              }
               className="text-xs text-brand font-semibold hover:underline"
             >
               Clear type
@@ -1397,38 +1521,57 @@ console.log(request)
           </div>
         )}
 
-        {/* =================================================
-                    TABLE
-                ================================================= */}
+        {/* TABLE */}
 
         <div className="overflow-x-auto">
           <table className="w-full text-sm text-left">
             <thead className="bg-gray-50 text-gray-500 font-semibold uppercase text-xs tracking-wider">
               <tr>
-                <th className="px-6 py-4">Order Number</th>
+                <th className="px-6 py-4">
+                  Order Number
+                </th>
 
-                <th className="px-6 py-4">Type</th>
+                <th className="px-6 py-4">
+                  Type
+                </th>
 
-                <th className="px-6 py-4">Date</th>
+                <th className="px-6 py-4">
+                  Date
+                </th>
 
-                <th className="px-6 py-4">Initiated By</th>
+                <th className="px-6 py-4">
+                  Initiated By
+                </th>
 
-                <th className="px-6 py-4">Reason</th>
+                <th className="px-6 py-4">
+                  Reason
+                </th>
 
-                <th className="px-6 py-4">Refund</th>
+                <th className="px-6 py-4">
+                  Refund
+                </th>
 
-                <th className="px-6 py-4">Refund Status</th>
+                <th className="px-6 py-4">
+                  Refund Status
+                </th>
 
-                <th className="px-6 py-4">Request Status</th>
+                <th className="px-6 py-4">
+                  Request Status
+                </th>
 
-                <th className="px-6 py-4 text-right">Actions</th>
+                <th className="px-6 py-4 text-right">
+                  Actions
+                </th>
               </tr>
             </thead>
 
             <tbody className="divide-y divide-gray-100">
               {loading ? (
                 <tr>
-                  <td colSpan={9} className="px-6 py-12 text-center">
+                  <td
+                    colSpan={9}
+                    className="px-6 py-12 text-center"
+                  >
                     <div className="flex flex-col items-center justify-center">
                       <div className="w-8 h-8 border-2 border-brand border-t-transparent rounded-full animate-spin mb-3" />
 
@@ -1439,7 +1582,7 @@ console.log(request)
                   </td>
                 </tr>
               ) : (
-                filteredOrders.map((request) => (
+                paginatedOrders.map((request) => (
                   <tr
                     key={request._id}
                     className="hover:bg-gray-50 transition-colors"
@@ -1463,7 +1606,9 @@ console.log(request)
                     {/* DATE */}
 
                     <td className="px-6 py-4 text-gray-500 whitespace-nowrap">
-                      {formatDate(request.createdAt)}
+                      {formatDate(
+                        request.createdAt,
+                      )}
                     </td>
 
                     {/* INITIATED */}
@@ -1490,19 +1635,27 @@ console.log(request)
                         className="text-gray-600 truncate"
                         title={request.reason || ""}
                       >
-                        {request.reason || "No reason provided"}
+                        {request.reason ||
+                          "No reason provided"}
                       </p>
                     </td>
 
                     {/* REFUND */}
+
                     <td className="px-6 py-4">
                       {request.refund?.isRequired ? (
                         <div>
                           <p className="font-semibold text-gray-900">
-                            ₹ {Number(request.refund.amount || 0).toFixed(2)}
+                            ₹{" "}
+                            {Number(
+                              request.refund.amount ||
+                                0,
+                            ).toFixed(2)}
                           </p>
+
                           <p className="text-xs text-gray-400 uppercase mt-0.5">
-                            {request.refund.provider || "-"}
+                            {request.refund.provider ||
+                              "-"}
                           </p>
                         </div>
                       ) : (
@@ -1520,7 +1673,11 @@ console.log(request)
                           request.refund?.status,
                         )}`}
                       >
-                        {refundStatusLabels[request.refund?.status]}
+                        {
+                          refundStatusLabels[
+                            request.refund?.status
+                          ]
+                        }
                       </span>
                     </td>
 
@@ -1532,7 +1689,11 @@ console.log(request)
                           request.status,
                         )}`}
                       >
-                        {requestStatusLabels[request.status]}
+                        {
+                          requestStatusLabels[
+                            request.status
+                          ]
+                        }
                       </span>
                     </td>
 
@@ -1541,7 +1702,11 @@ console.log(request)
                     <td className="px-6 py-4 text-right">
                       <button
                         type="button"
-                        onClick={() => setSelectedRequest(request)}
+                        onClick={() =>
+                          setSelectedRequest(
+                            request,
+                          )
+                        }
                         className="text-brand text-sm font-semibold hover:underline"
                       >
                         View
@@ -1553,41 +1718,141 @@ console.log(request)
 
               {/* EMPTY */}
 
-              {!loading && filteredOrders.length === 0 && (
-                <tr>
-                  <td colSpan={9} className="px-6 py-12 text-center">
-                    <div className="flex flex-col items-center justify-center">
-                      <IoSearchOutline
-                        size={40}
-                        className="text-gray-300 mb-3"
-                      />
-                      <p className="text-gray-500 font-medium">
-                        {searchTerm || activeType !== "all"
-                          ? "No requests found for your filters."
-                          : "No cancelled orders found."}
-                      </p>
-                      {(searchTerm || activeType !== "all") && (
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setSearchTerm("");
-                            setActiveType("all");
-                          }}
-                          className="mt-2 text-sm text-brand font-semibold hover:underline"
-                        >
-                          Clear filters
-                        </button>
-                      )}
-                    </div>
-                  </td>
-                </tr>
-              )}
+              {!loading &&
+                filteredOrders.length === 0 && (
+                  <tr>
+                    <td
+                      colSpan={9}
+                      className="px-6 py-12 text-center"
+                    >
+                      <div className="flex flex-col items-center justify-center">
+                        <IoSearchOutline
+                          size={40}
+                          className="text-gray-300 mb-3"
+                        />
+
+                        <p className="text-gray-500 font-medium">
+                          {searchTerm ||
+                          activeType !== "all"
+                            ? "No requests found for your filters."
+                            : "No cancelled orders found."}
+                        </p>
+
+                        {(searchTerm ||
+                          activeType !== "all") && (
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setSearchTerm("");
+                              setActiveType("all");
+                            }}
+                            className="mt-2 text-sm text-brand font-semibold hover:underline"
+                          >
+                            Clear filters
+                          </button>
+                        )}
+                      </div>
+                    </td>
+                  </tr>
+                )}
             </tbody>
           </table>
         </div>
+
+        {/* =================================================
+                    PAGINATION
+                ================================================= */}
+
+        {!loading &&
+          filteredOrders.length > 0 && (
+            <div className="px-6 py-4 border-t border-gray-100 flex flex-col sm:flex-row items-center justify-between gap-4">
+              <p className="text-sm text-gray-500">
+                Showing{" "}
+                <span className="font-semibold text-gray-900">
+                  {(currentPage - 1) *
+                    rowsPerPage +
+                    1}
+                </span>{" "}
+                to{" "}
+                <span className="font-semibold text-gray-900">
+                  {Math.min(
+                    currentPage * rowsPerPage,
+                    filteredOrders.length,
+                  )}
+                </span>{" "}
+                of{" "}
+                <span className="font-semibold text-gray-900">
+                  {filteredOrders.length}
+                </span>{" "}
+                requests
+              </p>
+
+              <div className="flex items-center gap-1">
+                {/* PREVIOUS */}
+
+                <button
+                  type="button"
+                  disabled={currentPage === 1}
+                  onClick={() =>
+                    setCurrentPage((prev) =>
+                      Math.max(1, prev - 1),
+                    )
+                  }
+                  className="px-3 py-2 border border-gray-200 rounded-lg text-sm font-semibold text-gray-600 hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed"
+                >
+                  Previous
+                </button>
+
+                {/* PAGE NUMBERS */}
+
+                {Array.from(
+                  {
+                    length: totalPages,
+                  },
+                  (_, index) => index + 1,
+                ).map((page) => (
+                  <button
+                    key={page}
+                    type="button"
+                    onClick={() =>
+                      setCurrentPage(page)
+                    }
+                    className={`min-w-9 px-3 py-2 rounded-lg text-sm font-semibold ${
+                      currentPage === page
+                        ? "bg-brand text-white"
+                        : "border border-gray-200 text-gray-600 hover:bg-gray-50"
+                    }`}
+                  >
+                    {page}
+                  </button>
+                ))}
+
+                {/* NEXT */}
+
+                <button
+                  type="button"
+                  disabled={
+                    currentPage === totalPages
+                  }
+                  onClick={() =>
+                    setCurrentPage((prev) =>
+                      Math.min(
+                        totalPages,
+                        prev + 1,
+                      ),
+                    )
+                  }
+                  className="px-3 py-2 border border-gray-200 rounded-lg text-sm font-semibold text-gray-600 hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed"
+                >
+                  Next
+                </button>
+              </div>
+            </div>
+          )}
       </div>
     </div>
   );
 };
 
 export default AdminCancelledOrders;
+

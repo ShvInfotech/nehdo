@@ -13,21 +13,21 @@ const { GlobelErrorHandaling } = require('./middleware/globelError')
 
 
 app.use(cors())
-app.use(express.urlencoded({extended:true}))
+app.use(express.urlencoded({ extended: true }))
 app.use(express.json())
 app.use(morgan("dev"))
-app.use("/uploads",express.static('src/uploads'));
+app.use("/uploads", express.static('src/uploads'));
 app.set("view engine", "ejs")
 app.set("views", path.join(__dirname, "views"))
 
-app.use('/',require('./routes/index.routes'))
+app.use('/', require('./routes/index.routes'))
 app.use(GlobelErrorHandaling)
 
-app.listen(port,(err)=>{
-    if(!err){
-        console.log(`Server start at http://${host}:${port} `)
+app.listen(port, (err) => {
+    if (!err) {
+        console.log(`Server start at ${process.env.BACKEND_DOMIN_URL} `)
         dbconnection()
-    }else{
-        console.log("Server starting probleme:",err)
+    } else {
+        console.log("Server starting probleme:", err)
     }
 })

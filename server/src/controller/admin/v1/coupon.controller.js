@@ -1,19 +1,18 @@
-const { CustomeError } = require("../../../middleware/globelError")
 const couponModel = require("../../../model/coupon.model")
-const orderModel = require("../../../model/order.model")
+const { CustomeError } = require("../../../middleware/globelError")
 
 
-exports.AddCoupon = async(req,res,next)=>{
+exports.AddCoupon = async (req, res, next) => {
     try {
-        if(!req.body?.couponCode){
-            return next(CustomeError(422,"couponcode is require"))
+        if (!req.body?.couponCode) {
+            return next(CustomeError(422, "couponcode is require"))
         }
-        if(!req.body?.discountType){
-            return next(CustomeError(422,"discount type is require"))
+        if (!req.body?.discountType) {
+            return next(CustomeError(422, "discount type is require"))
         }
 
-        const coupon = await couponModel.create({...req.body})
-        return res.status(200).json({success:true,message:"coupon created",coupon})
+        const coupon = await couponModel.create({ ...req.body })
+        return res.status(200).json({ success: true, message: "coupon created", coupon })
     } catch (error) {
         return next(error)
     }
@@ -26,26 +25,12 @@ exports.GetCoupon = async (req, res, next) => {
             {
                 $lookup: {
                     from: "orders",
-                    let: {
-                        couponId: "$_id"
-                    },
+                    let: { couponId: "$_id" },
                     pipeline: [
                         {
-                            $match: {
-                                $expr: {
-                                    $eq: [
-                                        "$couponId",
-                                        "$$couponId"
-                                    ]
-                                }
-                            }
+                            $match: { $expr: { $eq: ["$couponId", "$$couponId"] } }
                         },
-                        {
-                            $project: {
-                                _id: 1,
-                                discount: 1
-                            }
-                        }
+                        { $project: { _id: 1, discount: 1 } }
                     ],
                     as: "couponOrders"
                 }
@@ -53,13 +38,8 @@ exports.GetCoupon = async (req, res, next) => {
 
             {
                 $addFields: {
-                    usedCount: {
-                        $size: "$couponOrders"
-                    },
-
-                    totalDiscount: {
-                        $sum: "$couponOrders.discount"
-                    }
+                    usedCount: { $size: "$couponOrders" },
+                    totalDiscount: { $sum: "$couponOrders.discount" }
                 }
             },
 
@@ -70,25 +50,10 @@ exports.GetCoupon = async (req, res, next) => {
             }
         ]);
 
-        // Total Redemptions
-        const totalRedemptions = coupons.reduce(
-            (total, coupon) => total + coupon.usedCount,
-            0
-        );
+        const totalRedemptions = coupons.reduce((total, coupon) => total + coupon.usedCount, 0);
+        const totalRevenueLost = coupons.reduce((total, coupon) => total + coupon.totalDiscount, 0);
 
-        // Total Revenue Lost
-        const totalRevenueLost = coupons.reduce(
-            (total, coupon) => total + coupon.totalDiscount,
-            0
-        );
-
-        return res.status(200).json({
-            success: true,
-            message: "get coupon",
-            coupons,
-            totalRedemptions,
-            totalRevenueLost
-        });
+        return res.status(200).json({ success: true, message: "get coupon", coupons, totalRedemptions, totalRevenueLost });
 
     } catch (error) {
         return next(error);
@@ -97,23 +62,14 @@ exports.GetCoupon = async (req, res, next) => {
 
 
 exports.UpdateCoupon = async (req, res, next) => {
-  try {
-    const coupon = await couponModel.findByIdAndUpdate(
-      req.params.id,
-      { ...req.body },
-      { new: true }
-    );
+    try {
+        const coupon = await couponModel.findByIdAndUpdate(req.params.id, { ...req.body }, { returnDocument: 'after' });
+        if (!coupon) {
+            return next(CustomeError(404, 'Coupon not found'));
+        }
 
-    if (!coupon) {
-      return next(CustomeError(404, 'Coupon not found'));
+        return res.status(200).json({ success: true, message: 'coupon updated', coupon });
+    } catch (error) {
+        return next(error);
     }
-
-    return res.status(200).json({
-      success: true,
-      message: 'coupon updated',
-      coupon
-    });
-  } catch (error) {
-    return next(error);
-  }
 };

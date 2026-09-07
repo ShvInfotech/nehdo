@@ -1,10 +1,10 @@
-const { default: mongoose } = require("mongoose");
-const { CustomeError } = require("../../../middleware/globelError");
+const mongoose = require("mongoose");
 const orderModel = require("../../../model/order.model");
 const orderRequestsModel = require('../../../model/orderRequests.model')
-const { getshippingcharg, CreatOrderINShiproket, AssignCourierAndAWB, GenerateLabel } = require("../../../services/shiproketapis");
 const crypto = require("crypto");
+const { CustomeError } = require("../../../middleware/globelError");
 const { RazorpayRefundApi } = require("../../../services/razorpayapi");
+const { getshippingcharg, CreatOrderINShiproket, AssignCourierAndAWB, GenerateLabel } = require("../../../services/shiproketapis");
 
 
 exports.PendingOrder = async (req, res, next) => {
@@ -42,7 +42,7 @@ exports.PendingOrder = async (req, res, next) => {
                                         image: {
                                             $cond: [
                                                 { $ne: ["$$item.image", null] },
-                                                { $concat: [`http://${process.env.HOST}:${process.env.PORT}`, "$$item.image"] },
+                                                { $concat: [process.env.BACKEND_DOMIN_URL, "$$item.image"] },
                                                 null
                                             ]
                                         }
@@ -187,7 +187,7 @@ exports.AccepteOrder = async (req, res, next) => {
                 createorderData = {
                     order_id: order.orderNumber,
                     order_date: new Date(order.createdAt).toISOString().slice(0, 16).replace("T", " "),
-                    pickup_location: 'Home',
+                    pickup_location: process.env.SHIPROKET_PICKUP_LOCATION || "HOME",
                     channel_id: "",
                     comment: "Test order",
 
@@ -275,6 +275,7 @@ exports.GanrateLabel = async (req, res, next) => {
         // );
 
         console.log("Updated orders:", updateOrders.modifiedCount);
+
         return res.status(200).json({
             success: true, message: ` label Genareted`, label_url: 'https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf'
         })
@@ -360,7 +361,7 @@ exports.CanceledOrderRequest = async (req, res, next) => {
                                 },
                                 {
                                     $concat: [
-                                        `http://${process.env.HOST}:${process.env.PORT}`,
+                                        process.env.BACKEND_DOMIN_URL,
                                         "$user.profile",
                                     ],
                                 },
@@ -394,11 +395,9 @@ exports.CanceledOrderRequest = async (req, res, next) => {
 
 exports.ShippingWebhook = async (req, res, next) => {
     try {
-
-console.log(req.body)
         const apiKey = req.headers["x-api-key"];
 
-        if (apiKey !== "123456abc") {
+        if (apiKey !== process.env.SHIPROKET_WEBHOOK_API_KEY) {
             return res.status(401).json({
                 success: false, message: "Unauthorized webhook"
             });
@@ -430,10 +429,10 @@ console.log(req.body)
 
             const filter = awb ? { trackingNumber: awb } : { shiprocketOrderId: sr_order_id };
             const updateorder = await orderModel.findOneAndUpdate(filter, { status: newStatus, trackingNumber: generateRandom6Digit() }, { returnDocument: 'after' }) // remove tracking number after 
-            if (newStatus === "delivered" && updateorder.payment.method == "cod" && updateorder.payment.status == "pending") {
+            if (newStatus === "delivered" && updateorder?.payment?.method == "cod" && updateorder?.payment?.status == "pending") {
                 await orderModel.findByIdAndUpdate(updateorder._id, { $set: { "payment.status": "paid", deliveredAt: Date.now() } });
             } else if (newStatus === "delivered") {
-                await orderModel.findByIdAndUpdate(updateorder._id, { $set: { deliveredAt: Date.now() } });
+                await orderModel.findByIdAndUpdate(updateorder?._id, { $set: { deliveredAt: Date.now() } });
             }
             return res.json(true)
 
@@ -606,12 +605,12 @@ exports.RefundWebhook = async (req, res, next) => {
 
         if (body.event === 'refund.created') {
 
-            await orderRequestsModel.findOneAndUpdate({ "refund.paymentId": body.payload.refund.entity?.payment_id }, { $set: { "refund.status": "processing" } }, { returnDocument: 'after' });
+            await orderRequestsModel.findOneAndUpdate({ "refund.paymentId": body.payload.refund.entity?.payment_id, "refund.status": "pending" }, { $set: { "refund.status": "processing" } }, { returnDocument: 'after' });
             console.log("refund.created")
         }
 
         if (body.event === 'refund.processed') {
-            await orderRequestsModel.findOneAndUpdate({ "refund.paymentId": body.payload.refund.entity?.payment_id }, { $set: { "refund.status": "processed","refund.refundedAt":Date.now() } }, { returnDocument: 'after' });
+            await orderRequestsModel.findOneAndUpdate({ "refund.paymentId": body.payload.refund.entity?.payment_id }, { $set: { "refund.status": "processed", "refund.refundedAt": Date.now() } }, { returnDocument: 'after' });
             console.log("refund.processed")
 
         }
@@ -622,7 +621,7 @@ exports.RefundWebhook = async (req, res, next) => {
             console.log("refund.failed")
 
         }
-        return res.status(200)
+        return res.status(200).json({ success: true })
     } catch (error) {
         console.error("Refund Webhook Error:", error);
         return next(error);

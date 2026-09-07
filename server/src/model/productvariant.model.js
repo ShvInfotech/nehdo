@@ -5,7 +5,7 @@ const variantSchema = mongoose.Schema({
     productId: {
         type: mongoose.Schema.Types.ObjectId,
         ref: 'products',
-        required:true
+        required: true
     },
     size: {
         type: [String],
@@ -18,18 +18,19 @@ const variantSchema = mongoose.Schema({
     },
     material: {
         type: String,
-        default:''
+        default: ''
     },
     variant: {
         type: [{
-             name: {type:String}, price: {type:Number}, stock: {type:Number}, sku: {type:String}}],
-        default:[]
+            name: { type: String }, price: { type: Number }, stock: { type: Number }, sku: { type: String }
+        }],
+        default: []
     }
 },
     {
-
-        versionKey: false
+        versionKey: false,
+        timestamps: true,
     }
 )
 
-module.exports = mongoose.model('productvariants',variantSchema)
+module.exports = mongoose.model('productvariants', variantSchema)

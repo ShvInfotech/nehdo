@@ -1,6 +1,6 @@
 const mongoose = require('mongoose')
-const { CustomeError } = require('../../../middleware/globelError')
 const categoryModel = require('../../../model/category.model')
+const { CustomeError } = require('../../../middleware/globelError')
 const { DeleteImage } = require('../../../helper/helper')
 
 exports.AddCategory = async (req, res, next) => {
@@ -10,7 +10,6 @@ exports.AddCategory = async (req, res, next) => {
             return next(CustomeError(422, "name is required"))
         }
 
-        console.log(req.file)
         let categorylogo = ''
         if (req.file) {
             categorylogo = `/uploads/${req.file.fieldname}/${req.file.filename}`
@@ -18,9 +17,9 @@ exports.AddCategory = async (req, res, next) => {
         let category = await categoryModel.find()
 
         category = await categoryModel.create({ ...req.body, logo: categorylogo, displayOrder: category.length + 1 })
-       
+
         if (category.logo) {
-            category.logo = `http://${process.env.HOST}:${process.env.PORT}${category.logo}`;
+            category.logo = `${process.env.BACKEND_DOMIN_URL}${category.logo}`;
         }
         return res.status(200).json({ success: true, message: 'category added successfully', category })
 
@@ -35,8 +34,8 @@ exports.GetCategory = async (req, res, next) => {
     try {
 
         const categories = await categoryModel.aggregate([
-            {$project: {createdAt: 0,updatedAt: 0,}},
-            {$addFields: {logo: {$cond: [{$or: [{ $eq: ["$logo", null] },{ $eq: ["$logo", ""] }]},"",{$concat: [`http://${process.env.HOST}:${process.env.PORT}`,"$logo"]}]}}}
+            { $project: { createdAt: 0, updatedAt: 0, } },
+            { $addFields: { logo: { $cond: [{ $or: [{ $eq: ["$logo", null] }, { $eq: ["$logo", ""] }] }, "", { $concat: [process.env.BACKEND_DOMIN_URL, "$logo"] }] } } }
         ]);
 
         return res.status(200).json({
@@ -76,7 +75,7 @@ exports.Updatecategory = async (req, res, next) => {
         }
         category = await categoryModel.findByIdAndUpdate(id, { ...req.body, logo: categorylogo }, { returnDocument: 'after' }).select({ createdAt: 0, updatedAt: 0 })
         if (category.logo) {
-            category.logo = `http://${process.env.HOST}:${process.env.PORT}${category.logo}`;
+            category.logo = `${process.env.BACKEND_DOMIN_URL}${category.logo}`;
         }
         return res.status(200).json({ success: true, message: 'category update successfully', category })
 

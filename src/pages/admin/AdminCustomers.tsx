@@ -1,3 +1,4 @@
+
 import React, { useEffect, useMemo, useState } from "react";
 import {
   IoSearchOutline,
@@ -56,15 +57,22 @@ interface CustomersResponse {
 
 const AdminCustomers = () => {
   const [customers, setCustomers] = useState<Customer[]>([]);
-  const [selectedCustomer, setSelectedCustomer] = useState<Customer | null>(
-    null
-  );
+  const [selectedCustomer, setSelectedCustomer] =
+    useState<Customer | null>(null);
 
   const [loading, setLoading] = useState(false);
   const [actionLoading, setActionLoading] = useState(false);
 
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("All Status");
+
+  // ---------------------------------------------
+  // PAGINATION
+  // ---------------------------------------------
+
+  const [currentPage, setCurrentPage] = useState(1);
+
+  const rowsPerPage = 25;
 
   // ---------------------------------------------
   // MODALS
@@ -131,7 +139,8 @@ const AdminCustomers = () => {
         customer.email?.toLowerCase().includes(searchValue) ||
         customer.phone?.toLowerCase().includes(searchValue);
 
-      const customerStatus = customer.status?.toLowerCase() || "active";
+      const customerStatus =
+        customer.status?.toLowerCase() || "active";
 
       const matchesStatus =
         statusFilter === "All Status" ||
@@ -140,6 +149,40 @@ const AdminCustomers = () => {
       return matchesSearch && matchesStatus;
     });
   }, [customers, search, statusFilter]);
+
+  // ----------------------------------------------------
+  // PAGINATION DATA
+  // ----------------------------------------------------
+
+  const totalPages = Math.ceil(
+    filteredCustomers.length / rowsPerPage
+  );
+
+  const paginatedCustomers = filteredCustomers.slice(
+    (currentPage - 1) * rowsPerPage,
+    currentPage * rowsPerPage
+  );
+
+  // ----------------------------------------------------
+  // RESET PAGINATION WHEN SEARCH/FILTER CHANGES
+  // ----------------------------------------------------
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [search, statusFilter]);
+
+  // ----------------------------------------------------
+  // KEEP PAGE VALID
+  // ----------------------------------------------------
+
+  useEffect(() => {
+    if (
+      totalPages > 0 &&
+      currentPage > totalPages
+    ) {
+      setCurrentPage(totalPages);
+    }
+  }, [currentPage, totalPages]);
 
   // ----------------------------------------------------
   // FORMATTERS
@@ -194,7 +237,10 @@ const AdminCustomers = () => {
 
     return status
       .split("_")
-      .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+      .map(
+        (word) =>
+          word.charAt(0).toUpperCase() + word.slice(1)
+      )
       .join(" ");
   };
 
@@ -210,14 +256,18 @@ const AdminCustomers = () => {
     );
 
     if (!confirmed) return;
+
     console.log(selectedCustomer);
+
     try {
       setActionLoading(true);
 
       const response = await apiRequest(
         `/admin/api/v1/customers/update/${selectedCustomer._id}`,
         "PATCH",
-        { status: "block" }
+        {
+          status: "block",
+        }
       );
 
       if (response?.success) {
@@ -246,12 +296,22 @@ const AdminCustomers = () => {
               : customer
           )
         );
-        toast.success(response.message || "Customer blocked successfully");
+
+        toast.success(
+          response.message ||
+            "Customer blocked successfully"
+        );
       } else {
-        toast.error(response?.message || "Failed to block customer");
+        toast.error(
+          response?.message ||
+            "Failed to block customer"
+        );
       }
     } catch (error: any) {
-      toast.error(error?.message || "Failed to block customer");
+      toast.error(
+        error?.message ||
+          "Failed to block customer"
+      );
     } finally {
       setActionLoading(false);
     }
@@ -267,23 +327,31 @@ const AdminCustomers = () => {
     setShowResetPassword(true);
   };
 
-  const handleResetPassword = async (e: React.FormEvent) => {
+  const handleResetPassword = async (
+    e: React.FormEvent
+  ) => {
     e.preventDefault();
 
     if (!selectedCustomer) return;
 
     if (!newPassword) {
-      toast.warning("Please enter new password.");
+      toast.warning(
+        "Please enter new password."
+      );
       return;
     }
 
     if (newPassword.length < 6) {
-      toast.warning("Password must be at least 6 characters.");
+      toast.warning(
+        "Password must be at least 6 characters."
+      );
       return;
     }
 
     if (newPassword !== confirmPassword) {
-      toast.warning("Passwords do not match.");
+      toast.warning(
+        "Passwords do not match."
+      );
       return;
     }
 
@@ -293,32 +361,41 @@ const AdminCustomers = () => {
       const response = await apiRequest(
         `/admin/api/v1/customers/update/${selectedCustomer._id}`,
         "PATCH",
-        { password: newPassword }
+        {
+          password: newPassword,
+        }
       );
 
       if (response?.success) {
-        toast.success(response.message || "Password reset successfully.");
+        toast.success(
+          response.message ||
+            "Password reset successfully."
+        );
 
         setShowResetPassword(false);
         setNewPassword("");
         setConfirmPassword("");
 
-        // Refresh UI data
         await fetchCustomers();
 
-        // selected customer refresh
         const updatedCustomer = customers.find(
-          (customer) => customer._id === selectedCustomer._id
+          (customer) =>
+            customer._id === selectedCustomer._id
         );
 
         if (updatedCustomer) {
           setSelectedCustomer(updatedCustomer);
         }
       } else {
-        toast.error(response?.message || "Failed to reset password.");
+        toast.error(
+          response?.message ||
+            "Failed to reset password."
+        );
       }
     } catch (error) {
-      toast.error("Something went wrong while resetting password.");
+      toast.error(
+        "Something went wrong while resetting password."
+      );
     } finally {
       setActionLoading(false);
     }
@@ -326,8 +403,6 @@ const AdminCustomers = () => {
 
   // ====================================================
   // SEND EMAIL
-  // NO API CALL
-  // ONLY CONSOLE PAYLOAD
   // ====================================================
 
   const openSendEmail = () => {
@@ -336,7 +411,9 @@ const AdminCustomers = () => {
     setShowSendEmail(true);
   };
 
-  const handleSendEmail = async (e: React.FormEvent) => {
+  const handleSendEmail = async (
+    e: React.FormEvent
+  ) => {
     e.preventDefault();
 
     if (!selectedCustomer) return;
@@ -369,7 +446,8 @@ const AdminCustomers = () => {
   // ====================================================
 
   if (selectedCustomer) {
-    const address = selectedCustomer.defaultAddress;
+    const address =
+      selectedCustomer.defaultAddress;
 
     return (
       <div className="space-y-6">
@@ -377,7 +455,9 @@ const AdminCustomers = () => {
 
         <div className="flex items-center gap-4">
           <button
-            onClick={() => setSelectedCustomer(null)}
+            onClick={() =>
+              setSelectedCustomer(null)
+            }
             className="p-2 text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
           >
             <IoChevronBackOutline size={20} />
@@ -389,7 +469,10 @@ const AdminCustomers = () => {
             </h1>
 
             <p className="text-sm text-gray-500 mt-1">
-              Customer since {formatDate(selectedCustomer.createdAt)}
+              Customer since{" "}
+              {formatDate(
+                selectedCustomer.createdAt
+              )}
             </p>
           </div>
 
@@ -423,7 +506,9 @@ const AdminCustomers = () => {
 
               <div className="bg-white rounded-xl border border-gray-100 p-4 text-center">
                 <p className="text-2xl font-bold text-green-600">
-                  {formatCurrency(selectedCustomer.totalPaidAmount)}
+                  {formatCurrency(
+                    selectedCustomer.totalPaidAmount
+                  )}
                 </p>
 
                 <p className="text-xs text-gray-500 font-semibold mt-1">
@@ -433,7 +518,9 @@ const AdminCustomers = () => {
 
               <div className="bg-white rounded-xl border border-gray-100 p-4 text-center">
                 <p className="text-2xl font-bold text-blue-600">
-                  {formatCurrency(selectedCustomer.averageSpendPerPaidOrder)}
+                  {formatCurrency(
+                    selectedCustomer.averageSpendPerPaidOrder
+                  )}
                 </p>
 
                 <p className="text-xs text-gray-500 font-semibold mt-1">
@@ -455,52 +542,71 @@ const AdminCustomers = () => {
                 <table className="w-full text-sm">
                   <thead className="bg-gray-50 text-gray-500 font-semibold uppercase text-xs tracking-wider">
                     <tr>
-                      <th className="px-6 py-3 text-left">Order ID</th>
+                      <th className="px-6 py-3 text-left">
+                        Order ID
+                      </th>
 
-                      <th className="px-6 py-3 text-left">Date</th>
+                      <th className="px-6 py-3 text-left">
+                        Date
+                      </th>
 
-                      <th className="px-6 py-3 text-left">Items</th>
+                      <th className="px-6 py-3 text-left">
+                        Items
+                      </th>
 
-                      <th className="px-6 py-3 text-left">Amount</th>
+                      <th className="px-6 py-3 text-left">
+                        Amount
+                      </th>
 
-                      <th className="px-6 py-3 text-left">Status</th>
+                      <th className="px-6 py-3 text-left">
+                        Status
+                      </th>
                     </tr>
                   </thead>
 
                   <tbody className="divide-y divide-gray-100">
-                    {selectedCustomer.orders.length > 0 ? (
-                      selectedCustomer.orders.map((order) => (
-                        <tr
-                          key={order._id}
-                          className="hover:bg-gray-50 cursor-pointer"
-                        >
-                          <td className="px-6 py-4 font-medium text-brand">
-                            {order.orderNumber}
-                          </td>
+                    {selectedCustomer.orders.length >
+                    0 ? (
+                      selectedCustomer.orders.map(
+                        (order) => (
+                          <tr
+                            key={order._id}
+                            className="hover:bg-gray-50 cursor-pointer"
+                          >
+                            <td className="px-6 py-4 font-medium text-brand">
+                              {order.orderNumber}
+                            </td>
 
-                          <td className="px-6 py-4 text-gray-500">
-                            {formatDate(order.updatedAt)}
-                          </td>
+                            <td className="px-6 py-4 text-gray-500">
+                              {formatDate(
+                                order.updatedAt
+                              )}
+                            </td>
 
-                          <td className="px-6 py-4 text-gray-600">
-                            {order.itemsCount}
-                          </td>
+                            <td className="px-6 py-4 text-gray-600">
+                              {order.itemsCount}
+                            </td>
 
-                          <td className="px-6 py-4 font-medium">
-                            {formatCurrency(order.totalAmount)}
-                          </td>
+                            <td className="px-6 py-4 font-medium">
+                              {formatCurrency(
+                                order.totalAmount
+                              )}
+                            </td>
 
-                          <td className="px-6 py-4">
-                            <span
-                              className={`px-2.5 py-1 rounded-full text-xs font-semibold ${getStatusClass(
-                                order.status
-                              )}`}
-                            >
-                              {formatOrderStatus(order.status)}
-                            </span>
-                          </td>
-                        </tr>
-                      ))
+                            <td className="px-6 py-4">
+                              <span
+                                className={`px-2.5 py-1 rounded-full text-xs font-semibold ${getStatusClass(
+                                  order.status
+                                )}`}
+                              >
+                                {formatOrderStatus(
+                                  order.status
+                                )}
+                              </span>
+                            </td>
+                          </tr>
+                        )
+                      )
                     ) : (
                       <tr>
                         <td
@@ -560,7 +666,9 @@ const AdminCustomers = () => {
                   />
                 ) : (
                   <div className="w-16 h-16 rounded-full bg-brand/10 text-brand flex items-center justify-center font-bold text-xl">
-                    {selectedCustomer.name?.charAt(0)?.toUpperCase()}
+                    {selectedCustomer.name
+                      ?.charAt(0)
+                      ?.toUpperCase()}
                   </div>
                 )}
 
@@ -571,12 +679,14 @@ const AdminCustomers = () => {
 
                   <span
                     className={`inline-block mt-1 px-2.5 py-0.5 rounded-full text-xs font-semibold ${
-                      selectedCustomer.status?.toLowerCase() === "block"
+                      selectedCustomer.status?.toLowerCase() ===
+                      "block"
                         ? "bg-red-100 text-red-700"
                         : "bg-green-100 text-green-700"
                     }`}
                   >
-                    {selectedCustomer.status?.toLowerCase() === "block"
+                    {selectedCustomer.status?.toLowerCase() ===
+                    "block"
                       ? "Blocked"
                       : "Active"}
                   </span>
@@ -610,7 +720,9 @@ const AdminCustomers = () => {
                   </p>
 
                   <p className="text-sm font-medium text-gray-900">
-                    {formatDate(selectedCustomer.createdAt)}
+                    {formatDate(
+                      selectedCustomer.createdAt
+                    )}
                   </p>
                 </div>
               </div>
@@ -631,7 +743,8 @@ const AdminCustomers = () => {
                   <br />
                   {address.landmark}
                   <br />
-                  {address.city}, {address.state} {address.postalCode}
+                  {address.city}, {address.state}{" "}
+                  {address.postalCode}
                 </p>
               ) : (
                 <p className="text-sm text-gray-500">
@@ -643,7 +756,9 @@ const AdminCustomers = () => {
             {/* Actions */}
 
             <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
-              <h2 className="text-lg font-bold text-gray-900 mb-4">Actions</h2>
+              <h2 className="text-lg font-bold text-gray-900 mb-4">
+                Actions
+              </h2>
 
               <div className="space-y-2">
                 <button
@@ -665,13 +780,15 @@ const AdminCustomers = () => {
                   onClick={handleBlockCustomer}
                   disabled={
                     actionLoading ||
-                    selectedCustomer.status?.toLowerCase() === "block"
+                    selectedCustomer.status?.toLowerCase() ===
+                      "block"
                   }
                   className="w-full flex items-center justify-center gap-2 px-4 py-2.5 bg-red-50 text-red-600 text-sm font-semibold rounded-xl hover:bg-red-100 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   <IoBanOutline size={16} />
 
-                  {selectedCustomer.status?.toLowerCase() === "block"
+                  {selectedCustomer.status?.toLowerCase() ===
+                  "block"
                     ? "Customer Blocked"
                     : actionLoading
                     ? "Blocking..."
@@ -701,14 +818,19 @@ const AdminCustomers = () => {
                 </div>
 
                 <button
-                  onClick={() => setShowResetPassword(false)}
+                  onClick={() =>
+                    setShowResetPassword(false)
+                  }
                   className="p-2 rounded-lg hover:bg-gray-100 text-gray-500"
                 >
                   <IoCloseOutline size={22} />
                 </button>
               </div>
 
-              <form onSubmit={handleResetPassword} className="p-6 space-y-4">
+              <form
+                onSubmit={handleResetPassword}
+                className="p-6 space-y-4"
+              >
                 <div>
                   <label className="block text-sm font-semibold text-gray-700 mb-2">
                     New Password
@@ -717,7 +839,9 @@ const AdminCustomers = () => {
                   <input
                     type="password"
                     value={newPassword}
-                    onChange={(e) => setNewPassword(e.target.value)}
+                    onChange={(e) =>
+                      setNewPassword(e.target.value)
+                    }
                     placeholder="Enter new password"
                     className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:border-brand"
                   />
@@ -731,7 +855,9 @@ const AdminCustomers = () => {
                   <input
                     type="password"
                     value={confirmPassword}
-                    onChange={(e) => setConfirmPassword(e.target.value)}
+                    onChange={(e) =>
+                      setConfirmPassword(e.target.value)
+                    }
                     placeholder="Confirm new password"
                     className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:border-brand"
                   />
@@ -740,7 +866,9 @@ const AdminCustomers = () => {
                 <div className="flex justify-end gap-3 pt-2">
                   <button
                     type="button"
-                    onClick={() => setShowResetPassword(false)}
+                    onClick={() =>
+                      setShowResetPassword(false)
+                    }
                     className="px-5 py-2.5 border border-gray-200 rounded-xl text-sm font-semibold text-gray-600 hover:bg-gray-50"
                   >
                     Cancel
@@ -751,7 +879,9 @@ const AdminCustomers = () => {
                     disabled={actionLoading}
                     className="px-5 py-2.5 bg-brand text-white rounded-xl text-sm font-bold hover:bg-brand-light disabled:opacity-50"
                   >
-                    {actionLoading ? "Resetting..." : "Reset Password"}
+                    {actionLoading
+                      ? "Resetting..."
+                      : "Reset Password"}
                   </button>
                 </div>
               </form>
@@ -778,14 +908,19 @@ const AdminCustomers = () => {
                 </div>
 
                 <button
-                  onClick={() => setShowSendEmail(false)}
+                  onClick={() =>
+                    setShowSendEmail(false)
+                  }
                   className="p-2 rounded-lg hover:bg-gray-100 text-gray-500"
                 >
                   <IoCloseOutline size={22} />
                 </button>
               </div>
 
-              <form onSubmit={handleSendEmail} className="p-6 space-y-4">
+              <form
+                onSubmit={handleSendEmail}
+                className="p-6 space-y-4"
+              >
                 <div>
                   <label className="block text-sm font-semibold text-gray-700 mb-2">
                     Subject
@@ -794,7 +929,9 @@ const AdminCustomers = () => {
                   <input
                     type="text"
                     value={emailSubject}
-                    onChange={(e) => setEmailSubject(e.target.value)}
+                    onChange={(e) =>
+                      setEmailSubject(e.target.value)
+                    }
                     required
                     placeholder="Enter email subject"
                     className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:border-brand"
@@ -809,7 +946,9 @@ const AdminCustomers = () => {
                   <textarea
                     rows={6}
                     value={emailMessage}
-                    onChange={(e) => setEmailMessage(e.target.value)}
+                    onChange={(e) =>
+                      setEmailMessage(e.target.value)
+                    }
                     required
                     placeholder="Write your message..."
                     className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:border-brand resize-none"
@@ -819,7 +958,9 @@ const AdminCustomers = () => {
                 <div className="flex justify-end gap-3 pt-2">
                   <button
                     type="button"
-                    onClick={() => setShowSendEmail(false)}
+                    onClick={() =>
+                      setShowSendEmail(false)
+                    }
                     className="px-5 py-2.5 border border-gray-200 rounded-xl text-sm font-semibold text-gray-600 hover:bg-gray-50"
                   >
                     Cancel
@@ -879,7 +1020,9 @@ const AdminCustomers = () => {
             <input
               type="text"
               value={search}
-              onChange={(e) => setSearch(e.target.value)}
+              onChange={(e) =>
+                setSearch(e.target.value)
+              }
               placeholder="Search customers..."
               className="w-full pl-10 pr-4 py-2 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:outline-none focus:border-brand focus:ring-1 focus:ring-brand"
             />
@@ -888,14 +1031,20 @@ const AdminCustomers = () => {
           <div className="flex gap-2">
             <select
               value={statusFilter}
-              onChange={(e) => setStatusFilter(e.target.value)}
+              onChange={(e) =>
+                setStatusFilter(e.target.value)
+              }
               className="px-3 py-2 bg-white border border-gray-200 text-sm rounded-xl focus:outline-none focus:border-brand"
             >
               <option>All Status</option>
 
-              <option value="active">Active</option>
+              <option value="active">
+                Active
+              </option>
 
-              <option value="block">Blocked</option>
+              <option value="block">
+                Blocked
+              </option>
             </select>
 
             <button className="flex items-center gap-2 px-4 py-2 bg-white border border-gray-200 text-sm font-semibold text-gray-700 rounded-xl shadow-sm hover:bg-gray-50 whitespace-nowrap">
@@ -912,125 +1061,234 @@ const AdminCustomers = () => {
             Loading customers...
           </div>
         ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm text-left">
-              <thead className="bg-gray-50 text-gray-500 font-semibold uppercase text-xs tracking-wider">
-                <tr>
-                  <th className="px-6 py-4">
-                    <input
-                      type="checkbox"
-                      className="w-4 h-4 rounded border-gray-300 text-brand focus:ring-brand"
-                    />
-                  </th>
+          <>
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm text-left">
+                <thead className="bg-gray-50 text-gray-500 font-semibold uppercase text-xs tracking-wider">
+                  <tr>
+                    <th className="px-6 py-4">
+                      Name
+                    </th>
 
-                  <th className="px-6 py-4">Name</th>
+                    <th className="px-6 py-4">
+                      Email
+                    </th>
 
-                  <th className="px-6 py-4">Email</th>
+                    <th className="px-6 py-4">
+                      Phone
+                    </th>
 
-                  <th className="px-6 py-4">Phone</th>
+                    <th className="px-6 py-4">
+                      Orders
+                    </th>
 
-                  <th className="px-6 py-4">Orders</th>
+                    <th className="px-6 py-4">
+                      Total Spent
+                    </th>
 
-                  <th className="px-6 py-4">Total Spent</th>
+                    <th className="px-6 py-4">
+                      Status
+                    </th>
 
-                  <th className="px-6 py-4">Status</th>
+                    <th className="px-6 py-4 text-right">
+                      Actions
+                    </th>
+                  </tr>
+                </thead>
 
-                  <th className="px-6 py-4 text-right">Actions</th>
-                </tr>
-              </thead>
+                <tbody className="divide-y divide-gray-100">
+                  {paginatedCustomers.length > 0 ? (
+                    paginatedCustomers.map(
+                      (customer) => (
+                        <tr
+                          key={customer._id}
+                          className="hover:bg-gray-50 transition-colors cursor-pointer"
+                          onClick={() =>
+                            setSelectedCustomer(
+                              customer
+                            )
+                          }
+                        >
+                          <td className="px-6 py-4 font-medium text-gray-900">
+                            <div className="flex items-center gap-3">
+                              {customer.profile ? (
+                                <img
+                                  src={customer.profile}
+                                  alt={
+                                    customer.name
+                                  }
+                                  className="w-8 h-8 rounded-full object-cover"
+                                />
+                              ) : (
+                                <div className="w-8 h-8 rounded-full bg-brand/10 text-brand flex items-center justify-center font-bold text-xs">
+                                  {customer.name
+                                    ?.charAt(0)
+                                    ?.toUpperCase()}
+                                </div>
+                              )}
 
-              <tbody className="divide-y divide-gray-100">
-                {filteredCustomers.length > 0 ? (
-                  filteredCustomers.map((customer) => (
-                    <tr
-                      key={customer._id}
-                      className="hover:bg-gray-50 transition-colors cursor-pointer"
-                      onClick={() => setSelectedCustomer(customer)}
-                    >
-                      <td
-                        className="px-6 py-4"
-                        onClick={(e) => e.stopPropagation()}
-                      >
-                        <input
-                          type="checkbox"
-                          className="w-4 h-4 rounded border-gray-300 text-brand focus:ring-brand"
-                        />
-                      </td>
-
-                      <td className="px-6 py-4 font-medium text-gray-900">
-                        <div className="flex items-center gap-3">
-                          {customer.profile ? (
-                            <img
-                              src={customer.profile}
-                              alt={customer.name}
-                              className="w-8 h-8 rounded-full object-cover"
-                            />
-                          ) : (
-                            <div className="w-8 h-8 rounded-full bg-brand/10 text-brand flex items-center justify-center font-bold text-xs">
-                              {customer.name?.charAt(0)?.toUpperCase()}
+                              {customer.name}
                             </div>
-                          )}
+                          </td>
 
-                          {customer.name}
-                        </div>
-                      </td>
+                          <td className="px-6 py-4 text-gray-600">
+                            {customer.email || "-"}
+                          </td>
 
-                      <td className="px-6 py-4 text-gray-600">
-                        {customer.email || "-"}
-                      </td>
+                          <td className="px-6 py-4 text-gray-500">
+                            {customer.phone || "-"}
+                          </td>
 
-                      <td className="px-6 py-4 text-gray-500">
-                        {customer.phone || "-"}
-                      </td>
+                          <td className="px-6 py-4 text-gray-600">
+                            {customer.totalOrders}
+                          </td>
 
-                      <td className="px-6 py-4 text-gray-600">
-                        {customer.totalOrders}
-                      </td>
+                          <td className="px-6 py-4 font-medium text-gray-900">
+                            {formatCurrency(
+                              customer.totalPaidAmount
+                            )}
+                          </td>
 
-                      <td className="px-6 py-4 font-medium text-gray-900">
-                        {formatCurrency(customer.totalPaidAmount)}
-                      </td>
+                          <td className="px-6 py-4">
+                            <span
+                              className={`px-2.5 py-1 rounded-full text-xs font-semibold ${
+                                customer.status?.toLowerCase() ===
+                                "block"
+                                  ? "bg-red-100 text-red-700"
+                                  : "bg-green-100 text-green-700"
+                              }`}
+                            >
+                              {customer.status?.toLowerCase() ===
+                              "block"
+                                ? "Blocked"
+                                : "Active"}
+                            </span>
+                          </td>
 
-                      <td className="px-6 py-4">
-                        <span
-                          className={`px-2.5 py-1 rounded-full text-xs font-semibold ${
-                            customer.status?.toLowerCase() === "block"
-                              ? "bg-red-100 text-red-700"
-                              : "bg-green-100 text-green-700"
-                          }`}
-                        >
-                          {customer.status?.toLowerCase() === "block"
-                            ? "Blocked"
-                            : "Active"}
-                        </span>
-                      </td>
-
+                          <td
+                            className="px-6 py-4 text-right"
+                            onClick={(e) =>
+                              e.stopPropagation()
+                            }
+                          >
+                            <button
+                              className="text-brand text-sm font-semibold hover:underline"
+                              onClick={() =>
+                                setSelectedCustomer(
+                                  customer
+                                )
+                              }
+                            >
+                              View
+                            </button>
+                          </td>
+                        </tr>
+                      )
+                    )
+                  ) : (
+                    <tr>
                       <td
-                        className="px-6 py-4 text-right"
-                        onClick={(e) => e.stopPropagation()}
+                        colSpan={7}
+                        className="px-6 py-16 text-center text-gray-500"
                       >
-                        <button
-                          className="text-brand text-sm font-semibold hover:underline"
-                          onClick={() => setSelectedCustomer(customer)}
-                        >
-                          View
-                        </button>
+                        No customers found
                       </td>
                     </tr>
-                  ))
-                ) : (
-                  <tr>
-                    <td
-                      colSpan={8}
-                      className="px-6 py-16 text-center text-gray-500"
+                  )}
+                </tbody>
+              </table>
+            </div>
+
+            {/* PAGINATION */}
+
+            {filteredCustomers.length > 0 &&
+              totalPages > 1 && (
+                <div className="flex flex-col sm:flex-row items-center justify-between gap-4 px-6 py-4 border-t border-gray-100">
+                  <p className="text-sm text-gray-500">
+                    Showing{" "}
+                    <span className="font-semibold text-gray-900">
+                      {(currentPage - 1) *
+                        rowsPerPage +
+                        1}
+                    </span>{" "}
+                    to{" "}
+                    <span className="font-semibold text-gray-900">
+                      {Math.min(
+                        currentPage *
+                          rowsPerPage,
+                        filteredCustomers.length
+                      )}
+                    </span>{" "}
+                    of{" "}
+                    <span className="font-semibold text-gray-900">
+                      {filteredCustomers.length}
+                    </span>{" "}
+                    customers
+                  </p>
+
+                  <div className="flex items-center gap-1">
+                    <button
+                      type="button"
+                      onClick={() =>
+                        setCurrentPage(
+                          (prev) =>
+                            Math.max(
+                              prev - 1,
+                              1
+                            )
+                        )
+                      }
+                      disabled={currentPage === 1}
+                      className="px-3 py-2 text-sm font-semibold border border-gray-200 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50"
                     >
-                      No customers found
-                    </td>
-                  </tr>
-                )}
-              </tbody>
-            </table>
-          </div>
+                      Previous
+                    </button>
+
+                    {Array.from(
+                      {
+                        length: totalPages,
+                      },
+                      (_, index) =>
+                        index + 1
+                    ).map((page) => (
+                      <button
+                        key={page}
+                        type="button"
+                        onClick={() =>
+                          setCurrentPage(page)
+                        }
+                        className={`min-w-9 px-3 py-2 text-sm font-semibold rounded-lg ${
+                          currentPage === page
+                            ? "bg-brand text-white"
+                            : "border border-gray-200 text-gray-700 hover:bg-gray-50"
+                        }`}
+                      >
+                        {page}
+                      </button>
+                    ))}
+
+                    <button
+                      type="button"
+                      onClick={() =>
+                        setCurrentPage(
+                          (prev) =>
+                            Math.min(
+                              prev + 1,
+                              totalPages
+                            )
+                        )
+                      }
+                      disabled={
+                        currentPage === totalPages
+                      }
+                      className="px-3 py-2 text-sm font-semibold border border-gray-200 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50"
+                    >
+                      Next
+                    </button>
+                  </div>
+                </div>
+              )}
+          </>
         )}
       </div>
     </div>
@@ -1038,3 +1296,4 @@ const AdminCustomers = () => {
 };
 
 export default AdminCustomers;
+

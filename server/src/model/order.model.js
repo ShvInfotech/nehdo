@@ -162,6 +162,7 @@ const orderSchema = mongoose.Schema(
         },
     },
     {
+        versionKey: false,
         timestamps: true,
     }
 );

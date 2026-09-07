@@ -2,10 +2,10 @@ const mongoose = require('mongoose')
 
 
 const subcategorySchema = mongoose.Schema({
-    categoryId:{
-        type:mongoose.Schema.Types.ObjectId,
-        ref:'categories',
-        required:true,
+    categoryId: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'categories',
+        required: true,
     },
     name: {
         type: String,
@@ -18,9 +18,9 @@ const subcategorySchema = mongoose.Schema({
         trim: true
 
     },
-    logo:{
-        type:String,
-        default:''
+    logo: {
+        type: String,
+        default: ''
     },
     description: {
         type: String,
@@ -55,4 +55,4 @@ const subcategorySchema = mongoose.Schema({
         timestamps: true
     })
 
-    module.exports = mongoose.model('subcategories', subcategorySchema)
+module.exports = mongoose.model('subcategories', subcategorySchema)

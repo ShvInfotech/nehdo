@@ -5,7 +5,7 @@ const inventorySchema = mongoose.Schema({
     productId: {
         type: mongoose.Schema.Types.ObjectId,
         ref: 'products',
-        required:true
+        required: true
     },
     stock: {
         type: Number,
@@ -28,9 +28,9 @@ const inventorySchema = mongoose.Schema({
     }
 },
     {
-
-         versionKey: false
+        versionKey: false,
+        timestamps: true,
     }
 )
 
-module.exports = mongoose.model('productinventorys',inventorySchema)
+module.exports = mongoose.model('productinventorys', inventorySchema)

@@ -7,13 +7,13 @@ const { CustomeError } = require('./globelError')
 
 
 
-const generateJwtToken = (data)=>{
-    return jwt.sign({id:data.id,role:data.role},process.env.JWT_SECRET)
+const generateJwtToken = (data) => {
+    return jwt.sign({ id: data.id, role: data.role }, process.env.JWT_SECRET)
 }
 
 
-const generatehashToken = (token) =>{
-   return crypto.createHash("sha256").update(token).digest('hex')
+const generatehashToken = (token) => {
+    return crypto.createHash("sha256").update(token).digest('hex')
 }
 
 
@@ -24,8 +24,8 @@ const verifyjwtAccessToken = async (req, res, next) => {
             return next(CustomeError(401, "token not provide"))
         }
         const token = auth.split(" ")[1]
-        
-         if (!token) {
+
+        if (!token) {
             return next(CustomeError(401, "invalid token"))
         }
         const decodeToken = jwt.verify(token, process.env.JWT_SECRET)
@@ -37,16 +37,16 @@ const verifyjwtAccessToken = async (req, res, next) => {
 
         const user = await userModel.findById(decodeToken.id)
 
-        if(!user){
+        if (!user) {
             return next(CustomeError(401, "invalid token"));
         }
 
-        if(user.status == "block" || user.status == "inactive"){
-            await userModel.findByIdAndUpdate(user._id,{accessToken:[]})
+        if (user.status == "block" || user.status == "inactive") {
+            await userModel.findByIdAndUpdate(user._id, { accessToken: [] })
             return next(CustomeError(401, "invalid token"));
         }
 
-      
+
 
         const hashaccessToken = generatehashToken(token)
         if (!user.accessToken?.includes(hashaccessToken)) {
@@ -54,11 +54,11 @@ const verifyjwtAccessToken = async (req, res, next) => {
         }
 
 
-        
+
         if (user) {
             req.user = user,
-            req.token = hashaccessToken;
-                next()
+                req.token = hashaccessToken;
+            next()
         } else {
             return next(CustomeError(404, "user not found"))
         }
@@ -70,7 +70,7 @@ const verifyjwtAccessToken = async (req, res, next) => {
 
 const checkRole = (...roles) => {
     return (req, res, next) => {
-        
+
 
         if (!req.user) {
             return next(CustomeError(401, "unauthorized"));
@@ -84,4 +84,4 @@ const checkRole = (...roles) => {
 };
 
 
-module.exports = {generateJwtToken,generatehashToken,verifyjwtAccessToken,checkRole}
+module.exports = { generateJwtToken, generatehashToken, verifyjwtAccessToken, checkRole }

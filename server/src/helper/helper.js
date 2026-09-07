@@ -2,7 +2,9 @@ const crypto = require("crypto");
 const path = require('path')
 const fs = require('fs');
 const orderModel = require("../model/order.model");
-
+const userModel = require('../model/user.model')
+const firebaseadmin = require("../config/firebase");
+const { getMessaging } = require("firebase-admin/messaging");
 
 exports.DeleteImage = (filepath) => {
     try {
@@ -35,9 +37,6 @@ exports.generateSlug = (productName) => {
         Date.now()
     );
 };
-
-
-
 
 exports.razorpay_signature = (razorpay_order_id, razorpay_payment_id) => {
     return crypto.createHmac("sha256", process.env.RAZORPAY_API_SECRET).update(razorpay_order_id + "|" + razorpay_payment_id).digest("hex");
@@ -203,17 +202,16 @@ exports.PercentageCoupenapplay = async (coupon, carts, user) => {
     return { success: true, message: "total discount", discount, couponId: coupon._id }
 }
 
+exports.CartDiscountCoupenapplay = async (coupon, carts, user) => {
 
-exports.CartDiscountCoupenapplay = async(coupon, carts,user) => {
-    
-    const userEligibility =await checkUserCouponEligibility(coupon,user)
-  
+    const userEligibility = await checkUserCouponEligibility(coupon, user)
+
     if (!userEligibility) {
         return { success: false, message: "coupon not apply this user" }
     }
 
 
- const userLimit = await checkUserLimit(coupon, user)
+    const userLimit = await checkUserLimit(coupon, user)
     if (!userLimit) {
         return { success: false, message: "You have already used this coupon." }
     }
@@ -231,7 +229,7 @@ exports.CartDiscountCoupenapplay = async(coupon, carts,user) => {
 
 
     const variants = GetVariants(mproducts)
- 
+
 
     if (!variants.length) {
         return { success: false, message: "varinat not found" }
@@ -241,7 +239,7 @@ exports.CartDiscountCoupenapplay = async(coupon, carts,user) => {
         return total + (variant.price || 0);
     }, 0);
 
-   
+
 
     const purchaseEligibility = checkPurchaseCouponEligibility(coupon.minimumPurchase, totalPrice)
     if (!purchaseEligibility) {
@@ -254,14 +252,14 @@ exports.CartDiscountCoupenapplay = async(coupon, carts,user) => {
     return { success: true, message: "total discount", discount, couponId: coupon._id }
 }
 
-exports.ShippingDiscountCoupenapplay = async(coupon, carts,user)=>{
-    const userEligibility =await checkUserCouponEligibility(coupon)
+exports.ShippingDiscountCoupenapplay = async (coupon, carts, user) => {
+    const userEligibility = await checkUserCouponEligibility(coupon)
     if (!userEligibility) {
         return { success: false, message: "coupon not apply this user" }
     }
 
 
- const userLimit = await checkUserLimit(coupon, user)
+    const userLimit = await checkUserLimit(coupon, user)
     if (!userLimit) {
         return { success: false, message: "You have already used this coupon." }
     }
@@ -306,32 +304,24 @@ exports.ShippingDiscountCoupenapplay = async(coupon, carts,user)=>{
 
 }
 
-
 exports.FindPriceinProduct = (products) => {
     let total = 0;
 
     products.forEach((item) => {
         const variantName = `${item.color}/${item.size}`;
 
-        const matchedVariant = item.variant?.variant?.find(
-            (v) => v.name === variantName
-        );
+        const matchedVariant = item.variant?.variant?.find((v) => v.name === variantName);
 
         if (matchedVariant) {
             total += matchedVariant.price * item.quantity;
         } else {
-            // fallback: product salePrice અથવા price
-            const fallbackPrice =
-                item.product?.salePrice || item.product?.price || 0;
-
+            const fallbackPrice = item.product?.salePrice || item.product?.price || 0;
             total += fallbackPrice * item.quantity;
         }
     });
 
     return total;
 };
-
-
 
 exports.generateOrderNumber = async () => {
     let orderNumber;
@@ -348,12 +338,70 @@ exports.generateOrderNumber = async () => {
 
         orderNumber = `NEHDO-${year}${month}${day}-${random}`;
 
-        exists = await orderModel.exists({
-            orderNumber
-        });
+        exists = await orderModel.exists({ orderNumber });
     }
 
     return orderNumber;
+};
+
+
+
+
+
+exports.sendNotification = async (deviceTokens, title, body) => {
+    try {
+        if (!Array.isArray(deviceTokens) || deviceTokens.length === 0) {
+            return;
+        }
+
+        const messaging = getMessaging(firebaseadmin);
+
+        const res = await messaging.sendEachForMulticast({
+            tokens: deviceTokens,
+
+            notification: {
+                title,
+                body,
+            },
+
+            webpush: {
+                notification: {
+                    icon: "https://dad-panda-rocklike.ngrok-free.dev/uploads/logo/nehdo-logo.png",
+                },
+            },
+        });
+        console.log("Success:", res.successCount);
+        console.log("Failed:", res.failureCount);
+
+        // Invalid / expired tokens
+        const invalidTokens = [];
+
+        res.responses.forEach((response, index) => {
+            if (!response.success) {
+                const errorCode = response.error?.code;
+                if (errorCode === "messaging/registration-token-not-registered" || errorCode === "messaging/invalid-registration-token") {
+                    invalidTokens.push(deviceTokens[index]);
+                }
+            }
+        });
+
+        console.log("Invalid tokens:", invalidTokens);
+
+
+        if (invalidTokens && invalidTokens.length) {
+            await userModel.updateMany(
+                { deviceToken: { $in: invalidTokens } },
+                { $pull: { deviceToken: { $in: invalidTokens } } }
+            );
+        }
+        return {
+            res,
+            invalidTokens
+        }
+
+    } catch (error) {
+        console.log("FCM Error:", error);
+    }
 };
 
 

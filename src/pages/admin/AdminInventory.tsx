@@ -31,7 +31,17 @@ interface InventoryRow {
     variantName: string;
     stock: number;
     warehouseLocation: string;
+    lowStock: number;
 }
+
+type SortKey =
+    | "productname"
+    | "productsku"
+    | "variantName"
+    | "stock"
+    | "lowStock"
+    | "warehouseLocation"
+    | "status";
 
 const AdminInventory = () => {
     const [showBulkUpdate, setShowBulkUpdate] = useState(false);
@@ -41,13 +51,30 @@ const AdminInventory = () => {
     >([]);
 
     const [search, setSearch] = useState("");
-
     const [stockFilter, setStockFilter] = useState("All Stock Levels");
+    const [warehouseFilter, setWarehouseFilter] =
+        useState("All Warehouses");
 
-    const [warehouseFilter, setWarehouseFilter] = useState("All Warehouses");
+    const [updatedStocks, setUpdatedStocks] = useState<
+        Record<string, number>
+    >({});
 
-    const [updatedStocks, setUpdatedStocks] = useState<Record<string, number>>(
-        {},
+    // ==========================================
+    // PAGINATION
+    // ==========================================
+
+    const [currentPage, setCurrentPage] = useState(1);
+
+    const rowsPerPage = 25;
+
+    // ==========================================
+    // SORTING
+    // ==========================================
+
+    const [sortKey, setSortKey] = useState<SortKey>("productname");
+
+    const [sortDirection, setSortDirection] = useState<"asc" | "desc">(
+        "asc",
     );
 
     // ==========================================
@@ -86,27 +113,15 @@ const AdminInventory = () => {
                 variantId: variant._id,
                 variantName: variant.name,
                 stock: variant.stock,
-                warehouseLocation: product.warehouseLocation || "Not Assigned",
+                warehouseLocation:
+                    product.warehouseLocation || "Not Assigned",
+                lowStock: product.lowStock || 0,
             })),
         );
     }, [inventoryProducts]);
 
     // ==========================================
     // STOCK STATUS
-    //
-    // stock = 0
-    //      -> Out of Stock
-    //
-    // stock > 0 && stock <= lowStock
-    //      -> Low Stock
-    //
-    // stock > lowStock
-    //      -> In Stock
-    //
-    // lowStock = 0 hoy to:
-    //
-    // stock = 0 -> Out of Stock
-    // stock > 0 -> In Stock
     // ==========================================
 
     const getStockStatus = (stock: number) => {
@@ -138,9 +153,7 @@ const AdminInventory = () => {
         return [
             ...new Set(
                 inventoryProducts
-
                     .map((product) => product.warehouseLocation)
-
                     .filter((warehouse) => warehouse),
             ),
         ];
@@ -157,7 +170,8 @@ const AdminInventory = () => {
             const matchesSearch =
                 !searchValue ||
                 row.productsku.toLowerCase().includes(searchValue) ||
-                row.productname.toLowerCase().includes(searchValue);
+                row.productname.toLowerCase().includes(searchValue) ||
+                row.variantName.toLowerCase().includes(searchValue);
 
             let matchesStock = true;
 
@@ -179,7 +193,101 @@ const AdminInventory = () => {
 
             return matchesSearch && matchesStock && matchesWarehouse;
         });
-    }, [inventoryRows, search, stockFilter, warehouseFilter]);
+    }, [
+        inventoryRows,
+        search,
+        stockFilter,
+        warehouseFilter,
+    ]);
+
+    // ==========================================
+    // SORTED ROWS
+    // ==========================================
+
+    const sortedRows = useMemo(() => {
+        const rows = [...filteredRows];
+
+        rows.sort((a, b) => {
+            let valueA: string | number;
+            let valueB: string | number;
+
+            if (sortKey === "status") {
+                valueA = getStockStatus(a.stock).text;
+                valueB = getStockStatus(b.stock).text;
+            } else {
+                valueA = a[sortKey];
+                valueB = b[sortKey];
+            }
+
+            if (typeof valueA === "number" && typeof valueB === "number") {
+                return sortDirection === "asc"
+                    ? valueA - valueB
+                    : valueB - valueA;
+            }
+
+            return sortDirection === "asc"
+                ? String(valueA).localeCompare(String(valueB))
+                : String(valueB).localeCompare(String(valueA));
+        });
+
+        return rows;
+    }, [filteredRows, sortKey, sortDirection]);
+
+    // ==========================================
+    // TOTAL PAGES
+    // ==========================================
+
+    const totalPages = Math.ceil(
+        sortedRows.length / rowsPerPage,
+    );
+
+    // ==========================================
+    // CURRENT PAGE DATA
+    // ==========================================
+
+    const paginatedRows = useMemo(() => {
+        const startIndex = (currentPage - 1) * rowsPerPage;
+
+        return sortedRows.slice(
+            startIndex,
+            startIndex + rowsPerPage,
+        );
+    }, [sortedRows, currentPage]);
+
+    // ==========================================
+    // RESET PAGE ON SEARCH / FILTER
+    // ==========================================
+
+    useEffect(() => {
+        setCurrentPage(1);
+    }, [search, stockFilter, warehouseFilter, sortKey, sortDirection]);
+
+    // ==========================================
+    // SORT HANDLER
+    // ==========================================
+
+    const handleSort = (key: SortKey) => {
+        if (sortKey === key) {
+            setSortDirection((prev) =>
+                prev === "asc" ? "desc" : "asc",
+            );
+        } else {
+            setSortKey(key);
+            setSortDirection("asc");
+        }
+    };
+
+    // ==========================================
+    // SORT ICON
+    // ==========================================
+
+    const getSortIcon = (key: SortKey) => {
+        if (sortKey !== key) {
+            return "↕";
+        }
+
+        return sortDirection === "asc" ? "↑" : "↓";
+    };
 
     // ==========================================
     // SUMMARY
@@ -212,14 +320,16 @@ const AdminInventory = () => {
     // SAVE VARIANT STOCK
     // ==========================================
 
-    const handleSave = async (variantId: string, currentStock: number) => {
+    const handleSave = async (
+        variantId: string,
+        currentStock: number,
+    ) => {
         const newStock =
             updatedStocks[variantId] !== undefined
                 ? updatedStocks[variantId]
                 : currentStock;
 
         console.log("Variant ID:", variantId);
-
         console.log("New Stock:", newStock);
 
         // ======================================
@@ -228,7 +338,6 @@ const AdminInventory = () => {
 
         if (newStock < 0) {
             alert("Stock cannot be negative");
-
             return;
         }
 
@@ -321,7 +430,9 @@ const AdminInventory = () => {
                     </button>
 
                     <button
-                        onClick={() => setShowBulkUpdate(!showBulkUpdate)}
+                        onClick={() =>
+                            setShowBulkUpdate(!showBulkUpdate)
+                        }
                         className="
                             flex items-center gap-2
                             px-4 py-2
@@ -344,40 +455,40 @@ const AdminInventory = () => {
             ========================================== */}
 
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                {/* TOTAL PRODUCTS */}
-
                 <div className="bg-white rounded-xl border border-gray-100 p-4">
-                    <p className="text-sm font-semibold text-gray-500">Total Products</p>
+                    <p className="text-sm font-semibold text-gray-500">
+                        Total Products
+                    </p>
 
                     <p className="text-2xl font-bold text-gray-900 mt-1">
                         {summary.totalProducts}
                     </p>
                 </div>
 
-                {/* IN STOCK */}
-
                 <div className="bg-white rounded-xl border border-gray-100 p-4">
-                    <p className="text-sm font-semibold text-gray-500">In Stock</p>
+                    <p className="text-sm font-semibold text-gray-500">
+                        In Stock
+                    </p>
 
                     <p className="text-2xl font-bold text-green-600 mt-1">
                         {summary.inStock}
                     </p>
                 </div>
 
-                {/* LOW STOCK */}
-
                 <div className="bg-orange-50 rounded-xl border border-orange-200 p-4">
-                    <p className="text-sm font-semibold text-orange-600">Low Stock</p>
+                    <p className="text-sm font-semibold text-orange-600">
+                        Low Stock
+                    </p>
 
                     <p className="text-2xl font-bold text-orange-600 mt-1">
                         {summary.lowStock}
                     </p>
                 </div>
 
-                {/* OUT OF STOCK */}
-
                 <div className="bg-red-50 rounded-xl border border-red-200 p-4">
-                    <p className="text-sm font-semibold text-red-600">Out of Stock</p>
+                    <p className="text-sm font-semibold text-red-600">
+                        Out of Stock
+                    </p>
 
                     <p className="text-2xl font-bold text-red-600 mt-1">
                         {summary.outOfStock}
@@ -389,7 +500,8 @@ const AdminInventory = () => {
                 STOCK ALERT
             ========================================== */}
 
-            {(summary.lowStock > 0 || summary.outOfStock > 0) && (
+            {(summary.lowStock > 0 ||
+                summary.outOfStock > 0) && (
                 <div
                     className="
                         bg-orange-50
@@ -401,17 +513,17 @@ const AdminInventory = () => {
                 >
                     <IoWarningOutline
                         size={24}
-                        className="
-                            text-orange-500
-                            flex-shrink-0
-                        "
+                        className="text-orange-500 flex-shrink-0"
                     />
 
                     <div>
-                        <p className="text-sm font-semibold text-orange-700">Stock Alert</p>
+                        <p className="text-sm font-semibold text-orange-700">
+                            Stock Alert
+                        </p>
 
                         <p className="text-xs text-orange-600">
-                            {summary.lowStock} low stock and {summary.outOfStock} out of stock
+                            {summary.lowStock} low stock and{" "}
+                            {summary.outOfStock} out of stock
                             variants need attention.
                         </p>
                     </div>
@@ -429,8 +541,8 @@ const AdminInventory = () => {
                     </h3>
 
                     <p className="text-xs text-blue-600 mb-4">
-                        Upload a CSV file to update stock quantities for multiple products
-                        at once.
+                        Upload a CSV file to update stock quantities
+                        for multiple products at once.
                     </p>
 
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
@@ -455,11 +567,7 @@ const AdminInventory = () => {
                             >
                                 <IoCloudUploadOutline
                                     size={24}
-                                    className="
-                                        mx-auto
-                                        text-blue-400
-                                        mb-1
-                                    "
+                                    className="mx-auto text-blue-400 mb-1"
                                 />
 
                                 <p className="text-sm font-semibold text-blue-600">
@@ -489,11 +597,17 @@ const AdminInventory = () => {
                                     mb-3
                                 "
                             >
-                                <option>Set absolute quantity</option>
+                                <option>
+                                    Set absolute quantity
+                                </option>
 
-                                <option>Add to existing stock</option>
+                                <option>
+                                    Add to existing stock
+                                </option>
 
-                                <option>Subtract from stock</option>
+                                <option>
+                                    Subtract from stock
+                                </option>
                             </select>
 
                             <label className="block text-sm font-semibold text-gray-700 mb-2">
@@ -568,8 +682,6 @@ const AdminInventory = () => {
                         gap-4
                     "
                 >
-                    {/* SEARCH */}
-
                     <div className="relative w-full sm:w-72">
                         <IoSearchOutline
                             size={18}
@@ -585,7 +697,9 @@ const AdminInventory = () => {
                         <input
                             type="text"
                             value={search}
-                            onChange={(e) => setSearch(e.target.value)}
+                            onChange={(e) =>
+                                setSearch(e.target.value)
+                            }
                             placeholder="Search by product or SKU..."
                             className="
                                 w-full
@@ -603,11 +717,11 @@ const AdminInventory = () => {
                     </div>
 
                     <div className="flex gap-2">
-                        {/* STOCK FILTER */}
-
                         <select
                             value={stockFilter}
-                            onChange={(e) => setStockFilter(e.target.value)}
+                            onChange={(e) =>
+                                setStockFilter(e.target.value)
+                            }
                             className="
                                 px-3 py-2
                                 bg-white
@@ -619,19 +733,16 @@ const AdminInventory = () => {
                             "
                         >
                             <option>All Stock Levels</option>
-
                             <option>In Stock</option>
-
                             <option>Low Stock</option>
-
                             <option>Out of Stock</option>
                         </select>
 
-                        {/* WAREHOUSE */}
-
                         <select
                             value={warehouseFilter}
-                            onChange={(e) => setWarehouseFilter(e.target.value)}
+                            onChange={(e) =>
+                                setWarehouseFilter(e.target.value)
+                            }
                             className="
                                 px-3 py-2
                                 bg-white
@@ -645,7 +756,10 @@ const AdminInventory = () => {
                             <option>All Warehouses</option>
 
                             {warehouses.map((warehouse) => (
-                                <option key={warehouse} value={warehouse}>
+                                <option
+                                    key={warehouse}
+                                    value={warehouse}
+                                >
                                     {warehouse}
                                 </option>
                             ))}
@@ -668,42 +782,127 @@ const AdminInventory = () => {
                             "
                         >
                             <tr>
-                                <th className="px-6 py-4">
-                                    <input
-                                        type="checkbox"
-                                        className="
-                                            w-4 h-4
-                                            rounded
-                                            border-gray-300
-                                            text-brand
-                                            focus:ring-brand
-                                        "
-                                    />
+                                <th
+                                    onClick={() =>
+                                        handleSort("productname")
+                                    }
+                                    className="px-6 py-4 cursor-pointer hover:bg-gray-100"
+                                >
+                                    <div className="flex items-center gap-2">
+                                        Product
+                                        <span>
+                                            {getSortIcon(
+                                                "productname",
+                                            )}
+                                        </span>
+                                    </div>
                                 </th>
 
-                                <th className="px-6 py-4">Product</th>
+                                <th
+                                    onClick={() =>
+                                        handleSort("productsku")
+                                    }
+                                    className="px-6 py-4 cursor-pointer hover:bg-gray-100"
+                                >
+                                    <div className="flex items-center gap-2">
+                                        SKU
+                                        <span>
+                                            {getSortIcon(
+                                                "productsku",
+                                            )}
+                                        </span>
+                                    </div>
+                                </th>
 
-                                <th className="px-6 py-4">SKU</th>
+                                <th
+                                    onClick={() =>
+                                        handleSort("variantName")
+                                    }
+                                    className="px-6 py-4 cursor-pointer hover:bg-gray-100"
+                                >
+                                    <div className="flex items-center gap-2">
+                                        Variant
+                                        <span>
+                                            {getSortIcon(
+                                                "variantName",
+                                            )}
+                                        </span>
+                                    </div>
+                                </th>
 
-                                <th className="px-6 py-4">Variant</th>
+                                <th
+                                    onClick={() =>
+                                        handleSort("stock")
+                                    }
+                                    className="px-6 py-4 cursor-pointer hover:bg-gray-100"
+                                >
+                                    <div className="flex items-center gap-2">
+                                        Current Stock
+                                        <span>
+                                            {getSortIcon("stock")}
+                                        </span>
+                                    </div>
+                                </th>
 
-                                <th className="px-6 py-4">Current Stock</th>
+                                <th
+                                    onClick={() =>
+                                        handleSort("lowStock")
+                                    }
+                                    className="px-6 py-4 cursor-pointer hover:bg-gray-100"
+                                >
+                                    <div className="flex items-center gap-2">
+                                        Low Stock Limit
+                                        <span>
+                                            {getSortIcon(
+                                                "lowStock",
+                                            )}
+                                        </span>
+                                    </div>
+                                </th>
 
-                                <th className="px-6 py-4">Low Stock Limit</th>
+                                <th
+                                    onClick={() =>
+                                        handleSort(
+                                            "warehouseLocation",
+                                        )
+                                    }
+                                    className="px-6 py-4 cursor-pointer hover:bg-gray-100"
+                                >
+                                    <div className="flex items-center gap-2">
+                                        Warehouse
+                                        <span>
+                                            {getSortIcon(
+                                                "warehouseLocation",
+                                            )}
+                                        </span>
+                                    </div>
+                                </th>
 
-                                <th className="px-6 py-4">Warehouse</th>
+                                <th
+                                    onClick={() =>
+                                        handleSort("status")
+                                    }
+                                    className="px-6 py-4 cursor-pointer hover:bg-gray-100"
+                                >
+                                    <div className="flex items-center gap-2">
+                                        Status
+                                        <span>
+                                            {getSortIcon("status")}
+                                        </span>
+                                    </div>
+                                </th>
 
-                                <th className="px-6 py-4">Status</th>
-
-                                <th className="px-6 py-4 text-right">Quick Update</th>
+                                <th className="px-6 py-4 text-right">
+                                    Quick Update
+                                </th>
                             </tr>
                         </thead>
 
                         <tbody className="divide-y divide-gray-100">
-                            {filteredRows.length === 0 ? (
+                            {paginatedRows.length === 0 ? (
                                 <tr>
                                     <td
-                                        colSpan={9}
+                                        colSpan={8}
                                         className="
                                             px-6 py-10
                                             text-center
@@ -714,8 +913,10 @@ const AdminInventory = () => {
                                     </td>
                                 </tr>
                             ) : (
-                                filteredRows.map((row: any) => {
-                                    const status = getStockStatus(row.stock);
+                                paginatedRows.map((row) => {
+                                    const status = getStockStatus(
+                                        row.stock,
+                                    );
 
                                     return (
                                         <tr
@@ -725,81 +926,54 @@ const AdminInventory = () => {
                                                 transition-colors
                                             "
                                         >
-                                            {/* CHECKBOX */}
-
-                                            <td className="px-6 py-4">
-                                                <input
-                                                    type="checkbox"
-                                                    className="
-                                                        w-4 h-4
-                                                        rounded
-                                                        border-gray-300
-                                                        text-brand
-                                                        focus:ring-brand
-                                                    "
-                                                />
-                                            </td>
-
-                                            {/* PRODUCT */}
-
                                             <td className="px-6 py-4 font-medium text-gray-900">
                                                 {row.productname}
                                             </td>
 
-                                            {/* SKU */}
-
                                             <td
                                                 className="
-                                                px-6 py-4
-                                                text-gray-500
-                                                font-mono
-                                                text-xs
-                                            "
+                                                    px-6 py-4
+                                                    text-gray-500
+                                                    font-mono
+                                                    text-xs
+                                                "
                                             >
                                                 {row.productsku}
                                             </td>
-
-                                            {/* VARIANT */}
 
                                             <td className="px-6 py-4 text-gray-600">
                                                 {row.variantName}
                                             </td>
 
-                                            {/* STOCK */}
-
                                             <td
                                                 className="
-                                                px-6 py-4
-                                                font-semibold
-                                                text-gray-900
-                                            "
+                                                    px-6 py-4
+                                                    font-semibold
+                                                    text-gray-900
+                                                "
                                             >
                                                 {row.stock}
                                             </td>
 
-                                            {/* LOW STOCK LIMIT */}
-
                                             <td
                                                 className="
-                                                px-6 py-4
-                                                text-gray-500
-                                            "
+                                                    px-6 py-4
+                                                    text-gray-500
+                                                "
                                             >
-                                                {row.lowStock > 0 ? row.lowStock : "-"}
+                                                {row.lowStock > 0
+                                                    ? row.lowStock
+                                                    : "-"}
                                             </td>
 
-                                            {/* WAREHOUSE */}
-
                                             <td
                                                 className="
-                                                px-6 py-4
-                                                text-gray-500
-                                            "
+                                                    px-6 py-4
+                                                    text-gray-500
+                                                "
                                             >
                                                 {row.warehouseLocation}
                                             </td>
-
-                                            {/* STATUS */}
 
                                             <td className="px-6 py-4">
                                                 <span
@@ -816,38 +990,51 @@ const AdminInventory = () => {
                                                 </span>
                                             </td>
 
-                                            {/* QUICK UPDATE */}
-
                                             <td
                                                 className="
-                                                px-6 py-4
-                                                text-right
-                                            "
+                                                    px-6 py-4
+                                                    text-right
+                                                "
                                             >
                                                 <div
                                                     className="
-                                                    flex
-                                                    items-center
-                                                    gap-2
-                                                    justify-end
-                                                "
+                                                        flex
+                                                        items-center
+                                                        gap-2
+                                                        justify-end
+                                                    "
                                                 >
                                                     <input
                                                         type="number"
                                                         min="0"
                                                         value={
-                                                            updatedStocks[row.variantId] !== undefined
-                                                                ? updatedStocks[row.variantId]
+                                                            updatedStocks[
+                                                                row.variantId
+                                                            ] !==
+                                                            undefined
+                                                                ? updatedStocks[
+                                                                      row.variantId
+                                                                  ]
                                                                 : row.stock
                                                         }
                                                         onChange={(e) => {
-                                                            const value = Number(e.target.value);
+                                                            const value =
+                                                                Number(
+                                                                    e
+                                                                        .target
+                                                                        .value,
+                                                                );
 
-                                                            setUpdatedStocks((prev) => ({
-                                                                ...prev,
-
-                                                                [row.variantId]: Math.max(0, value),
-                                                            }));
+                                                            setUpdatedStocks(
+                                                                (prev) => ({
+                                                                    ...prev,
+                                                                    [row.variantId]:
+                                                                        Math.max(
+                                                                            0,
+                                                                            value,
+                                                                        ),
+                                                                }),
+                                                            );
                                                         }}
                                                         className="
                                                             w-20
@@ -861,7 +1048,12 @@ const AdminInventory = () => {
                                                     />
 
                                                     <button
-                                                        onClick={() => handleSave(row.variantId, row.stock)}
+                                                        onClick={() =>
+                                                            handleSave(
+                                                                row.variantId,
+                                                                row.stock,
+                                                            )
+                                                        }
                                                         className="
                                                             text-brand
                                                             text-sm
@@ -880,6 +1072,111 @@ const AdminInventory = () => {
                         </tbody>
                     </table>
                 </div>
+
+                {/* ==========================================
+                    PAGINATION
+                ========================================== */}
+
+                {sortedRows.length > 0 && (
+                    <div
+                        className="
+                            px-6 py-4
+                            border-t border-gray-100
+                            flex flex-col sm:flex-row
+                            items-center
+                            justify-between
+                            gap-4
+                        "
+                    >
+                        <p className="text-sm text-gray-500">
+                            Showing{" "}
+                            {(currentPage - 1) * rowsPerPage + 1}{" "}
+                            to{" "}
+                            {Math.min(
+                                currentPage * rowsPerPage,
+                                sortedRows.length,
+                            )}{" "}
+                            of {sortedRows.length} results
+                        </p>
+
+                        <div className="flex items-center gap-1">
+                            <button
+                                disabled={currentPage === 1}
+                                onClick={() =>
+                                    setCurrentPage((prev) =>
+                                        Math.max(1, prev - 1),
+                                    )
+                                }
+                                className="
+                                    px-3 py-2
+                                    border border-gray-200
+                                    rounded-lg
+                                    text-sm
+                                    font-semibold
+                                    text-gray-600
+                                    hover:bg-gray-50
+                                    disabled:opacity-40
+                                    disabled:cursor-not-allowed
+                                "
+                            >
+                                Previous
+                            </button>
+
+                            {Array.from(
+                                { length: totalPages },
+                                (_, index) => index + 1,
+                            ).map((page) => (
+                                <button
+                                    key={page}
+                                    onClick={() =>
+                                        setCurrentPage(page)
+                                    }
+                                    className={`
+                                        min-w-9
+                                        px-3 py-2
+                                        rounded-lg
+                                        text-sm
+                                        font-semibold
+                                        ${
+                                            currentPage === page
+                                                ? "bg-brand text-white"
+                                                : "border border-gray-200 text-gray-600 hover:bg-gray-50"
+                                        }
+                                    `}
+                                >
+                                    {page}
+                                </button>
+                            ))}
+
+                            <button
+                                disabled={
+                                    currentPage === totalPages
+                                }
+                                onClick={() =>
+                                    setCurrentPage((prev) =>
+                                        Math.min(
+                                            totalPages,
+                                            prev + 1,
+                                        ),
+                                    )
+                                }
+                                className="
+                                    px-3 py-2
+                                    border border-gray-200
+                                    rounded-lg
+                                    text-sm
+                                    font-semibold
+                                    text-gray-600
+                                    hover:bg-gray-50
+                                    disabled:opacity-40
+                                    disabled:cursor-not-allowed
+                                "
+                            >
+                                Next
+                            </button>
+                        </div>
+                    </div>
+                )}
             </div>
         </div>
     );

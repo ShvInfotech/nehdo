@@ -1,8 +1,9 @@
 const sendEmail = require("../../../config/nodemailer.confing")
-const { GetCustomersAdmin } = require("../../../helper/aggretionpipeline")
-const { AccountBlockedMail, DynamicMail, PasswordChangeMail } = require("../../../helper/emailTemplate")
 const userModel = require("../../../model/user.model")
 const bcrypt = require('bcrypt')
+const { AccountBlockedMail, DynamicMail, PasswordChangeMail } = require("../../../helper/emailTemplate")
+const { GetCustomersAdmin } = require("../../../helper/aggretionpipeline")
+const { sendNotification } = require("../../../helper/helper")
 
 
 exports.GetCustomers = async (req, res, next) => {
@@ -25,7 +26,7 @@ exports.UpdateCustomer = async (req, res, next) => {
             payload.status = req.body.status
         }
 
-       
+
 
         if (req.body?.password) {
             const hashpassword = await bcrypt.hash(req.body?.password, 10)
@@ -33,27 +34,24 @@ exports.UpdateCustomer = async (req, res, next) => {
 
         }
 
-        const updateData = {
-            $set: payload,
-        };
+        const updateData = { $set: payload, };
 
         if (req.body?.password) {
-            updateData.$addToSet = {
-                provider: 'local',
-            };
+            updateData.$addToSet = { provider: 'local' };
         }
 
-        const user = await userModel.findByIdAndUpdate(id, updateData,{returnDocument:'after'})
+        const user = await userModel.findByIdAndUpdate(id, updateData, { returnDocument: 'after' })
         if (!user) {
             return next(CustomeError(404, 'user not found'))
         }
 
-         if(req.body?.status == "block"){
-           await sendEmail(AccountBlockedMail(user.email,user.name))
+        if (req.body?.status == "block") {
+            await sendEmail(AccountBlockedMail(user.email, user.name))
+            await sendNotification(user.deviceToken,"Nehdo","Your Account is block")
         }
 
-        if(req.body?.password){
-           await sendEmail(PasswordChangeMail(user.email,user.name,req.body?.password))
+        if (req.body?.password) {
+            await sendEmail(PasswordChangeMail(user.email, user.name, req.body?.password))
         }
 
         return res.status(200).json({ success: true, message: 'Customer Updated' })
@@ -64,11 +62,10 @@ exports.UpdateCustomer = async (req, res, next) => {
 
 
 
-exports.sendMailCustomer = async(req,res,next)=>{
+exports.sendMailCustomer = async (req, res, next) => {
     try {
-        console.log(req.body)
-        sendEmail(DynamicMail({...req.body}))
-        return res.status(200).json({success:true,message:'mail sent!!!'})
+        sendEmail(DynamicMail({ ...req.body }))
+        return res.status(200).json({ success: true, message: 'mail sent!!!' })
     } catch (error) {
         return next(error)
     }

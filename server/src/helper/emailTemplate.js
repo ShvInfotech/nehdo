@@ -126,8 +126,6 @@ exports.ForgetPasswordMail = (email, name, resetLink) => {
   };
 };
 
-
-
 exports.AccountBlockedMail = (email, name) => {
   return {
     from: process.env.EMAIL_USER,
@@ -261,7 +259,6 @@ exports.AccountBlockedMail = (email, name) => {
     `,
   };
 };
-
 
 exports.PasswordChangeMail = (email, name, password) => {
 
@@ -607,11 +604,7 @@ exports.PasswordChangeMail = (email, name, password) => {
   };
 };
 
-
-
-
-
-exports.OrderConfirmationMail = (email,name,orderId,orderTotal,paymentMethod) => {
+exports.OrderConfirmationMail = (email, name, orderId, orderTotal, paymentMethod) => {
   return {
     from: process.env.EMAIL_USER,
     to: email,
@@ -858,8 +851,8 @@ exports.OrderConfirmationMail = (email,name,orderId,orderTotal,paymentMethod) =>
   };
 };
 
-exports.OrderCancelledMail = (email,name,orderId,orderTotal,paymentMethod,cancellationReason) => {
-  const isPaidPayment =paymentMethod?.toLowerCase() === "online"?"online":"cod"
+exports.OrderCancelledMail = (email, name, orderId, orderTotal, paymentMethod, cancellationReason) => {
+  const isPaidPayment = paymentMethod?.toLowerCase() === "online" ? "online" : "cod"
 
   return {
     from: process.env.EMAIL_USER,
@@ -1073,7 +1066,7 @@ exports.OrderCancelledMail = (email,name,orderId,orderTotal,paymentMethod,cancel
 
                                 <!-- ================= REFUND ================= -->
 
-                                ${ isPaidPayment == "online" ? `
+                                ${isPaidPayment == "online" ? `
                                 <table width="100%" cellpadding="0" cellspacing="0" border="0" style="margin-top: 25px">
                                     <tr>
                                         <td
@@ -1132,7 +1125,7 @@ exports.OrderCancelledMail = (email,name,orderId,orderTotal,paymentMethod,cancel
 
                                 <!-- ================= CANCELLATION REASON ================= -->
 
-                                ${ cancellationReason ? `
+                                ${cancellationReason ? `
                                 <table width="100%" cellpadding="0" cellspacing="0" border="0" style="margin-top: 25px">
                                     <tr>
                                         <td
@@ -1153,7 +1146,7 @@ exports.OrderCancelledMail = (email,name,orderId,orderTotal,paymentMethod,cancel
                                         </td>
                                     </tr>
                                 </table>
-                                ` : "" }
+                                ` : ""}
 
                                 <!-- ================= SUPPORT ================= -->
 
@@ -1200,13 +1193,7 @@ exports.OrderCancelledMail = (email,name,orderId,orderTotal,paymentMethod,cancel
   };
 };
 
-
-
-
-
-
-
-exports.DynamicMail = ({email,name,subject,message,}) => {
+exports.DynamicMail = ({ email, name, subject, message, }) => {
   return {
     from: process.env.EMAIL_USER,
     to: email,

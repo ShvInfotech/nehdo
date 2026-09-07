@@ -187,12 +187,18 @@ const AdminReviews = () => {
         try {
 
             setIsUpdating(true);
+
             const payload = {
-                    status: reviewStatus,
-                    reply: reply
-                }
+                status: reviewStatus,
+                reply: reply
+            };
+
             const response = await apiRequest(
-                `/admin/api/v1/reviews/update/${selectedReview._id}`,"PATCH",payload);
+                `/admin/api/v1/reviews/update/${selectedReview._id}`,
+                "PATCH",
+                payload
+            );
+
             if (response?.success) {
 
                 // Close modal
@@ -247,7 +253,10 @@ const AdminReviews = () => {
 
             setIsDeleting(true);
 
-            const response = await apiRequest(`/admin/api/v1/reviews/delete/${selectedReview._id}`,"DELETE");
+            const response = await apiRequest(
+                `/admin/api/v1/reviews/delete/${selectedReview._id}`,
+                "DELETE"
+            );
 
             if (response?.success) {
 
@@ -305,7 +314,7 @@ const AdminReviews = () => {
         event.stopPropagation();
 
         try {
-        
+
             const response = await apiRequest(
                 `/admin/api/v1/reviews/update/${review._id}`,
                 "PATCH",
@@ -314,7 +323,6 @@ const AdminReviews = () => {
                     reply: review.reply || ""
                 }
             );
-
 
             if (response?.success) {
 
@@ -366,33 +374,52 @@ const AdminReviews = () => {
     };
 
 
+    // ==========================================
+    // APPROVE ALL PENDING
+    // ==========================================
+
     const handleApproveAllPending = async () => {
-    try {
-        if (statusSummary.pending === 0) {
-            alert("No pending reviews found.");
-            return;
+
+        try {
+
+            if (statusSummary.pending === 0) {
+
+                alert("No pending reviews found.");
+
+                return;
+            }
+
+            const response = await apiRequest(
+                "/admin/api/v1/reviews/approve-all",
+                "PATCH"
+            );
+
+            if (response?.success) {
+
+                alert(
+                    response.message ||
+                    "All pending reviews approved successfully."
+                );
+
+                // Refresh reviews + summary
+                await fetchReviews();
+
+                // જો modal open હોય તો close કરી દો
+                setSelectedReview(null);
+            }
+
+        } catch (error) {
+
+            console.error(
+                "Approve all reviews error:",
+                error
+            );
+
+            alert("Failed to approve pending reviews.");
+
         }
+    };
 
-        const response = await apiRequest(
-            "/admin/api/v1/reviews/approve-all",
-            "PATCH"
-        );
-
-        if (response?.success) {
-            alert(response.message || "All pending reviews approved successfully.");
-
-            // Refresh reviews + summary
-            await fetchReviews();
-
-            // જો modal open હોય તો close કરી દો
-            setSelectedReview(null);
-        }
-
-    } catch (error) {
-        console.error("Approve all reviews error:", error);
-        alert("Failed to approve pending reviews.");
-    }
-};
 
     // ==========================================
     // FORMAT DATE
@@ -460,13 +487,19 @@ const AdminReviews = () => {
     // RATING PERCENTAGE
     // ==========================================
 
-    const getRatingPercentage = (rating:any) => {
+    const getRatingPercentage = (rating: any) => {
 
         if (!totalReviews) {
             return 0;
         }
 
-        return Math.round((ratingSummary[rating as keyof typeof ratingSummary] /totalReviews) * 100);
+        return Math.round(
+            (
+                ratingSummary[
+                    rating as keyof typeof ratingSummary
+                ] / totalReviews
+            ) * 100
+        );
 
     };
 
@@ -495,17 +528,17 @@ const AdminReviews = () => {
 
                 <div className="flex gap-2">
 
-                   <button
-    onClick={handleApproveAllPending}
-    disabled={statusSummary.pending === 0}
-    className={`px-4 py-2 text-sm font-semibold rounded-lg border ${
-        statusSummary.pending === 0
-            ? "bg-gray-50 text-gray-400 border-gray-200 cursor-not-allowed"
-            : "bg-green-50 text-green-600 hover:bg-green-100 border-green-200"
-    }`}
->
-    Approve All Pending
-</button>
+                    <button
+                        onClick={handleApproveAllPending}
+                        disabled={statusSummary.pending === 0}
+                        className={`px-4 py-2 text-sm font-semibold rounded-lg border ${
+                            statusSummary.pending === 0
+                                ? "bg-gray-50 text-gray-400 border-gray-200 cursor-not-allowed"
+                                : "bg-green-50 text-green-600 hover:bg-green-100 border-green-200"
+                        }`}
+                    >
+                        Approve All Pending
+                    </button>
 
                 </div>
 
@@ -632,7 +665,7 @@ const AdminReviews = () => {
 
                 <div className="space-y-2">
 
-                    {[5, 4, 3, 2, 1].map((stars:any) => {
+                    {[5, 4, 3, 2, 1].map((stars: any) => {
 
                         const count =
                             ratingSummary[
@@ -997,15 +1030,6 @@ const AdminReviews = () => {
                             <tr>
 
                                 <th className="px-6 py-4">
-
-                                    <input
-                                        type="checkbox"
-                                        className="w-4 h-4 rounded border-gray-300 text-brand focus:ring-brand"
-                                    />
-
-                                </th>
-
-                                <th className="px-6 py-4">
                                     Customer
                                 </th>
 
@@ -1049,23 +1073,6 @@ const AdminReviews = () => {
                                         handleOpenReview(review)
                                     }
                                 >
-
-                                    {/* Checkbox */}
-
-                                    <td
-                                        className="px-6 py-4"
-                                        onClick={(e) =>
-                                            e.stopPropagation()
-                                        }
-                                    >
-
-                                        <input
-                                            type="checkbox"
-                                            className="w-4 h-4 rounded border-gray-300 text-brand focus:ring-brand"
-                                        />
-
-                                    </td>
-
 
                                     {/* Customer */}
 

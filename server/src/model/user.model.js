@@ -5,14 +5,14 @@ const userSchema = mongoose.Schema({
     name: {
         type: String,
         required: true,
-        trim:true
+        trim: true
 
     },
     email: {
         type: String,
         required: true,
         unique: true,
-        trim:true
+        trim: true
 
     },
     phone: {
@@ -30,14 +30,14 @@ const userSchema = mongoose.Schema({
         enum: ['local', 'google'],
         default: ['local']
     },
-    googleId:{
-      type:String,
-      default:''
+    googleId: {
+        type: String,
+        default: ''
     },
-  
-    profile:{
-        type:String,
-        default:''
+
+    profile: {
+        type: String,
+        default: ''
     },
     status: {
         type: String,

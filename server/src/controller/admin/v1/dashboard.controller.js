@@ -1,4 +1,3 @@
-
 const Order = require("../../../model/order.model");
 const User = require("../../../model/user.model");
 const Product = require("../../../model/product.model");
@@ -13,7 +12,7 @@ const getDateRange = (range, customStartDate, customEndDate) => {
         startDate.setHours(0, 0, 0, 0);
         endDate = new Date(customEndDate);
         endDate.setHours(23, 59, 59, 999);
-        return {startDate,endDate,range: "custom",};
+        return { startDate, endDate, range: "custom", };
     }
 
     switch (range) {
@@ -49,7 +48,7 @@ const getDateRange = (range, customStartDate, customEndDate) => {
             break;
         }
         case "year": {
-            startDate = new Date(now.getFullYear(),0,1);
+            startDate = new Date(now.getFullYear(), 0, 1);
             startDate.setHours(0, 0, 0, 0);
             endDate = new Date(now);
             endDate.setHours(23, 59, 59, 999);
@@ -122,121 +121,121 @@ exports.getAdminDashboard = async (req, res, next) => {
             }
         }
 
-      
 
-        const orderDateFilter = {createdAt: {$gte: startDate,$lt: endDate,},status: {$ne: "cancelled",},};
+
+        const orderDateFilter = { createdAt: { $gte: startDate, $lt: endDate, }, status: { $ne: "cancelled", }, };
 
         const totalOrders = await Order.countDocuments(orderDateFilter);
 
         const revenueResult = await Order.aggregate([
-            {$match: orderDateFilter},
-            {$group: {_id: null,totalRevenue: {$sum: "$totalAmount",},},},
+            { $match: orderDateFilter },
+            { $group: { _id: null, totalRevenue: { $sum: "$totalAmount", }, }, },
         ]);
 
         const totalRevenue = revenueResult.length > 0 ? Number(revenueResult[0].totalRevenue || 0) : 0;
 
-        const newCustomers = await User.countDocuments({role: "user",status: {$ne: "block",},createdAt: {$gte: startDate,$lt: endDate,}});
+        const newCustomers = await User.countDocuments({ role: "user", status: { $ne: "block", }, createdAt: { $gte: startDate, $lt: endDate, } });
 
         const activeVisitors = null;
 
         let revenueAnalytics = [];
 
-        if ( range === "today" || range === "yesterday" ) {
+        if (range === "today" || range === "yesterday") {
             revenueAnalytics = await Order.aggregate([
-                {$match: orderDateFilter},
+                { $match: orderDateFilter },
 
                 {
-                    $group: {_id: {$hour: "$createdAt",},revenue: {$sum: "$totalAmount",},},
+                    $group: { _id: { $hour: "$createdAt", }, revenue: { $sum: "$totalAmount", }, },
                 },
                 {
-                    $sort: {"_id": 1,},
+                    $sort: { "_id": 1, },
                 },
 
                 {
                     $project: {
                         _id: 0,
                         hour: "$_id",
-                        revenue: {$round: ["$revenue",2,],},
+                        revenue: { $round: ["$revenue", 2,], },
                     },
                 },
             ]);
 
-            revenueAnalytics = revenueAnalytics.map((item) => ({label: `${item.hour}:00`,revenue: Number(item.revenue || 0),}));
+            revenueAnalytics = revenueAnalytics.map((item) => ({ label: `${item.hour}:00`, revenue: Number(item.revenue || 0), }));
         }
         else {
             revenueAnalytics = await Order.aggregate([
-                {$match: orderDateFilter,},
+                { $match: orderDateFilter, },
                 {
                     $group: {
-                        _id: {$dateToString: {format: "%Y-%m-%d",date: "$createdAt",},},
-                        revenue: {$sum: "$totalAmount",},
+                        _id: { $dateToString: { format: "%Y-%m-%d", date: "$createdAt", }, },
+                        revenue: { $sum: "$totalAmount", },
                     },
                 },
-                {$sort: {"_id": 1,}},
+                { $sort: { "_id": 1, } },
                 {
                     $project: {
                         _id: 0,
                         date: "$_id",
-                        revenue: {$round: ["$revenue",2,],},
+                        revenue: { $round: ["$revenue", 2,], },
                     },
                 },
             ]);
-            revenueAnalytics = revenueAnalytics.map((item) => ({label: item.date,revenue: Number(item.revenue || 0),}));
-        
+            revenueAnalytics = revenueAnalytics.map((item) => ({ label: item.date, revenue: Number(item.revenue || 0), }));
+
         }
 
         const topProducts = await Order.aggregate([
-            {$match: orderDateFilter,},
-            {$unwind: "$items",},
+            { $match: orderDateFilter, },
+            { $unwind: "$items", },
             {
                 $group: {
                     _id: "$items.productId",
-                    sales: {$sum: "$items.quantity",},
-                    revenue: {$sum: "$items.total",},
+                    sales: { $sum: "$items.quantity", },
+                    revenue: { $sum: "$items.total", },
                 },
             },
-            {$sort: {sales: -1,},},
-            {$limit: 5,},
+            { $sort: { sales: -1, }, },
+            { $limit: 5, },
         ]);
 
         const productIds = topProducts.map((item) => item._id).filter(Boolean);
         let products = [];
 
         if (productIds.length > 0) {
-            products = await Product.find({_id: {$in: productIds,},}).select("_id name productImage salePrice").lean();
+            products = await Product.find({ _id: { $in: productIds, }, }).select("_id name productImage salePrice").lean();
         }
 
         const topProductsData = topProducts.map(
             (item) => {
-                const product = products.find((p) =>String(p._id) ===String(item._id));
+                const product = products.find((p) => String(p._id) === String(item._id));
                 return {
                     productId: item._id,
-                    name:product?.name ||"Unknown Product",
-                    image: product?.productImage?.[0]? `http://${process.env.HOST}:${process.env.PORT}${product.productImage[0]}`: "",
+                    name: product?.name || "Unknown Product",
+                    image: product?.productImage?.[0] ? `${process.env.BACKEND_DOMIN_URL}${product.productImage[0]}` : "",
                     sales: Number(item.sales || 0),
                     revenue: Number(item.revenue || 0),
                 };
             }
         );
 
-        const recentOrders = await Order.find({}).populate("userId","name email").sort({createdAt: -1,}).limit(10).lean();
+        const recentOrders = await Order.find({}).populate("userId", "name email").sort({ createdAt: -1, }).limit(10).lean();
 
 
         const formattedRecentOrders = recentOrders.map((order) => ({
-                id: order.orderNumber,
-                orderId: order._id,
-                customer:order.userId?.name || "Unknown Customer",
-                email:order.userId?.email || "",
-                date: order.createdAt,
-                status: order.status,
-                total: Number(order.totalAmount || 0
-                ),
-            }));
+            id: order.orderNumber,
+            orderId: order._id,
+            customer: order.userId?.name || "Unknown Customer",
+            email: order.userId?.email || "",
+            date: order.createdAt,
+            status: order.status,
+            total: Number(order.totalAmount || 0
+            ),
+        }));
 
 
         return res.status(200).json({
             success: true,
-            message:"Dashboard data fetched successfully",
+            message: "Dashboard data fetched successfully",
             range,
             dashboard: {
                 totalRevenue,
@@ -244,12 +243,12 @@ exports.getAdminDashboard = async (req, res, next) => {
                 newCustomers,
                 activeVisitors,
                 revenueAnalytics,
-                topProducts:topProductsData,
-                recentOrders:formattedRecentOrders,
+                topProducts: topProductsData,
+                recentOrders: formattedRecentOrders,
             },
         });
     } catch (error) {
-       return next(error)
+        return next(error)
     }
 };
 
@@ -303,19 +302,20 @@ exports.getAdminReports = async (req, res, next) => {
         ]);
 
 
-        const salesChart = salesReport.map((item) => ({label: item.date,revenue: item.netRevenue,orders: item.orders,}));
+        const salesChart = salesReport.map((item) => ({ label: item.date, revenue: item.netRevenue, orders: item.orders, }));
 
         const productPerformance = await Order.aggregate([
-            {$match: orderFilter,},
-            {$unwind: "$items",},
+            { $match: orderFilter, },
+            { $unwind: "$items", },
             {
-                $group: {_id: "$items.productId",
-                    image: {$first: "$items.image",},
-                    unitsSold: {$sum: "$items.quantity",},
-                    revenue: {$sum: "$items.total",},
+                $group: {
+                    _id: "$items.productId",
+                    image: { $first: "$items.image", },
+                    unitsSold: { $sum: "$items.quantity", },
+                    revenue: { $sum: "$items.total", },
                 },
             },
-            {$sort: {revenue: -1,},},
+            { $sort: { revenue: -1, }, },
             {
                 $lookup: {
                     from: "products",
@@ -324,17 +324,17 @@ exports.getAdminReports = async (req, res, next) => {
                     as: "productData",
                 }
             },
-            {$unwind: {path: "$productData",preserveNullAndEmptyArrays: true}},
+            { $unwind: { path: "$productData", preserveNullAndEmptyArrays: true } },
 
             {
                 $lookup: {
                     from: "ratings",
-                    let: {productId: "$_id",},
+                    let: { productId: "$_id", },
                     pipeline: [
                         {
-                        $match: {$expr: {$and: [{$eq: ["$productId","$$productId",],},{$eq: ["$status","approved",],},],},}
+                            $match: { $expr: { $and: [{ $eq: ["$productId", "$$productId",], }, { $eq: ["$status", "approved",], },], }, }
                         },
-                        {$group: {_id: null,averageRating: {$avg: "$rating",},},},
+                        { $group: { _id: null, averageRating: { $avg: "$rating", }, }, },
                     ],
                     as: "ratingData",
                 },
@@ -344,58 +344,58 @@ exports.getAdminReports = async (req, res, next) => {
                     _id: 0,
                     productId: "$_id",
                     name: "$productData.name",
-                    image: {$cond: [{$and: [{$ne: ["$image",null,]},{$ne: ["$image",""]}]},{$concat: [`http://${process.env.HOST}:${process.env.PORT}`,"$image",],},null,]},
+                    image: { $cond: [{ $and: [{ $ne: ["$image", null,] }, { $ne: ["$image", ""] }] }, { $concat: [process.env.BACKEND_DOMIN_URL, "$image",], }, null,] },
                     unitsSold: 1,
-                    revenue: {$round: ["$revenue",2,],},
-                    averageRating: {$round: [{$ifNull: [{$arrayElemAt: ["$ratingData.averageRating",0,],},0,],},2,],},
+                    revenue: { $round: ["$revenue", 2,], },
+                    averageRating: { $round: [{ $ifNull: [{ $arrayElemAt: ["$ratingData.averageRating", 0,], }, 0,], }, 2,], },
                 },
             },
         ]);
 
 
-        const totalCustomers =await User.countDocuments({role: "user"});
-        const newCustomers =await User.countDocuments({role: "user",createdAt: {$gte: startDate,$lte: endDate}});
+        const totalCustomers = await User.countDocuments({ role: "user" });
+        const newCustomers = await User.countDocuments({ role: "user", createdAt: { $gte: startDate, $lte: endDate } });
 
         const customerOrders =
             await Order.aggregate([
-                {$match: {status: {$ne: "cancelled"}}},
-                {$group: {_id: "$userId",totalOrders: {$sum: 1,},totalSpent: {$sum: "$totalAmount",},},},
+                { $match: { status: { $ne: "cancelled" } } },
+                { $group: { _id: "$userId", totalOrders: { $sum: 1, }, totalSpent: { $sum: "$totalAmount", }, }, },
             ]);
 
-        const repeatCustomers = customerOrders.filter((customer) =>customer.totalOrders >= 2).length;
+        const repeatCustomers = customerOrders.filter((customer) => customer.totalOrders >= 2).length;
         const customersWithOrders = customerOrders.length;
-        const repeatRate =customersWithOrders > 0? (repeatCustomers /customersWithOrders) * 100: 0;
-        const totalCustomerRevenue = customerOrders.reduce( (total, customer) => total + customer.totalSpent, 0 );
+        const repeatRate = customersWithOrders > 0 ? (repeatCustomers / customersWithOrders) * 100 : 0;
+        const totalCustomerRevenue = customerOrders.reduce((total, customer) => total + customer.totalSpent, 0);
         const averageCLV = customersWithOrders > 0 ? totalCustomerRevenue / customersWithOrders : 0;
-        const vipCustomers = customerOrders.filter( (customer) => customer.totalOrders >= 10 );
-        const regularCustomers = customerOrders.filter( (customer) => customer.totalOrders >= 3 && customer.totalOrders <= 9 );
-        const newOrderCustomers =customerOrders.filter((customer) =>customer.totalOrders >= 1 &&customer.totalOrders <= 2);
-        const totalRevenueAllCustomers =totalCustomerRevenue || 0;
+        const vipCustomers = customerOrders.filter((customer) => customer.totalOrders >= 10);
+        const regularCustomers = customerOrders.filter((customer) => customer.totalOrders >= 3 && customer.totalOrders <= 9);
+        const newOrderCustomers = customerOrders.filter((customer) => customer.totalOrders >= 1 && customer.totalOrders <= 2);
+        const totalRevenueAllCustomers = totalCustomerRevenue || 0;
 
 
-        const createSegment = (customers,segmentName) => {
+        const createSegment = (customers, segmentName) => {
             const count = customers.length;
-            const revenue = customers.reduce( (total, customer) => total + customer.totalSpent, 0 );
-            const averageOrders = count > 0 ? customers.reduce( (total, customer) => total + customer.totalOrders, 0 ) / count : 0;
+            const revenue = customers.reduce((total, customer) => total + customer.totalSpent, 0);
+            const averageOrders = count > 0 ? customers.reduce((total, customer) => total + customer.totalOrders, 0) / count : 0;
             return {
                 segment: segmentName,
                 count,
-                revenueShare: totalRevenueAllCustomers > 0 ? ( revenue / totalRevenueAllCustomers ) * 100 : 0,
+                revenueShare: totalRevenueAllCustomers > 0 ? (revenue / totalRevenueAllCustomers) * 100 : 0,
                 averageOrders,
             };
         };
 
 
         const customerSegments = [
-            createSegment(vipCustomers,"VIP (10+ orders)"),
-            createSegment(regularCustomers,"Regular (3-9 orders)"),
-            createSegment(newOrderCustomers,"New (1-2 orders)"),
+            createSegment(vipCustomers, "VIP (10+ orders)"),
+            createSegment(regularCustomers, "Regular (3-9 orders)"),
+            createSegment(newOrderCustomers, "New (1-2 orders)"),
         ];
 
 
         return res.status(200).json({
             success: true,
-            message:"Reports data fetched successfully",
+            message: "Reports data fetched successfully",
             range: selectedRange,
             startDate,
             endDate,
@@ -405,8 +405,8 @@ exports.getAdminReports = async (req, res, next) => {
                     totalOrders,
                     averageOrderValue: Number(averageOrderValue.toFixed(2)),
                 },
-                sales: {chart: salesChart,table: salesReport,},
-                products: productPerformance.map((product) => ({...product,averageRating: Number(Number(product.averageRating).toFixed(1))})),
+                sales: { chart: salesChart, table: salesReport, },
+                products: productPerformance.map((product) => ({ ...product, averageRating: Number(Number(product.averageRating).toFixed(1)) })),
                 customers: {
                     totalCustomers,
                     newCustomers,
