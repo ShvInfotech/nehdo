@@ -23,13 +23,6 @@ interface AdminAuthContextType {
 
 const AdminAuthContext = createContext<AdminAuthContextType | undefined>(undefined);
 
-// Default admin credentials
-const ADMIN_CREDENTIALS = {
-    email: "admin@nehdo.com",
-    password: "Admin@123",
-    name: "Admin User",
-    role: "Super Admin",
-};
 
 export const AdminAuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
     const [adminUser, setAdminUser] = useState<AdminUser | null>(() => {

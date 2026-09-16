@@ -12,7 +12,7 @@ exports.getshippingcharg = async (data) => {
             height: Number(data.height)
         }
 
-        console.log(dataparams)
+
 
 
     const url = "https://apiv2.shiprocket.in/v1/external/courier/serviceability";

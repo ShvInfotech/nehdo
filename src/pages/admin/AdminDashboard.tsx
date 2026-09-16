@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import {
   IoTrendingUpOutline,
   IoBagCheckOutline,
@@ -48,7 +48,7 @@ const AdminDashboard = () => {
   const [dashboard, setDashboard] = useState<DashboardData | null>(null);
 
   const [loading, setLoading] = useState(false);
-
+  const navigate = useNavigate()
   // =====================================================
   // FETCH DASHBOARD
   // =====================================================
@@ -223,7 +223,7 @@ const AdminDashboard = () => {
               Revenue Analytics
             </h2>
 
-            <button className="text-sm font-semibold text-brand hover:underline">
+            <button onClick={()=> navigate('/admin/reports')} className="text-sm font-semibold text-brand hover:underline">
               View Report
             </button>
           </div>

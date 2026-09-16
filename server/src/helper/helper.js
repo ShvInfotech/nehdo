@@ -366,7 +366,7 @@ exports.sendNotification = async (deviceTokens, title, body) => {
 
             webpush: {
                 notification: {
-                    icon: "https://dad-panda-rocklike.ngrok-free.dev/uploads/logo/nehdo-logo.png",
+                    icon: "https://res.cloudinary.com/dblxejpyp/image/upload/v1788841967/nehdo-logo.png",
                 },
             },
         });

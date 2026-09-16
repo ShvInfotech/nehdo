@@ -226,7 +226,10 @@ exports.AccepteOrder = async (req, res, next) => {
 
             }
             // const awsNumber = await AssignCourierAndAWB(awsData)    // pending aws not provide by shiproket in test mode 
-            // console.log(awsNumber.data.errors)
+
+            // if (!awsNumber.data?.errors) {
+            //     await orderModel.findByIdAndUpdate(order._id, { shiprocketOrderId: confirmorderData.order_id, shiprocketShipmentId: confirmorderData.shipment_id, trackingNumber: awsNumber.awb_code, status: 'accepted' })
+            // }
 
             await orderModel.findByIdAndUpdate(order._id, { shiprocketOrderId: confirmorderData.order_id, shiprocketShipmentId: confirmorderData.shipment_id, trackingNumber: '123456', status: 'accepted' })
 
@@ -515,8 +518,51 @@ exports.ShippingWebhook = async (req, res, next) => {
 
 
                 if (req.body?.current_status == "RETURN DELIVERED") {
-                    const requestorder = await orderRequestsModel.findOneAndUpdate({ "order.shiprocketOrderId": String(req.body?.sr_order_id), }, { "order.status": req.body?.current_status, completedAt: Date.now() }, { returnDocument: 'after', });
+                    const requestorder = await orderRequestsModel.findOneAndUpdate(
+                        { "order.shiprocketOrderId": String(req.body?.sr_order_id), },
+                        { "order.status": req.body?.current_status, completedAt: Date.now() },
+                        { returnDocument: 'after', });
                     return res.status(200)
+                }
+
+                if (req.body?.current_status == "RETURN PICKED UP") {
+
+                    const requestorder = await orderRequestsModel.findOneAndUpdate(
+                        { "order.shiprocketOrderId": String(req.body?.sr_order_id), },
+                        { "order.status": req.body?.current_status },
+                        { returnDocument: 'after', });
+
+
+                    //  RETURN PUCKUP THNE ROZERPAY REFUND AFTER  
+
+                    // const order = await orderModel.findById(requestorder.orderId)
+
+                    // if (order.payment.method == "online") {
+
+                    //     let paymentdata = requestorder.refund
+                    //     let data = await RazorpayRefundApi(order)
+                    //     paymentdata.paymentId = data.payment_id
+                    //     paymentdata.status = data.status == "pending" ? "processing" : data.status
+                    //     paymentdata.refundId = data.id
+
+                    //     if (data.status == "processed") {
+                    //         paymentdata.status = "processed"
+                    //         paymentdata.refundedAt = Date.now()
+                    //     }
+
+                    //     await orderRequestsModel.findByIdAndUpdate(requestorder._id, { refund: paymentdata })
+                    // }
+
+                }
+
+                if (req.body?.current_status == "RETURN CANCELLED") {
+
+                    const requestorder = await orderRequestsModel.findOneAndUpdate(
+                        { "order.shiprocketOrderId": String(req.body?.sr_order_id), },
+                        { "order.status": req.body?.current_status },
+                        { returnDocument: 'after', });
+
+                    await orderModel.findByIdAndUpdate(requestorder.orderId, { status: "delivered" })
                 }
 
 
@@ -627,3 +673,8 @@ exports.RefundWebhook = async (req, res, next) => {
         return next(error);
     }
 };
+
+
+
+
+

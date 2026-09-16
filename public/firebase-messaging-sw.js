@@ -16,7 +16,6 @@ firebase.initializeApp({
 });
 
 
-// firebase.initializeApp(JSON.parse(import.meta.env.VITE_FIREBASE_CONFIG));
 
 const messaging = firebase.messaging();
 

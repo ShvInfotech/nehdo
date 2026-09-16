@@ -87,7 +87,6 @@ const AdminInventory = () => {
                 "/admin/api/v1/product/inventory/get",
                 "GET",
             );
-
             if (response?.success) {
                 setInventoryProducts(response.products || []);
             }

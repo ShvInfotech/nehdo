@@ -112,14 +112,6 @@ exports.getproductpaginationpipeline = (page = 1, limit = 10) => {
 };
 
 
-
-
-
-
-
-
-
-
 exports.userGetProductpipeline = ({
     search = "",
     userId = null,
@@ -525,9 +517,6 @@ exports.userGetProductpipeline = ({
 
     return pipeline;
 };
-
-
-
 
 exports.userGetSingalsProductpipeline = (id) => {
     return [

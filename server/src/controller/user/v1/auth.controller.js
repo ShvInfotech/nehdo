@@ -346,8 +346,6 @@ exports.ResetPassword = async (req, res, next) => {
             type: "success"
         });
 
-
-
     } catch (error) {
         console.log(error)
         if (error.name === "TokenExpiredError") {

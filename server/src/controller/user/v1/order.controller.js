@@ -158,7 +158,7 @@ exports.ReturnOrder = async (req, res, next) => {
 
 
         if (alreadyRequested) {
-            return next(CustomeError(400, "Order alreaqdy processed"))
+            return next(CustomeError(400, "Order already processed"))
         }
 
 
@@ -259,7 +259,7 @@ exports.ReturnOrder = async (req, res, next) => {
             courier_id: courierDetails.courierId,
             is_return: 1
         }
-        // const awsNumber = await AssignCourierAndAWB(awsData)    // pending aws not provide by shiproket in test mode 
+        // const awsNumber = await AssignCourierAndAWB(awsData)    // pending awb not provide by shiproket in test mode 
         // console.log(awsNumber)
 
 
@@ -289,7 +289,7 @@ exports.ReturnOrder = async (req, res, next) => {
             status: confirmorderData.status || "RETURN PENDING",
             shiprocketOrderId: confirmorderData.order_id,
             shiprocketShipmentId: confirmorderData.shipment_id,
-            trackingNumber: '12345' //awsNumber 
+            trackingNumber: '12345' //awsNumber.awb_code 
         }
 
 

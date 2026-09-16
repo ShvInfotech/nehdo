@@ -157,6 +157,17 @@ const AdminCoupons = () => {
     setIsAddModalOpen(true);
   };
 
+
+  const generateCouponCode = () => {
+    const characters = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
+    let code = "";
+
+    for (let i = 0; i < 8; i++) {
+      code += characters.charAt(Math.floor(Math.random() * characters.length));
+    }
+    setFormData({ ...formData, couponCode: code });
+  };
+
   const activeCoupons =
     coupons.filter((coupon: any) => coupon.status === "active").length || 0;
 
@@ -228,7 +239,7 @@ const AdminCoupons = () => {
                         onChange={handleChange}
                         className="flex-1 px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:border-brand uppercase"
                       />
-                      <button className="flex items-center gap-2 px-4 py-2.5 bg-gray-100 text-gray-700 text-sm font-semibold rounded-xl hover:bg-gray-200 transition-colors">
+                      <button onClick={generateCouponCode} className="flex items-center gap-2 px-4 py-2.5 bg-gray-100 text-gray-700 text-sm font-semibold rounded-xl hover:bg-gray-200 transition-colors">
                         <IoRefreshOutline size={16} />
                         Auto Generate
                       </button>

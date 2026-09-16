@@ -7,7 +7,7 @@ const testimonialsData = [
     { id: 2, text: "The best clothing store ever. Everything fits perfectly and the customer service is outstanding. Highly recommend to everyone!", name: "Darrell Steward", role: "UI Designer", avatar: "https://storage.googleapis.com/tagjs-prod.appspot.com/v1/hurs0BoZOo/2rm1077r_expires_30_days.png", rating: 5 },
     { id: 3, text: "Outstanding customer service and incredible fabric quality. I've been shopping here for months and every order exceeds expectations.", name: "Courtney Henry", role: "Software Developer", avatar: "https://storage.googleapis.com/tagjs-prod.appspot.com/v1/hurs0BoZOo/2lp2lwtj_expires_30_days.png", rating: 5 },
     { id: 4, text: "I highly recommend this shop to anyone looking for great fashion at reasonable prices. The variety is incredible!", name: "Bessie Cooper", role: "Freelance Writer", avatar: "https://storage.googleapis.com/tagjs-prod.appspot.com/v1/hurs0BoZOo/xnqc4ba1_expires_30_days.png", rating: 4 },
-    { id: 5, text: "My absolute favorite place to shop! Always trendy, affordable, and the packaging is beautiful. Five stars all the way!", name: "Albert Flores", role: "Photographer", avatar: "https://storage.googleapis.com/tagjs-prod.appspot.com/v1/hurs0BoZOo/2rm1077r_expires_30_days.png", rating: 5 },
+    { id: 5, text: "My absolute favorite place to shop! Always trendy, affordable, and the packaging is beautiful. Five stars all the way!", name: "Albert Flores", role: "Photographer", avatar: "https://storage.googleapis.com/tagjs-prod.appspot.com/v1/hurs0BoZOo/2rm1077r_expires_300_days.png", rating: 5 },
 ];
 
 const Testimonials = () => {

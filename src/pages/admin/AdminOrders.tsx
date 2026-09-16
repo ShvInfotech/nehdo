@@ -58,20 +58,20 @@ interface Order {
     };
 
     status:
-        | "pending"
-        | "accepted"
-        | "processing"
-        | "shipped"
-        | "out_for_delivery"
-        | "delivered"
-        | "cancelled";
+    | "pending"
+    | "accepted"
+    | "processing"
+    | "shipped"
+    | "out_for_delivery"
+    | "delivered"
+    | "cancelled";
 
     user: {
         name: string;
         email: string;
         phone: string;
     };
-
+    shiprocketOrderId?: string | null;
     shiprocketShipmentId?: string | null;
     trackingNumber?: string | null;
     trackingUrl?: string | null;
@@ -859,24 +859,22 @@ const AdminOrders = () => {
                                             >
                                                 {index >
                                                     0 && (
-                                                    <div
-                                                        className={`h-0.5 w-8 flex-shrink-0 ${
-                                                            index <=
-                                                            currentIndex
+                                                        <div
+                                                            className={`h-0.5 w-8 flex-shrink-0 ${index <=
+                                                                currentIndex
                                                                 ? "bg-brand"
                                                                 : "bg-gray-200"
-                                                        }`}
-                                                    />
-                                                )}
+                                                                }`}
+                                                        />
+                                                    )}
 
                                                 <div
-                                                    className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold whitespace-nowrap flex-shrink-0 ${
-                                                        isCurrent
-                                                            ? "bg-brand text-white"
-                                                            : isPast
+                                                    className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold whitespace-nowrap flex-shrink-0 ${isCurrent
+                                                        ? "bg-brand text-white"
+                                                        : isPast
                                                             ? "bg-brand/10 text-brand"
                                                             : "bg-gray-100 text-gray-400"
-                                                    }`}
+                                                        }`}
                                                 >
                                                     {isPast && (
                                                         <IoCheckmarkCircleOutline
@@ -888,7 +886,7 @@ const AdminOrders = () => {
 
                                                     {
                                                         statusLabels[
-                                                            status
+                                                        status
                                                         ]
                                                     }
                                                 </div>
@@ -899,13 +897,13 @@ const AdminOrders = () => {
 
                                 {selectedOrder.status ===
                                     "cancelled" && (
-                                    <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold whitespace-nowrap bg-red-100 text-red-700">
-                                        <IoCloseOutline
-                                            size={14}
-                                        />
-                                        Cancelled
-                                    </div>
-                                )}
+                                        <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold whitespace-nowrap bg-red-100 text-red-700">
+                                            <IoCloseOutline
+                                                size={14}
+                                            />
+                                            Cancelled
+                                        </div>
+                                    )}
                             </div>
                         </div>
 
@@ -1152,6 +1150,54 @@ const AdminOrders = () => {
                             </div>
                         </div>
 
+                        <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
+                            <h2 className="text-lg font-bold text-gray-900 mb-4">
+                                Shiproket Info
+                            </h2>
+
+                            <div className="space-y-4">
+                                <div>
+                                    <p className="text-xs font-semibold text-gray-400 uppercase">
+                                        orderID
+                                    </p>
+
+                                    <p className="text-sm font-medium text-gray-900">
+                                        {
+                                            selectedOrder?.shiprocketOrderId
+                                        }
+                                    </p>
+                                </div>
+
+                                <div>
+                                    <p className="text-xs font-semibold text-gray-400 uppercase">
+                                        ShipmentId
+                                    </p>
+
+                                    <p className="text-sm font-medium text-gray-900">
+                                        {
+                                            selectedOrder?.shiprocketShipmentId
+                                        }
+                                    </p>
+                                </div>
+
+                                <div>
+                                    <p className="text-xs font-semibold text-gray-400 uppercase">
+                                        awb Number
+                                    </p>
+
+                                    <p className="text-sm font-medium text-gray-900">
+                                        {
+                                            selectedOrder?.trackingNumber
+                                        }
+                                    </p>
+                                </div>
+
+
+
+
+                            </div>
+                        </div>
+
                         {/* PAYMENT */}
                         <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
                             <h2 className="text-lg font-bold text-gray-900 mb-4">
@@ -1179,14 +1225,13 @@ const AdminOrders = () => {
                                     </p>
 
                                     <span
-                                        className={`inline-block mt-1 px-2.5 py-1 rounded-full text-xs font-semibold ${
-                                            selectedOrder
-                                                .payment
-                                                ?.status ===
+                                        className={`inline-block mt-1 px-2.5 py-1 rounded-full text-xs font-semibold ${selectedOrder
+                                            .payment
+                                            ?.status ===
                                             "paid"
-                                                ? "bg-green-100 text-green-700"
-                                                : "bg-orange-100 text-orange-700"
-                                        }`}
+                                            ? "bg-green-100 text-green-700"
+                                            : "bg-orange-100 text-orange-700"
+                                            }`}
                                     >
                                         {
                                             selectedOrder
@@ -1198,36 +1243,36 @@ const AdminOrders = () => {
 
                                 {selectedOrder.payment
                                     ?.method !== "cod" && (
-                                    <>
-                                        <div>
-                                            <p className="text-xs font-semibold text-gray-400 uppercase">
-                                                Order ID
-                                            </p>
+                                        <>
+                                            <div>
+                                                <p className="text-xs font-semibold text-gray-400 uppercase">
+                                                    Order ID
+                                                </p>
 
-                                            <p className="text-sm font-medium text-gray-900 break-all">
-                                                {
-                                                    selectedOrder
-                                                        .payment
-                                                        ?.orderId
-                                                }
-                                            </p>
-                                        </div>
+                                                <p className="text-sm font-medium text-gray-900 break-all">
+                                                    {
+                                                        selectedOrder
+                                                            .payment
+                                                            ?.orderId
+                                                    }
+                                                </p>
+                                            </div>
 
-                                        <div>
-                                            <p className="text-xs font-semibold text-gray-400 uppercase">
-                                                Payment ID
-                                            </p>
+                                            <div>
+                                                <p className="text-xs font-semibold text-gray-400 uppercase">
+                                                    Payment ID
+                                                </p>
 
-                                            <p className="text-sm font-medium text-gray-900 break-all">
-                                                {
-                                                    selectedOrder
-                                                        .payment
-                                                        ?.paymentId
-                                                }
-                                            </p>
-                                        </div>
-                                    </>
-                                )}
+                                                <p className="text-sm font-medium text-gray-900 break-all">
+                                                    {
+                                                        selectedOrder
+                                                            .payment
+                                                            ?.paymentId
+                                                    }
+                                                </p>
+                                            </div>
+                                        </>
+                                    )}
                             </div>
                         </div>
                     </div>
@@ -1276,7 +1321,7 @@ const AdminOrders = () => {
                             {/* PRINT LABEL */}
                             {activeStatus !== "all" &&
                                 activeStatus !==
-                                    "pending" && (
+                                "pending" && (
                                     <button
                                         onClick={() =>
                                             handalPrintlabel(
@@ -1343,12 +1388,11 @@ const AdminOrders = () => {
                                 );
                                 setSelectedIds([]);
                             }}
-                            className={`px-4 py-3 text-sm font-semibold whitespace-nowrap border-b-2 ${
-                                activeStatus ===
+                            className={`px-4 py-3 text-sm font-semibold whitespace-nowrap border-b-2 ${activeStatus ===
                                 tab.value
-                                    ? "border-brand text-brand"
-                                    : "border-transparent text-gray-500 hover:text-gray-700"
-                            }`}
+                                ? "border-brand text-brand"
+                                : "border-transparent text-gray-500 hover:text-gray-700"
+                                }`}
                         >
                             {tab.label}
                         </button>
@@ -1403,9 +1447,9 @@ const AdminOrders = () => {
                                 orders.filter(
                                     (order) =>
                                         activeStatus ===
-                                            "all" ||
+                                        "all" ||
                                         order.status ===
-                                            activeStatus
+                                        activeStatus
                                 ).length
                             }
                         </span>{" "}
@@ -1423,7 +1467,7 @@ const AdminOrders = () => {
                                         type="checkbox"
                                         checked={
                                             filteredOrders.length >
-                                                0 &&
+                                            0 &&
                                             filteredOrders.every(
                                                 (order) =>
                                                     selectedIds.includes(
@@ -1531,17 +1575,17 @@ const AdminOrders = () => {
                                         <td className="px-6 py-4 text-gray-500">
                                             {order.updatedAt
                                                 ? new Date(
-                                                      order.updatedAt
-                                                  ).toLocaleString(
-                                                      "en-IN",
-                                                      {
-                                                          day: "2-digit",
-                                                          month: "short",
-                                                          year: "numeric",
-                                                          hour: "2-digit",
-                                                          minute: "2-digit"
-                                                      }
-                                                  )
+                                                    order.updatedAt
+                                                ).toLocaleString(
+                                                    "en-IN",
+                                                    {
+                                                        day: "2-digit",
+                                                        month: "short",
+                                                        year: "numeric",
+                                                        hour: "2-digit",
+                                                        minute: "2-digit"
+                                                    }
+                                                )
                                                 : "-"}
                                         </td>
 
@@ -1576,7 +1620,7 @@ const AdminOrders = () => {
                                             >
                                                 {
                                                     statusLabels[
-                                                        order.status
+                                                    order.status
                                                     ]
                                                 }
                                             </span>
@@ -1607,41 +1651,41 @@ const AdminOrders = () => {
                             {/* NO RESULTS */}
                             {filteredOrders.length ===
                                 0 && (
-                                <tr>
-                                    <td
-                                        colSpan={8}
-                                        className="px-6 py-12 text-center"
-                                    >
-                                        <div className="flex flex-col items-center justify-center">
-                                            <IoSearchOutline
-                                                size={40}
-                                                className="text-gray-300 mb-3"
-                                            />
+                                    <tr>
+                                        <td
+                                            colSpan={8}
+                                            className="px-6 py-12 text-center"
+                                        >
+                                            <div className="flex flex-col items-center justify-center">
+                                                <IoSearchOutline
+                                                    size={40}
+                                                    className="text-gray-300 mb-3"
+                                                />
 
-                                            <p className="text-gray-500 font-medium">
-                                                {searchTerm
-                                                    ? "No orders found for your search."
-                                                    : "No orders found for this status."}
-                                            </p>
+                                                <p className="text-gray-500 font-medium">
+                                                    {searchTerm
+                                                        ? "No orders found for your search."
+                                                        : "No orders found for this status."}
+                                                </p>
 
-                                            {searchTerm && (
-                                                <button
-                                                    type="button"
-                                                    onClick={() =>
-                                                        setSearchTerm(
-                                                            ""
-                                                        )
-                                                    }
-                                                    className="mt-2 text-sm text-brand font-semibold hover:underline"
-                                                >
-                                                    Clear
-                                                    search
-                                                </button>
-                                            )}
-                                        </div>
-                                    </td>
-                                </tr>
-                            )}
+                                                {searchTerm && (
+                                                    <button
+                                                        type="button"
+                                                        onClick={() =>
+                                                            setSearchTerm(
+                                                                ""
+                                                            )
+                                                        }
+                                                        className="mt-2 text-sm text-brand font-semibold hover:underline"
+                                                    >
+                                                        Clear
+                                                        search
+                                                    </button>
+                                                )}
+                                            </div>
+                                        </td>
+                                    </tr>
+                                )}
                         </tbody>
                     </table>
                 </div>
@@ -1663,7 +1707,7 @@ const AdminOrders = () => {
                             <span className="font-semibold text-gray-900">
                                 {Math.min(
                                     currentPage *
-                                        rowsPerPage,
+                                    rowsPerPage,
                                     filteredOrders.length
                                 )}
                             </span>{" "}
@@ -1711,12 +1755,11 @@ const AdminOrders = () => {
                                             page
                                         )
                                     }
-                                    className={`min-w-9 px-3 py-2 rounded-lg text-sm font-semibold ${
-                                        currentPage ===
+                                    className={`min-w-9 px-3 py-2 rounded-lg text-sm font-semibold ${currentPage ===
                                         page
-                                            ? "bg-brand text-white"
-                                            : "border border-gray-200 text-gray-600 hover:bg-gray-50"
-                                    }`}
+                                        ? "bg-brand text-white"
+                                        : "border border-gray-200 text-gray-600 hover:bg-gray-50"
+                                        }`}
                                 >
                                     {page}
                                 </button>

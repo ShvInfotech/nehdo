@@ -317,6 +317,76 @@ const AdminCustomers = () => {
     }
   };
 
+
+   const handleUnblockCustomer  = async () => {
+    if (!selectedCustomer) return;
+
+    const confirmed = window.confirm(
+      `Are you sure you want to unblock ${selectedCustomer.name}?`
+    );
+
+    if (!confirmed) return;
+
+    console.log(selectedCustomer);
+
+    try {
+      setActionLoading(true);
+
+      const response = await apiRequest(
+        `/admin/api/v1/customers/update/${selectedCustomer._id}`,
+        "PATCH",
+        {
+          status: "active",
+        }
+      );
+
+      if (response?.success) {
+        // -----------------------------------------
+        // Update selected customer immediately
+        // -----------------------------------------
+
+        const updatedCustomer = {
+          ...selectedCustomer,
+          status: "active",
+        };
+
+        setSelectedCustomer(updatedCustomer);
+
+        // -----------------------------------------
+        // Update customer list immediately
+        // -----------------------------------------
+
+        setCustomers((prev) =>
+          prev.map((customer) =>
+            customer._id === selectedCustomer._id
+              ? {
+                  ...customer,
+                  status: "block",
+                }
+              : customer
+          )
+        );
+
+        toast.success(
+          response.message ||
+            "Customer blocked successfully"
+        );
+      } else {
+        toast.error(
+          response?.message ||
+            "Failed to block customer"
+        );
+      }
+    } catch (error: any) {
+      toast.error(
+        error?.message ||
+          "Failed to block customer"
+      );
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
   // ====================================================
   // RESET PASSWORD
   // ====================================================
@@ -777,23 +847,28 @@ const AdminCustomers = () => {
                 </button>
 
                 <button
-                  onClick={handleBlockCustomer}
-                  disabled={
-                    actionLoading ||
-                    selectedCustomer.status?.toLowerCase() ===
-                      "block"
-                  }
-                  className="w-full flex items-center justify-center gap-2 px-4 py-2.5 bg-red-50 text-red-600 text-sm font-semibold rounded-xl hover:bg-red-100 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                  <IoBanOutline size={16} />
+  onClick={
+    selectedCustomer.status?.toLowerCase() === "block"
+      ? handleUnblockCustomer
+      : handleBlockCustomer
+  }
+  disabled={actionLoading}
+  className={`w-full flex items-center justify-center gap-2 px-4 py-2.5 text-sm font-semibold rounded-xl transition-colors disabled:opacity-50 disabled:cursor-not-allowed ${
+    selectedCustomer.status?.toLowerCase() === "block"
+      ? "bg-green-50 text-green-600 hover:bg-green-100"
+      : "bg-red-50 text-red-600 hover:bg-red-100"
+  }`}
+>
+  <IoBanOutline size={16} />
 
-                  {selectedCustomer.status?.toLowerCase() ===
-                  "block"
-                    ? "Customer Blocked"
-                    : actionLoading
-                    ? "Blocking..."
-                    : "Block Customer"}
-                </button>
+  {selectedCustomer.status?.toLowerCase() === "block"
+    ? actionLoading
+      ? "Unblocking..."
+      : "Unblock Customer"
+    : actionLoading
+    ? "Blocking..."
+    : "Block Customer"}
+</button>
               </div>
             </div>
           </div>
