@@ -17,11 +17,9 @@ import { useCart } from "../context/CartContext";
 const SidebarNav = ({
     active,
     onLogout,
-    isProfileComplete,
 }: {
     active: string;
     onLogout: () => void;
-    isProfileComplete: boolean;
 }) => {
     const navs = [
         {
@@ -44,19 +42,6 @@ const SidebarNav = ({
         },
     ];
 
-    const handleNavigation = (
-        e: React.MouseEvent<HTMLAnchorElement>,
-        href: string
-    ) => {
-        if (!isProfileComplete && href !== "/account") {
-            e.preventDefault();
-
-            alert(
-                "Please add your mobile number and set a default address before continuing."
-            );
-        }
-    };
-
     return (
         <div className="bg-white rounded-3xl p-4 shadow-card border border-gray-100">
             <nav className="flex flex-col gap-2">
@@ -64,14 +49,10 @@ const SidebarNav = ({
                     <Link
                         key={n.id}
                         to={n.href}
-                        onClick={(e) => handleNavigation(e, n.href)}
-                        className={`flex items-center gap-3 px-4 py-3 rounded-2xl text-sm font-semibold transition-all ${
-                            active === n.id
+                        className={`flex items-center gap-3 px-4 py-3 rounded-2xl text-sm font-semibold transition-all ${active === n.id
                                 ? "bg-brand text-white shadow-button"
-                                : !isProfileComplete && n.href !== "/account"
-                                ? "text-gray-400 cursor-not-allowed bg-gray-50"
                                 : "text-gray-600 hover:bg-gray-100"
-                        }`}
+                            }`}
                     >
                         <n.icon size={20} />
                         {n.label}
@@ -109,40 +90,9 @@ const Account = () => {
 
     const [imagePreview, setImagePreview] = useState<string | null>(null);
 
-    const [isAddressModalOpen, setIsAddressModalOpen] = useState(false);
-
-    const [isAddressEditMode, setIsAddressEditMode] = useState(false);
-
-    const [editingAddressId, setEditingAddressId] = useState<string | null>(
-        null
-    );
-
     const { clear } = useWishlist();
 
     const { clearCart } = useCart();
-
-    const [addressForm, setAddressForm] = useState({
-        addressline: "",
-        landmark: "",
-        city: "",
-        state: "",
-        postalCode: "",
-        defaultaddress: false,
-    });
-
-    /*
-     * Check Profile Completion
-     */
-
-    const hasMobileNumber = Boolean(user?.phone?.trim());
-
-    const hasDefaultAddress = Boolean(
-        user?.address?.some(
-            (address: any) => address.defaultaddress === true
-        )
-    );
-
-    const isProfileComplete = hasMobileNumber && hasDefaultAddress;
 
     /*
      * If user is not logged in
@@ -237,194 +187,9 @@ const Account = () => {
 
             alert(
                 error?.message ||
-                    "Failed to update profile"
+                "Failed to update profile"
             );
         }
-    };
-
-    /*
-     * Add / Update Address
-     */
-
-    const handleAddAddress = async () => {
-        try {
-            if (!addressForm.addressline.trim()) {
-                alert("Please enter address");
-                return;
-            }
-
-            if (!addressForm.city.trim()) {
-                alert("Please enter city");
-                return;
-            }
-
-            if (!addressForm.state.trim()) {
-                alert("Please enter state");
-                return;
-            }
-
-            if (!addressForm.postalCode.trim()) {
-                alert("Please enter postal code");
-                return;
-            }
-
-            const payload = {
-                userId: user?._id,
-                addressline: addressForm.addressline,
-                landmark: addressForm.landmark,
-                city: addressForm.city,
-                state: addressForm.state,
-                postalCode: addressForm.postalCode,
-                defaultaddress: addressForm.defaultaddress,
-            };
-
-            let res: any;
-
-            if (isAddressEditMode && editingAddressId) {
-                /*
-                 * UPDATE ADDRESS
-                 */
-
-                res = await userapiRequest(
-                    `/user/api/v1/address/update/${editingAddressId}`,
-                    "PATCH",
-                    payload
-                );
-
-                updateProfile({
-                    address:
-                        user?.address.map((a: any) =>
-                            a._id === editingAddressId
-                                ? res.address
-                                : a
-                        ) || [],
-                });
-
-                alert("Address updated successfully");
-            } else {
-                /*
-                 * ADD ADDRESS
-                 */
-
-                res = await userapiRequest(
-                    "/user/api/v1/address/add",
-                    "POST",
-                    payload
-                );
-
-                updateProfile({
-                    address: [
-                        ...(user?.address || []),
-                        res.address,
-                    ],
-                });
-
-                alert("Address added successfully");
-            }
-
-            /*
-             * Reset Form
-             */
-
-            setAddressForm({
-                addressline: "",
-                landmark: "",
-                city: "",
-                state: "",
-                postalCode: "",
-                defaultaddress: false,
-            });
-
-            setIsAddressEditMode(false);
-
-            setEditingAddressId(null);
-
-            setIsAddressModalOpen(false);
-        } catch (error: any) {
-            console.error(error);
-
-            alert(
-                error?.message ||
-                    "Failed to save address"
-            );
-        }
-    };
-
-    /*
-     * Edit Address
-     */
-
-    const handleEditAddress = (addr: any) => {
-        setIsAddressEditMode(true);
-
-        setEditingAddressId(addr._id);
-
-        setAddressForm({
-            addressline: addr.addressline || "",
-            landmark: addr.landmark || "",
-            city: addr.city || "",
-            state: addr.state || "",
-            postalCode: addr.postalCode || "",
-            defaultaddress: addr.defaultaddress || false,
-        });
-
-        setIsAddressModalOpen(true);
-    };
-
-    /*
-     * Delete Address
-     */
-
-    const handleDeleteAddress = async (id: string) => {
-        try {
-            const confirmDelete = window.confirm(
-                "Are you sure you want to delete this address?"
-            );
-
-            if (!confirmDelete) return;
-
-            await userapiRequest(
-                `/user/api/v1/address/delete/${id}`,
-                "DELETE"
-            );
-
-            updateProfile({
-                address:
-                    user?.address.filter(
-                        (a: any) => a._id !== id
-                    ) || [],
-            });
-
-            alert("Address deleted successfully");
-        } catch (error: any) {
-            console.error(error);
-
-            alert(
-                error?.message ||
-                    "Failed to delete address"
-            );
-        }
-    };
-
-    /*
-     * Open Add Address Modal
-     */
-
-    const handleOpenAddAddress = () => {
-        setIsAddressEditMode(false);
-
-        setEditingAddressId(null);
-
-        setAddressForm({
-            addressline: "",
-            landmark: "",
-            city: "",
-            state: "",
-            postalCode: "",
-            defaultaddress: false,
-        });
-
-        setIsAddressModalOpen(true);
     };
 
     if (!user) return null;
@@ -442,7 +207,6 @@ const Account = () => {
                     <SidebarNav
                         active="profile"
                         onLogout={handleLogout}
-                        isProfileComplete={isProfileComplete}
                     />
                 </div>
 
@@ -468,35 +232,6 @@ const Account = () => {
                                 </button>
                             )}
                         </div>
-
-                        {/* Profile Completion Warning */}
-
-                        {!isProfileComplete && (
-                            <div className="mb-8 rounded-2xl border border-orange-200 bg-orange-50 p-5">
-                                <h3 className="font-bold text-orange-700">
-                                    Complete your profile to continue
-                                </h3>
-
-                                <p className="text-sm text-orange-600 mt-1">
-                                    Please complete the following details before
-                                    accessing orders, wishlist and other pages.
-                                </p>
-
-                                <div className="mt-3 space-y-2">
-                                    {!hasMobileNumber && (
-                                        <p className="text-sm font-medium text-orange-700">
-                                            • Add your mobile number
-                                        </p>
-                                    )}
-
-                                    {!hasDefaultAddress && (
-                                        <p className="text-sm font-medium text-orange-700">
-                                            • Add a default address
-                                        </p>
-                                    )}
-                                </div>
-                            </div>
-                        )}
 
                         {/* Profile */}
 
@@ -656,11 +391,10 @@ const Account = () => {
                                             </p>
 
                                             <p
-                                                className={`font-medium ${
-                                                    hasMobileNumber
+                                                className={`font-medium ${user.phone?.trim()
                                                         ? "text-gray-900"
-                                                        : "text-red-500"
-                                                }`}
+                                                        : "text-gray-400"
+                                                    }`}
                                             >
                                                 {user.phone ||
                                                     "Not added yet"}
@@ -670,278 +404,9 @@ const Account = () => {
                                 )}
                             </div>
                         </div>
-
-                        <div className="h-px bg-gray-100 my-8" />
-
-                        {/* Addresses */}
-
-                        <div>
-                            <div className="flex items-center justify-between mb-6">
-                                <h2 className="font-heading text-xl font-bold">
-                                    Saved Addresses
-                                </h2>
-
-                                <button
-                                    onClick={handleOpenAddAddress}
-                                    className="text-sm font-semibold text-brand hover:underline"
-                                >
-                                    Add New
-                                </button>
-                            </div>
-
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                {user.address &&
-                                user.address.length > 0 ? (
-                                    user.address.map((addr: any) => (
-                                        <div
-                                            key={addr._id}
-                                            className={`border rounded-2xl p-5 relative ${
-                                                addr.defaultaddress
-                                                    ? "border-brand bg-brand/5"
-                                                    : "border-gray-200 bg-white"
-                                            }`}
-                                        >
-                                            {addr.defaultaddress && (
-                                                <span className="absolute top-4 right-4 bg-brand text-white text-[10px] font-bold px-2 py-1 rounded-full uppercase">
-                                                    Default
-                                                </span>
-                                            )}
-
-                                            <p className="text-sm text-gray-600 mb-4 whitespace-pre-line">
-                                                {addr.addressline}
-
-                                                {addr.landmark &&
-                                                    `, ${addr.landmark}`}
-
-                                                {addr.city &&
-                                                    `, ${addr.city}`}
-
-                                                {addr.state &&
-                                                    `, ${addr.state}`}
-
-                                                {addr.postalCode &&
-                                                    ` - ${addr.postalCode}`}
-                                            </p>
-
-                                            <div className="flex gap-4">
-                                                <button
-                                                    onClick={() =>
-                                                        handleEditAddress(
-                                                            addr
-                                                        )
-                                                    }
-                                                    className="text-sm font-semibold text-brand hover:underline"
-                                                >
-                                                    Edit
-                                                </button>
-
-                                                <button
-                                                    onClick={() =>
-                                                        handleDeleteAddress(
-                                                            addr._id
-                                                        )
-                                                    }
-                                                    className="text-sm font-semibold text-red-500 hover:underline"
-                                                >
-                                                    Delete
-                                                </button>
-                                            </div>
-                                        </div>
-                                    ))
-                                ) : (
-                                    <div className="col-span-full border border-dashed border-gray-300 rounded-2xl p-6 text-center text-gray-500 text-sm">
-                                        No address found. Please add a default
-                                        address to continue.
-                                    </div>
-                                )}
-                            </div>
-                        </div>
                     </motion.div>
                 </div>
             </div>
-
-            {/* Address Modal */}
-
-            {isAddressModalOpen && (
-                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
-                    <div className="w-full max-w-2xl rounded-3xl bg-white shadow-2xl border border-gray-100 overflow-hidden">
-                        {/* Header */}
-
-                        <div className="flex items-center justify-between px-6 py-5 border-b border-gray-100">
-                            <h3 className="font-heading text-xl font-bold text-gray-900">
-                                {isAddressEditMode
-                                    ? "Edit Address"
-                                    : "Add New Address"}
-                            </h3>
-
-                            <button
-                                onClick={() =>
-                                    setIsAddressModalOpen(false)
-                                }
-                                className="text-gray-400 hover:text-gray-700 text-2xl leading-none"
-                            >
-                                ×
-                            </button>
-                        </div>
-
-                        {/* Body */}
-
-                        <div className="p-6 space-y-5">
-                            {/* Address */}
-
-                            <div>
-                                <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">
-                                    Address Line
-                                </label>
-
-                                <textarea
-                                    rows={3}
-                                    value={addressForm.addressline}
-                                    onChange={(e) =>
-                                        setAddressForm({
-                                            ...addressForm,
-                                            addressline: e.target.value,
-                                        })
-                                    }
-                                    placeholder="Enter house number, street, area"
-                                    className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-2xl focus:outline-none focus:border-brand resize-none"
-                                />
-                            </div>
-
-                            {/* Landmark */}
-
-                            <div>
-                                <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">
-                                    Landmark
-                                </label>
-
-                                <input
-                                    type="text"
-                                    value={addressForm.landmark}
-                                    onChange={(e) =>
-                                        setAddressForm({
-                                            ...addressForm,
-                                            landmark: e.target.value,
-                                        })
-                                    }
-                                    placeholder="Nearby landmark"
-                                    className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-2xl focus:outline-none focus:border-brand"
-                                />
-                            </div>
-
-                            {/* City and State */}
-
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                <div>
-                                    <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">
-                                        City
-                                    </label>
-
-                                    <input
-                                        type="text"
-                                        value={addressForm.city}
-                                        onChange={(e) =>
-                                            setAddressForm({
-                                                ...addressForm,
-                                                city: e.target.value,
-                                            })
-                                        }
-                                        placeholder="City"
-                                        className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-2xl focus:outline-none focus:border-brand"
-                                    />
-                                </div>
-
-                                <div>
-                                    <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">
-                                        State
-                                    </label>
-
-                                    <input
-                                        type="text"
-                                        value={addressForm.state}
-                                        onChange={(e) =>
-                                            setAddressForm({
-                                                ...addressForm,
-                                                state: e.target.value,
-                                            })
-                                        }
-                                        placeholder="State"
-                                        className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-2xl focus:outline-none focus:border-brand"
-                                    />
-                                </div>
-                            </div>
-
-                            {/* Postal Code */}
-
-                            <div>
-                                <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">
-                                    Postal Code
-                                </label>
-
-                                <input
-                                    type="text"
-                                    value={addressForm.postalCode}
-                                    onChange={(e) =>
-                                        setAddressForm({
-                                            ...addressForm,
-                                            postalCode: e.target.value,
-                                        })
-                                    }
-                                    placeholder="Postal Code"
-                                    className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-2xl focus:outline-none focus:border-brand"
-                                />
-                            </div>
-
-                            {/* Default Address */}
-
-                            <label className="flex items-center gap-3 p-4 rounded-2xl bg-gray-50 border border-gray-100 cursor-pointer">
-                                <input
-                                    type="checkbox"
-                                    checked={
-                                        addressForm.defaultaddress
-                                    }
-                                    onChange={(e) =>
-                                        setAddressForm({
-                                            ...addressForm,
-                                            defaultaddress:
-                                                e.target.checked,
-                                        })
-                                    }
-                                    className="w-4 h-4 text-brand border-gray-300 rounded focus:ring-brand"
-                                />
-
-                                <span className="text-sm font-medium text-gray-700">
-                                    Set as default address
-                                </span>
-                            </label>
-                        </div>
-
-                        {/* Footer */}
-
-                        <div className="flex items-center justify-end gap-3 px-6 py-5 border-t border-gray-100 bg-white">
-                            <button
-                                type="button"
-                                onClick={() =>
-                                    setIsAddressModalOpen(false)
-                                }
-                                className="px-5 py-2.5 rounded-xl border border-gray-200 text-gray-700 font-semibold hover:bg-gray-50 transition-all"
-                            >
-                                Cancel
-                            </button>
-
-                            <button
-                                type="button"
-                                onClick={handleAddAddress}
-                                className="px-6 py-2.5 rounded-xl bg-brand text-white font-semibold shadow-button hover:bg-brand-light transition-all"
-                            >
-                                {isAddressEditMode
-                                    ? "Update Address"
-                                    : "Save Address"}
-                            </button>
-                        </div>
-                    </div>
-                </div>
-            )}
         </div>
     );
 };

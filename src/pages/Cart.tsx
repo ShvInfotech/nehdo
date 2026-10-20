@@ -1,10 +1,9 @@
 import { useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
-import { IoTrashOutline, IoRemoveOutline, IoAddOutline, IoArrowForward, IoBagOutline, IoTicketOutline, IoFlashOutline } from "react-icons/io5";
+import { IoTrashOutline, IoRemoveOutline, IoAddOutline, IoArrowForward, IoBagOutline, IoFlashOutline } from "react-icons/io5";
 import { useCart } from "../context/CartContext";
 import Breadcrumb from "../components/Breadcrumb";
-import { userapiRequest } from "../services/apiService";
 import { useAuth } from "../context/AuthContext";
 import { triggerMagicCheckout } from "../utils/magicCheckout";
 import { toast } from "react-toastify";
@@ -12,71 +11,15 @@ import { toast } from "react-toastify";
 const Cart = () => {
     const { items, removeItem, updateQuantity, subtotal, itemCount, clearCart } = useCart();
     const { user, setSession } = useAuth();
-    const [coupon, setCoupon] = useState("");
-    const [couponError, setCouponError] = useState("");
-    const [couponLoading, setCouponLoading] = useState(false);
     const [isCheckingOut, setIsCheckingOut] = useState(false);
-    const [appliedCoupon, setAppliedCoupon] = useState<{ couponId: string; discount: number; } | null>(null);
     const navigate = useNavigate();
-
-
-    const handleApplyCoupon = async () => {
-        if (!coupon.trim()) return;
-        sessionStorage.removeItem('appliedCoupon',);
-        try {
-            setCouponLoading(true);
-            setCouponError("");
-            const cartIds = items.map(item => item._id);
-
-            const res: any = await userapiRequest(
-                "/user/api/v1/common/couponapply",
-                "POST",
-                {
-                    couponCode: coupon.trim(),
-                    cartIds: cartIds
-                }
-            );
-
-            console.log(res)
-            if (res.success && res.message == "total discount") {
-                const data = { couponId: res.couponId, discount: res.discount };
-                setAppliedCoupon(data);
-                sessionStorage.setItem('appliedCoupon', JSON.stringify({ couponId: res.couponId, discount: res.discount }));
-            } else if (res.success && res.message == "free shipping") {
-                sessionStorage.setItem('appliedCoupon', JSON.stringify({ couponId: res.couponId, discount: shipping,type:"shipping" }));
-                sessionStorage.removeItem('shippingCharge',);
-                setShippingCharge(0)
-
-            } else {
-                setAppliedCoupon(null);
-                setCouponError(res.message || "Invalid coupon");
-            }
-        } catch (err: any) {
-            setAppliedCoupon(null);
-            console.log(err.message)
-            setCouponError(
-                err.message || "Invalid coupon code"
-            );
-        } finally {
-            setCouponLoading(false);
-        }
-    };
-
-    useEffect(() => {
-        if (items.length > 0) {
-            sessionStorage.removeItem('appliedCoupon');
-            sessionStorage.removeItem('shippingCharge');
-            handleApplyCoupon();
-        }
-    }, [itemCount]);
 
     useEffect(() => {
         sessionStorage.removeItem('appliedCoupon');
         sessionStorage.removeItem('shippingCharge');
     }, []);
 
-    const discountAmount = appliedCoupon?.discount || 0;
-    const finalTotal = Math.max(0, subtotal - discountAmount);
+    const finalTotal = subtotal;
 
     if (items.length === 0)
         return (
@@ -163,32 +106,6 @@ const Cart = () => {
                                 <span className="text-muted">Subtotal</span>
                                 <span className="font-semibold"> ₹{subtotal.toFixed(2)} </span>
                             </div>
-
-                            {appliedCoupon && (
-                                <div className="flex justify-between text-green-600">
-                                    <span>Coupon Discount</span>
-                                    <span>-₹{discountAmount.toFixed(2)}</span>
-                                </div>
-                            )}
-                        </div>
-
-                        {/* Coupon */}
-                        <div className="mb-5">
-                            <div className="flex gap-2">
-                                <div className="relative flex-1">
-                                    <IoTicketOutline size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
-                                    <input type="text" value={coupon} onChange={(e) => setCoupon(e.target.value)} placeholder="Coupon code"
-                                        className="w-full pl-10 pr-3 py-3 text-sm border border-gray-200 rounded-xl focus:outline-none focus:border-brand" />
-                                </div>
-
-                                <button onClick={handleApplyCoupon} disabled={couponLoading}
-                                    className="px-4 py-3 text-sm font-semibold text-brand border border-brand rounded-xl hover:bg-brand hover:text-white transition-all disabled:opacity-50">
-                                    {couponLoading ? "Applying..." : "Apply"}
-                                </button>
-                            </div>
-
-                            {couponError && (<p className="text-xs text-red-500 mt-2">{couponError} </p>)}
-                            {appliedCoupon && (<p className="text-xs text-green-600 mt-2">Coupon applied successfully</p>)}
                         </div>
 
                         <div className="h-px bg-gray-200 mb-5" />
@@ -205,7 +122,6 @@ const Cart = () => {
                                 setIsCheckingOut(true);
                                 triggerMagicCheckout({
                                     items,
-                                    couponId: appliedCoupon?.couponId,
                                     user,
                                     onSuccess: (res) => {
                                         setIsCheckingOut(false);

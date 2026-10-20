@@ -4,7 +4,6 @@ import { motion, AnimatePresence } from 'framer-motion';
 import {
   IoCloseOutline,
   IoLogoGoogle,
-  IoLogoFacebook,
   IoMailOutline,
   IoLockClosedOutline,
   IoPersonOutline,
@@ -409,28 +408,20 @@ const AuthModal = () => {
 
                     </div>
 
-                    <div className="grid grid-cols-2 gap-4 mt-6">
-
-                      <button className="flex items-center justify-center gap-2 py-2.5 border border-gray-200 rounded-xl hover:bg-gray-50 transition-colors" onClick={handalgoogleLogin}>
+                    <div className="mt-6">
+                      <button
+                        type="button"
+                        className="w-full flex items-center justify-center gap-2 py-2.5 border border-gray-200 rounded-xl hover:bg-gray-50 transition-colors"
+                        onClick={handalgoogleLogin}
+                      >
                         <IoLogoGoogle
                           size={18}
                           className="text-[#DB4437]"
                         />
                         <span className="text-sm font-semibold text-gray-700">
-                          Google
+                          Continue with Google
                         </span>
                       </button>
-
-                      <button className="flex items-center justify-center gap-2 py-2.5 border border-gray-200 rounded-xl hover:bg-gray-50 transition-colors">
-                        <IoLogoFacebook
-                          size={18}
-                          className="text-[#4267B2]"
-                        />
-                        <span className="text-sm font-semibold text-gray-700">
-                          Facebook
-                        </span>
-                      </button>
-
                     </div>
 
                   </div>

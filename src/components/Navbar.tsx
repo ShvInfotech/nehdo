@@ -63,75 +63,10 @@ const Navbar = () => {
         };
     }, [mobileMenuOpen]);
 
-    // ================================
-    // PROFILE COMPLETION CHECK
-    // ================================
-
-    const isProfileComplete = () => {
-        if (!user) return false;
-
-        const phone = String(user.phone || "").trim();
-
-        const hasMobileNumber = phone.length > 0;
-
-        const addresses = Array.isArray(user.address)
-            ? user.address
-            : [];
-
-        const hasDefaultAddress = addresses.some(
-            (address: any) =>
-                address?.defaultaddress === true ||
-                address?.defaultaddress === "true"
-        );
-
-        return hasMobileNumber && hasDefaultAddress;
-    };
-
-    // ================================
-    // PROTECTED NAVIGATION
-    // ================================
-
-  const handleProtectedNavigation = (path: string) => {
-    setMobileMenuOpen(false);
-
-    // 🔓 User NOT logged in
-    // Normal navigation allow karo
-    if (!isLoggedIn || !user) {
+    const handleProtectedNavigation = (path: string) => {
+        setMobileMenuOpen(false);
         navigate(path);
-        return;
-    }
-
-    // 🔒 User logged in
-    // Mobile + default address check
-    const phone = String(user.phone || "").trim();
-
-    const hasMobileNumber = phone.length > 0;
-
-    const addresses = Array.isArray(user.address)
-        ? user.address
-        : [];
-
-    const hasDefaultAddress = addresses.some(
-        (address: any) =>
-            address?.defaultaddress === true ||
-            address?.defaultaddress === "true"
-    );
-
-    // Profile incomplete
-    if (!hasMobileNumber || !hasDefaultAddress) {
-        // Account page itself allow
-        if (path === "/account") {
-            navigate(path);
-            return;
-        }
-
-        navigate("/account");
-        return;
-    }
-
-    // Profile complete
-    navigate(path);
-};
+    };
 
     // ================================
     // SEARCH

@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { useParams, Link } from "react-router-dom";
+import { useParams, Link, useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
 import {
     IoStar,
@@ -10,10 +10,14 @@ import {
     IoShieldCheckmarkOutline,
     IoCarOutline,
     IoRefreshOutline,
+    IoFlashOutline,
 } from "react-icons/io5";
 import { getProductById, products } from "../data/products";
 import { useCart } from "../context/CartContext";
 import { useWishlist } from "../context/WishlistContext";
+import { useAuth } from "../context/AuthContext";
+import { triggerMagicCheckout } from "../utils/magicCheckout";
+import { toast } from "react-toastify";
 import Breadcrumb from "../components/Breadcrumb";
 import ProductCard from "../components/ProductCard";
 import { userapiRequest } from "../services/apiService";
@@ -34,6 +38,9 @@ const ProductDetail = () => {
 
     const { addItem } = useCart();
     const { toggle, has } = useWishlist();
+    const { user, setSession } = useAuth();
+    const navigate = useNavigate();
+    const [isBuyingNow, setIsBuyingNow] = useState(false);
 
     const [selectedSize, setSelectedSize] = useState(
         product?.sizes?.[0] || ""
@@ -137,6 +144,43 @@ const ProductDetail = () => {
         setAdded(true);
 
         setTimeout(() => setAdded(false), 2000);
+    };
+
+    const handleBuyNow = () => {
+        if (isOutOfStock) return;
+        setIsBuyingNow(true);
+
+        const buyNowItem = {
+            productId: product.id,
+            name: product.name,
+            brand: product.brand,
+            image: product.image,
+            price: displayPrice,
+            originalPrice: product.originalPrice,
+            size: selectedSize || product.sizes?.[0] || "",
+            color: selectedColor || product.colors?.[0]?.name || "",
+            quantity: quantity,
+            shipping: product.shipping ?? true,
+        };
+
+        triggerMagicCheckout({
+            items: [buyNowItem],
+            user,
+            onSuccess: (res) => {
+                setIsBuyingNow(false);
+                if (res.accessToken && res.user) {
+                    setSession(res.user, res.accessToken);
+                }
+                toast.success("Order placed successfully!");
+                navigate("/order-confirmation");
+            },
+            onError: () => {
+                setIsBuyingNow(false);
+            },
+            onClose: () => {
+                setIsBuyingNow(false);
+            }
+        });
     };
 
 
@@ -456,7 +500,8 @@ const ProductDetail = () => {
 
                         <button
                             onClick={handleAddToCart}
-                            className={`flex-1 py-4 rounded-2xl text-base font-bold transition-all flex items-center justify-center gap-2 ${
+                            disabled={isOutOfStock}
+                            className={`flex-1 py-4 rounded-2xl text-base font-bold transition-all flex items-center justify-center gap-2 disabled:opacity-50 ${
                                 added
                                     ? "bg-green-500 text-white"
                                     : "bg-brand text-white shadow-button hover:shadow-button-hover hover:bg-brand-light"
@@ -465,6 +510,25 @@ const ProductDetail = () => {
                             {added
                                 ? "✓ Added to Cart!"
                                 : "Add to Cart"}
+                        </button>
+
+                        <button
+                            type="button"
+                            onClick={handleBuyNow}
+                            disabled={isOutOfStock || isBuyingNow}
+                            className="flex-1 py-4 rounded-2xl text-base font-bold text-white bg-gradient-to-r from-indigo-600 via-purple-600 to-indigo-700 hover:from-indigo-700 hover:to-purple-700 shadow-button hover:shadow-button-hover transition-all flex items-center justify-center gap-2 disabled:opacity-50 cursor-pointer"
+                        >
+                            {isBuyingNow ? (
+                                <>
+                                    <span className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                                    <span>Opening Checkout...</span>
+                                </>
+                            ) : (
+                                <>
+                                    <IoFlashOutline size={20} className="animate-pulse" />
+                                    <span>Buy Now</span>
+                                </>
+                            )}
                         </button>
 
                         <button

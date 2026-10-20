@@ -92,6 +92,18 @@ export const triggerMagicCheckout = async ({
       image_url: li.image_url
     }));
 
+    const cleanPhone = user?.phone ? String(user.phone).replace(/\D/g, "").slice(-10) : "";
+    const prefill: Record<string, string> = {};
+    if (cleanPhone && cleanPhone.length === 10) {
+      prefill.contact = cleanPhone;
+    }
+    if (user?.email && typeof user.email === "string" && user.email.includes("@")) {
+      prefill.email = user.email;
+    }
+    if (user?.name && typeof user.name === "string" && user.name.trim()) {
+      prefill.name = user.name.trim();
+    }
+
     // 2. Open Razorpay Magic Modal
     const options = {
       key: razorpayKey,
@@ -104,17 +116,13 @@ export const triggerMagicCheckout = async ({
       one_click_checkout: true,
       show_coupons: true,
       line_items: clientLineItems,
-      prefill: {
-        contact: user?.phone || "",
-        email: user?.email || "",
-        name: user?.name || ""
-      },
+      prefill,
       notes: {
         userId: user?._id || "",
         cartIds: cartIds.join(","),
         couponId: couponId || "",
-        contact: user?.phone || "",
-        phone: user?.phone || "",
+        contact: cleanPhone || "",
+        phone: cleanPhone || "",
         email: user?.email || "",
         name: user?.name || "",
         magic_checkout: "true"
