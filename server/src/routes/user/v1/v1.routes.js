@@ -9,6 +9,7 @@ router.use('/wishlist', require('./wishlist.routes'))
 router.use('/common', require('./common.routes'))
 router.use('/address', require('./address.routes'))
 router.use('/orders', require('./order.routes'))
+router.use('/magic', require('./magic.routes'))
 
 
 module.exports = router

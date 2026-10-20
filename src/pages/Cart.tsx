@@ -1,21 +1,21 @@
 import { useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
-import { IoTrashOutline, IoRemoveOutline, IoAddOutline, IoArrowForward, IoBagOutline, IoTicketOutline, } from "react-icons/io5";
+import { IoTrashOutline, IoRemoveOutline, IoAddOutline, IoArrowForward, IoBagOutline, IoTicketOutline, IoFlashOutline } from "react-icons/io5";
 import { useCart } from "../context/CartContext";
 import Breadcrumb from "../components/Breadcrumb";
 import { userapiRequest } from "../services/apiService";
+import { useAuth } from "../context/AuthContext";
+import { triggerMagicCheckout } from "../utils/magicCheckout";
+import { toast } from "react-toastify";
 
 const Cart = () => {
-    const { items, removeItem, updateQuantity, subtotal, shipping, total, itemCount, setShippingCharge, shippingInfo, setShippingInfo } = useCart();
-    const shippingCartIds = items.filter(item => item.shipping).map(item => item._id);
-    const user = JSON.parse(localStorage.getItem("user") || "{}");
-    const defaultAddress = user.address?.find((a: any) => a.defaultaddress === true);
-    const addressId = defaultAddress?._id;
+    const { items, removeItem, updateQuantity, subtotal, itemCount, clearCart } = useCart();
+    const { user, setSession } = useAuth();
     const [coupon, setCoupon] = useState("");
     const [couponError, setCouponError] = useState("");
     const [couponLoading, setCouponLoading] = useState(false);
-    const [shippingError, setShippingError] = useState("");
+    const [isCheckingOut, setIsCheckingOut] = useState(false);
     const [appliedCoupon, setAppliedCoupon] = useState<{ couponId: string; discount: number; } | null>(null);
     const navigate = useNavigate();
 
@@ -62,65 +62,21 @@ const Cart = () => {
         }
     };
 
-    const checkShipping = async () => {
-        sessionStorage.removeItem('shippingCharge',);
-        if (shippingCartIds.length === 0) {
-            console.log("No shipping required");
-            setShippingCharge(0);
-            setShippingInfo(null);
-            return;
-        }
-
-        if (!addressId) {
-            setShippingError("Default address not found. Please add a default address.");
-            setShippingCharge(0);
-            setShippingInfo(null);
-            setTimeout(() => {
-                navigate("/account");
-            }, 2000);
-            return;
-        }
-
-        try {
-
-            const res = await userapiRequest("/user/api/v1/common/checkshiping", "POST", { addressId: addressId, cartIds: shippingCartIds });
-
-            if (res.success) {
-                setShippingCharge(res.shipping || 0);
-                setShippingInfo({ estimated_delivery_days: res.estimated_delivery_days, courier_name: res.courier_name });
-                sessionStorage.setItem("shippingCharge", JSON.stringify(res.shipping))
-            }
-        } catch (error:any) {
-            console.log(error);
-            setShippingError(error?.message || "Unable to calculate shipping charge.");
-            setTimeout(() => {
-                navigate("/account");
-            }, 2000);
-
-        }
-    };
-
-
     useEffect(() => {
         if (items.length > 0) {
             sessionStorage.removeItem('appliedCoupon');
             sessionStorage.removeItem('shippingCharge');
-            checkShipping();
-            handleApplyCoupon()
-        } else {
-            setShippingCharge(0);
-            setShippingInfo(null);
+            handleApplyCoupon();
         }
-
     }, [itemCount]);
 
     useEffect(() => {
         sessionStorage.removeItem('appliedCoupon');
         sessionStorage.removeItem('shippingCharge');
-    }, [])
+    }, []);
 
     const discountAmount = appliedCoupon?.discount || 0;
-    const finalTotal = total - discountAmount;
+    const finalTotal = Math.max(0, subtotal - discountAmount);
 
     if (items.length === 0)
         return (
@@ -208,16 +164,6 @@ const Cart = () => {
                                 <span className="font-semibold"> ₹{subtotal.toFixed(2)} </span>
                             </div>
 
-                            <div className="flex justify-between">
-                                <span className="text-muted">Shipping</span>
-                                <span className="font-semibold">
-                                    {shipping === 0 ? (<span className="text-green-600">FREE</span>) : (`₹${shipping.toFixed(2)}`)}
-                                </span>
-                            </div>
-                            {shippingError && (
-                                <p className="text-xs text-red-500 mt-2"> {shippingError} </p>
-                            )}
-
                             {appliedCoupon && (
                                 <div className="flex justify-between text-green-600">
                                     <span>Coupon Discount</span>
@@ -252,10 +198,48 @@ const Cart = () => {
                             <span className="font-heading font-bold text-xl text-brand"> ₹{finalTotal.toFixed(2)} </span>
                         </div>
 
-                        <Link to="/checkout"
-                            className="block w-full py-4 bg-brand text-white text-center rounded-2xl font-bold text-base shadow-button hover:bg-brand-light hover:shadow-button-hover transition-all">
-                            Proceed to Checkout
-                        </Link>
+                        <button
+                            type="button"
+                            disabled={isCheckingOut}
+                            onClick={() => {
+                                setIsCheckingOut(true);
+                                triggerMagicCheckout({
+                                    items,
+                                    couponId: appliedCoupon?.couponId,
+                                    user,
+                                    onSuccess: (res) => {
+                                        setIsCheckingOut(false);
+                                        if (res.accessToken && res.user) {
+                                            setSession(res.user, res.accessToken);
+                                        }
+                                        clearCart();
+                                        sessionStorage.removeItem("appliedCoupon");
+                                        sessionStorage.removeItem("shippingCharge");
+                                        toast.success("Order placed successfully!");
+                                        navigate("/order-confirmation");
+                                    },
+                                    onError: () => {
+                                        setIsCheckingOut(false);
+                                    },
+                                    onClose: () => {
+                                        setIsCheckingOut(false);
+                                    }
+                                });
+                            }}
+                            className="flex items-center justify-center gap-2 w-full py-4 bg-gradient-to-r from-indigo-600 via-purple-600 to-indigo-700 hover:from-indigo-700 hover:to-purple-700 text-white text-center rounded-2xl font-bold text-base shadow-button hover:shadow-button-hover transition-all cursor-pointer disabled:opacity-60"
+                        >
+                            {isCheckingOut ? (
+                                <>
+                                    <span className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                                    <span>Opening Magic Checkout...</span>
+                                </>
+                            ) : (
+                                <>
+                                    <IoFlashOutline size={20} className="animate-pulse" />
+                                    <span>Proceed to Magic Checkout ⚡</span>
+                                </>
+                            )}
+                        </button>
 
                         <Link to="/shop" className="block text-center text-sm text-muted hover:text-brand mt-4 transition-colors" >
                             ← Continue Shopping

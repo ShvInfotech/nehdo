@@ -122,7 +122,7 @@ const ProductDetail = () => {
             name: product.name,
             brand: product.brand,
             image: product.image,
-            price: product.price,
+            price: displayPrice,
             originalPrice: product.originalPrice,
             size:
                 selectedSize ||

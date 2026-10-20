@@ -4,8 +4,9 @@ import { motion } from "framer-motion";
 import { IoCheckmarkCircle, IoBagHandleOutline, IoArrowForward } from "react-icons/io5";
 
 const OrderConfirmation = () => {
-    // Generate a random order number
-    const orderNumber = `ORD-2026-${Math.floor(Math.random() * 10000).toString().padStart(4, '0')}`;
+    // Retrieve real order number or fallback
+    const savedOrderId = localStorage.getItem("orderId");
+    const orderNumber = savedOrderId || `ORD-2026-${Math.floor(Math.random() * 10000).toString().padStart(4, '0')}`;
 
     return (
         <div className="max-w-[1440px] mx-auto px-4 py-20 min-h-[80vh] flex flex-col items-center justify-center text-center">

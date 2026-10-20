@@ -10,7 +10,7 @@ import {
   IoPersonOutline,
 } from 'react-icons/io5';
 import { useAuth } from '../context/AuthContext';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { userapiRequest } from '../services/apiService';
 import { useWishlist } from '../context/WishlistContext';
 import { useCart } from '../context/CartContext';
@@ -30,6 +30,7 @@ const AuthModal = () => {
   }: any = useAuth();
 
   const navigate = useNavigate();
+  const location = useLocation();
 
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
@@ -93,9 +94,11 @@ const AuthModal = () => {
         setEmail('');
         setPassword('');
         await refreshWishlist();
-        await refreshCart()
-        toast.success(res.message)
-        navigate('/account');
+        await refreshCart();
+        toast.success(res.message);
+        if (location.pathname !== '/cart' && location.pathname !== '/checkout') {
+          navigate('/account');
+        }
       }
     } catch (err: any) {
       toast.error(err.message)
@@ -116,8 +119,10 @@ const AuthModal = () => {
         setEmail('');
         setPassword('');
         await refreshWishlist();
-        await refreshCart()
-        navigate('/account');
+        await refreshCart();
+        if (location.pathname !== '/cart' && location.pathname !== '/checkout') {
+          navigate('/account');
+        }
       }
     } catch (error: any) {
       toast.error(error.message)

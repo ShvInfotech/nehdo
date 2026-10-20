@@ -41,7 +41,39 @@ const AdminPayment = () => {
                             <label className="block text-sm font-semibold text-gray-700 mb-2">Webhook URL</label>
                             <div className="flex gap-2">
                                 <input type="text" value="https://nehdo.com/api/webhooks/razorpay" readOnly className="flex-1 px-4 py-2.5 bg-gray-100 border border-gray-200 rounded-xl text-sm text-gray-600" />
-                                <button className="px-4 py-2 bg-gray-200 text-gray-700 text-sm font-semibold rounded-xl hover:bg-gray-300">Copy</button>
+                                <button type="button" onClick={() => navigator.clipboard.writeText("https://nehdo.com/api/webhooks/razorpay")} className="px-4 py-2 bg-gray-200 text-gray-700 text-sm font-semibold rounded-xl hover:bg-gray-300">Copy</button>
+                            </div>
+                        </div>
+
+                        {/* Razorpay Magic Checkout Endpoints */}
+                        <div className="md:col-span-2 pt-2 border-t border-gray-100">
+                            <div className="flex items-center gap-2 mb-2">
+                                <span className="text-xs font-bold uppercase tracking-wider bg-indigo-100 text-indigo-700 px-2 py-0.5 rounded-md">
+                                    Magic Checkout Setup (Custom Platform)
+                                </span>
+                            </div>
+                            <div className="space-y-3 bg-gray-50 p-4 rounded-xl border border-gray-200 text-xs">
+                                <div>
+                                    <span className="font-semibold text-gray-700">1. URL for shipping info:</span>
+                                    <div className="flex gap-2 mt-1">
+                                        <input type="text" readOnly value="https://nehdo.com/user/api/v1/magic/shipping-info" className="flex-1 px-3 py-1.5 bg-white border border-gray-200 rounded-lg text-gray-600 font-mono text-xs" />
+                                        <button type="button" onClick={() => navigator.clipboard.writeText("https://nehdo.com/user/api/v1/magic/shipping-info")} className="px-3 py-1.5 bg-gray-200 hover:bg-gray-300 rounded-lg font-medium">Copy</button>
+                                    </div>
+                                </div>
+                                <div>
+                                    <span className="font-semibold text-gray-700">2. URL for get promotions:</span>
+                                    <div className="flex gap-2 mt-1">
+                                        <input type="text" readOnly value="https://nehdo.com/user/api/v1/magic/promotions" className="flex-1 px-3 py-1.5 bg-white border border-gray-200 rounded-lg text-gray-600 font-mono text-xs" />
+                                        <button type="button" onClick={() => navigator.clipboard.writeText("https://nehdo.com/user/api/v1/magic/promotions")} className="px-3 py-1.5 bg-gray-200 hover:bg-gray-300 rounded-lg font-medium">Copy</button>
+                                    </div>
+                                </div>
+                                <div>
+                                    <span className="font-semibold text-gray-700">3. URL for apply promotions:</span>
+                                    <div className="flex gap-2 mt-1">
+                                        <input type="text" readOnly value="https://nehdo.com/user/api/v1/magic/apply-promo" className="flex-1 px-3 py-1.5 bg-white border border-gray-200 rounded-lg text-gray-600 font-mono text-xs" />
+                                        <button type="button" onClick={() => navigator.clipboard.writeText("https://nehdo.com/user/api/v1/magic/apply-promo")} className="px-3 py-1.5 bg-gray-200 hover:bg-gray-300 rounded-lg font-medium">Copy</button>
+                                    </div>
+                                </div>
                             </div>
                         </div>
                     </div>

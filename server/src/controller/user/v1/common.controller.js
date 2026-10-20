@@ -1,3 +1,4 @@
+const mongoose = require("mongoose");
 const { CustomeError } = require("../../../middleware/globelError")
 const couponModel = require("../../../model/coupon.model")
 const cartModel = require("../../../model/cart.model")
@@ -189,14 +190,44 @@ exports.CheckShiping = async (req, res, next) => {
 
 exports.PaymentOrder = async (req, res, next) => {
     try {
+        let products = [];
 
-        if (!req.body?.cartIds && !req.body?.cartIds.length) {
-            return next(CustomeError(422, 'cart id required'))
+        // 1. If valid DB cartIds provided
+        if (req.body?.cartIds && Array.isArray(req.body.cartIds) && req.body.cartIds.length) {
+            const validIds = req.body.cartIds.filter(id => mongoose.isValidObjectId(id));
+            if (validIds.length) {
+                products = await cartModel.aggregate(GetCartProductPaymentOrder(validIds));
+            }
         }
-        const discount = req.body?.discount || null
-        const shippingcharge = req.body.shippingcharge || null
-        const products = await cartModel.aggregate(GetCartProductPaymentOrder(req.body.cartIds));
 
+        // 2. If guest items provided in req.body.items
+        if ((!products || products.length === 0) && req.body?.items && Array.isArray(req.body.items) && req.body.items.length) {
+            for (const item of req.body.items) {
+                if (!item.productId || !mongoose.isValidObjectId(item.productId)) continue;
+                const product = await productModel.findById(item.productId);
+                const variant = await productvariantModel.findOne({ productId: item.productId });
+                const inventory = await productinventoryModel.findOne({ productId: item.productId });
+                if (product) {
+                    products.push({
+                        _id: item._id || item.productId,
+                        productId: product._id,
+                        size: item.size,
+                        color: item.color,
+                        quantity: Number(item.quantity || 1),
+                        product,
+                        variant,
+                        inventory
+                    });
+                }
+            }
+        }
+
+        if (!products.length) {
+            return next(CustomeError(422, 'Cart items required'));
+        }
+
+        const discount = req.body?.discount || null;
+        const shippingcharge = req.body.shippingcharge || null;
         const outOfStockProducts = [];
 
         for (const cartItem of products) {
@@ -276,14 +307,27 @@ exports.PaymentOrder = async (req, res, next) => {
         }
 
         const options = {
-            amount: Math.round(totalprice * 100),
+            amount: Math.round(Math.max(1, totalprice) * 100),
             currency: 'INR',
-            receipt: `rcpt_${Date.now()}`
+            receipt: `rcpt_${Date.now()}`,
+            notes: {
+                userId: req.user?._id ? String(req.user._id) : "",
+                cartIds: Array.isArray(req.body?.cartIds) ? req.body.cartIds.join(',') : "",
+                couponId: String(req.body?.coupenId || req.body?.couponId || ''),
+                discount: String(discount || 0),
+                shippingcharge: String(shippingcharge || 0),
+                magic_checkout: 'true'
+            }
         };
 
         let order = await razorpay.orders.create(options)
 
-        return res.status(200).json({ success: true, message: 'payment order created', order })
+        return res.status(200).json({
+            success: true,
+            message: 'payment order created',
+            order,
+            key_id: process.env.RAZORPAY_API_KEY
+        })
 
     } catch (error) {
         return next(error)
@@ -297,30 +341,46 @@ exports.verifyPayment = async (req, res, next) => {
             return next(CustomeError(422, "razorpay_order_id is required"))
         }
 
-        if (!req.body?.razorpay_payment_id) {
-            return next(CustomeError(422, "razorpay_payment_id is required"))
-        }
+        const isCodOrder = Boolean(req.body?.isCod || req.body?.method === "cod");
 
-        if (!req.body?.razorpay_signature) {
-            return next(CustomeError(422, "razorpay_signature is required"))
+        if (!isCodOrder) {
+            if (!req.body?.razorpay_payment_id) {
+                return next(CustomeError(422, "razorpay_payment_id is required"))
+            }
+
+            if (!req.body?.razorpay_signature) {
+                return next(CustomeError(422, "razorpay_signature is required"))
+            }
+
+            const signature = razorpaySignature(req.body.razorpay_order_id, req.body.razorpay_payment_id)
+            if (signature !== req.body?.razorpay_signature) {
+                return res.status(409).json({ success: false, message: "payment not verify" })
+            }
         }
 
         if (!req.body?.cartIds && !req.body?.cartIds?.length) {
             return next(CustomeError(422, 'cart id required'))
         }
 
+        // Idempotency check
+        const existingOrder = await orderModel.findOne({
+            $or: [
+                { "payment.orderId": req.body.razorpay_order_id },
+                { "payment.paymentId": req.body?.razorpay_payment_id ? req.body.razorpay_payment_id : "__none__" }
+            ]
+        });
 
-
-        const signature = razorpaySignature(req.body.razorpay_order_id, req.body.razorpay_payment_id)
-        if (signature !== req.body?.razorpay_signature) {
-            return res.status(409).json({ success: false, message: "payment not verify" })
+        if (existingOrder) {
+            return res.status(200).json({ success: true, message: "order already verified", order: existingOrder })
         }
 
-
-
-
-
-        const address = await addressModel.findById(req.body?.addressId)
+        let address = null;
+        if (req.body?.addressId) {
+            address = await addressModel.findById(req.body.addressId);
+        }
+        if (!address) {
+            address = await addressModel.findOne({ userId: req.user._id, defaultaddress: true });
+        }
         const carts = await cartModel.find({ _id: { $in: req.body?.cartIds }, userId: req.user._id });
 
         const orderItems = [];
@@ -382,23 +442,31 @@ exports.verifyPayment = async (req, res, next) => {
             await productinventoryModel.findOneAndUpdate({ productId: cartItem.productId }, { $inc: { stock: -Number(cartItem.quantity) } }, { returnDocument: "after" });
         }
 
-        const shippingAddress = {
-            addressline: address.addressline,
-            landmark: address.landmark,
-            city: address.city,
-            state: address.state,
-            postalCode: address.postalCode,
-        }
+        const shippingAddress = address ? {
+            addressline: address.addressline || "",
+            landmark: address.landmark || "",
+            city: address.city || "",
+            state: address.state || "",
+            postalCode: address.postalCode || "",
+        } : (req.body.shippingAddress || {
+            addressline: "Delivery Address",
+            landmark: "",
+            city: "Surat",
+            state: "Gujarat",
+            postalCode: "395005"
+        });
 
         const subtotal = orderItems.reduce((sum, item) => sum + item.total, 0);
         const discount = req.body?.discount || 0
         const couponId = req.body?.coupenId || null
         const shipping = req.body?.shipping || 0
 
-        const totalAmount = subtotal + shipping - discount
+        const totalAmount = Math.max(0, subtotal + shipping - discount)
         const payment = {
             orderId: req.body.razorpay_order_id,
-            paymentId: req.body.razorpay_payment_id,
+            paymentId: req.body.razorpay_payment_id || (isCodOrder ? `cod_${Date.now()}` : ""),
+            method: isCodOrder ? "cod" : "online",
+            status: isCodOrder ? "pending" : "paid",
         }
 
         const orderNumber = await generateOrderNumber()

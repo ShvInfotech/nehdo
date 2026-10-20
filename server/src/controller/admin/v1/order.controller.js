@@ -396,219 +396,7 @@ exports.CanceledOrderRequest = async (req, res, next) => {
 
 
 
-exports.ShippingWebhook = async (req, res, next) => {
-    try {
-        const apiKey = req.headers["x-api-key"];
 
-        if (apiKey !== process.env.SHIPROKET_WEBHOOK_API_KEY) {
-            return res.status(401).json({
-                success: false, message: "Unauthorized webhook"
-            });
-        }
-
-        console.log("webhook call", req.body)
-
-        if (req.body.is_return == 0) {
-
-
-            const { awb, current_status, sr_order_id } = req.body;
-
-            const statusMap = {
-                "NEW": "pending",
-                "PICKUP GENERATED": "processing",
-                "OUT FOR PICKUP": "processing",
-                "PICKED UP": "shipped",
-                "IN TRANSIT": "shipped",
-                "OUT FOR DELIVERY": "out_for_delivery",
-                "DELIVERED": "delivered",
-                "CANCELED": "cancelled",
-                "CANCELLED": "cancelled"
-            };
-            const newStatus = statusMap[current_status?.toUpperCase()];
-            const generateRandom6Digit = () => {
-                return Math.floor(100000 + Math.random() * 900000);
-            };
-
-
-            const filter = awb ? { trackingNumber: awb } : { shiprocketOrderId: sr_order_id };
-            const updateorder = await orderModel.findOneAndUpdate(filter, { status: newStatus, trackingNumber: generateRandom6Digit() }, { returnDocument: 'after' }) // remove tracking number after 
-            if (newStatus === "delivered" && updateorder?.payment?.method == "cod" && updateorder?.payment?.status == "pending") {
-                await orderModel.findByIdAndUpdate(updateorder._id, { $set: { "payment.status": "paid", deliveredAt: Date.now() } });
-            } else if (newStatus === "delivered") {
-                await orderModel.findByIdAndUpdate(updateorder?._id, { $set: { deliveredAt: Date.now() } });
-            }
-            return res.json(true)
-
-        } else if (req.body.is_return == 1) {
-            let requestType = null;
-
-            if (req.body?.current_status === "RTO INITIATED" || req.body?.current_status === "RTO IN TRANSIT" || req.body?.current_status === "RTO DELIVERED" || req.body?.current_status === "RTO CANCELLED") {
-                requestType = "rto";
-
-                if (req.body?.current_status === "RTO INITIATED") {
-                    const oldorder = await orderModel.findOne({ shiprocketOrderId: req.body?.order_id })
-
-                    let paymentdata = {
-                        isRequired: oldorder.payment.status == "paid" ? true : false,
-                        provider: oldorder.payment.method == "online" ? "razorpay" : "manual",
-                        paymentId: null,
-                        refundId: null,
-                        amount: oldorder.totalAmount,
-                        status: oldorder.payment.status == "paid" ? "pending" : "not_required",
-                        refundedAt: null,
-                    }
-
-                    let orderData = {
-                        orderId: oldorder._id,
-                        userId: oldorder.userId,
-                        type: "rto",
-                        initiatedBy: "courier",
-                        reason: req.body?.undelivered_reason || "othe",
-                        status: "processing",
-                    }
-
-                    let returnOrderData = {
-                        status: req.body?.current_status,
-                        shiprocketOrderId: req.body?.sr_order_id,
-                        shiprocketShipmentId: req.body?.shipment_id || oldorder.shiprocketShipmentId,
-                        trackingNumber: req.body?.return_awb_code
-                    }
-
-
-
-                    if (oldorder.payment.method == "online") {
-
-                        let data = await RazorpayRefundApi(oldorder)
-                        paymentdata.paymentId = data.payment_id
-                        paymentdata.status = data.status == "pending" ? "processing" : data.status
-                        paymentdata.refundId = data.id
-
-                        if (data.status == "processed") {
-                            paymentdata.status = "processed"
-                            paymentdata.refundedAt = Date.now()
-                        }
-                    }
-
-
-                    const requestData = {
-                        ...orderData,
-                        refund: paymentdata,
-                        order: returnOrderData
-                    }
-
-
-                    await orderRequestsModel.create(requestData)
-                    await orderModel.findByIdAndUpdate(oldorder._id, { status: "cancelled" })
-                    return res.status(200)
-                }
-
-                if (req.body?.current_status === "RTO DELIVERED") {
-
-                    const requestorder = await orderRequestsModel.findOneAndUpdate({ "order.shiprocketOrderId": String(req.body?.sr_order_id), }, { "order.status": req.body?.current_status, completedAt: Date.now() }, { returnDocument: 'after', });
-                    return res.status(200)
-
-                }
-
-
-                const requestorder = await orderRequestsModel.findOneAndUpdate({ "order.shiprocketOrderId": String(req.body?.sr_order_id), }, { "order.status": req.body?.current_status, }, { returnDocument: 'after', });
-                return res.status(200)
-
-            } else {
-                requestType = "return";
-
-
-                if (req.body?.current_status == "RETURN DELIVERED") {
-                    const requestorder = await orderRequestsModel.findOneAndUpdate(
-                        { "order.shiprocketOrderId": String(req.body?.sr_order_id), },
-                        { "order.status": req.body?.current_status, completedAt: Date.now() },
-                        { returnDocument: 'after', });
-                    return res.status(200)
-                }
-
-                if (req.body?.current_status == "RETURN PICKED UP") {
-
-                    const requestorder = await orderRequestsModel.findOneAndUpdate(
-                        { "order.shiprocketOrderId": String(req.body?.sr_order_id), },
-                        { "order.status": req.body?.current_status },
-                        { returnDocument: 'after', });
-
-
-                    //  RETURN PUCKUP THNE ROZERPAY REFUND AFTER  
-
-                    // const order = await orderModel.findById(requestorder.orderId)
-
-                    // if (order.payment.method == "online") {
-
-                    //     let paymentdata = requestorder.refund
-                    //     let data = await RazorpayRefundApi(order)
-                    //     paymentdata.paymentId = data.payment_id
-                    //     paymentdata.status = data.status == "pending" ? "processing" : data.status
-                    //     paymentdata.refundId = data.id
-
-                    //     if (data.status == "processed") {
-                    //         paymentdata.status = "processed"
-                    //         paymentdata.refundedAt = Date.now()
-                    //     }
-
-                    //     await orderRequestsModel.findByIdAndUpdate(requestorder._id, { refund: paymentdata })
-                    // }
-
-                }
-
-                if (req.body?.current_status == "RETURN CANCELLED") {
-
-                    const requestorder = await orderRequestsModel.findOneAndUpdate(
-                        { "order.shiprocketOrderId": String(req.body?.sr_order_id), },
-                        { "order.status": req.body?.current_status },
-                        { returnDocument: 'after', });
-
-                    await orderModel.findByIdAndUpdate(requestorder.orderId, { status: "delivered" })
-                }
-
-
-                const requestorder = await orderRequestsModel.findOneAndUpdate({ "order.shiprocketOrderId": String(req.body?.sr_order_id), }, { "order.status": req.body?.current_status, }, { returnDocument: 'after', });
-                return res.status(200)
-
-            }
-
-            //             {
-            //   awb: '',
-            //   courier_name: null,
-            //   current_status: 'RETURN CANCELLED',
-            //   current_status_id: 27,
-            //   shipment_status: 'CANCELLED',
-            //   shipment_status_id: 8,
-            //   return_awb_code: '',
-            //   current_timestamp: '01 09 2026 11:11:29',
-            //   order_id: '1554644142',
-            //   sr_order_id: 1554838313,
-            //   pickup_address_id: null,
-            //   charge_info: null,
-            //   awb_assigned_date: null,
-            //   pickup_scheduled_date: null,
-            //   etd: ' ',
-            //   pickup_exception_reason: '',
-            //   undelivered_reason: '',
-            //   undelivered_reason_code: '',
-            //   pick_exception_reason_code: '',
-            //   delivery_attempt_count: 0,
-            //   pickup_attempt_count: 0,
-            //   qc_image: '',
-            //   qc_failure_reason: '',
-            //   scans: null,
-            //   date: '',
-            //   is_return: 1,
-            //   channel_id: 11593266,
-            //   pod_status: 'OTP Based Delivery',
-            //   pod: 'Available',
-            //   delivered_date: '',
-            //   shipping_method: 'SR'
-            // }
-        }
-    } catch (error) {
-        return next(error)
-    }
-}
 
 
 
@@ -640,14 +428,6 @@ exports.RefundWebhook = async (req, res, next) => {
 
         const body = Buffer.isBuffer(req.body) ? JSON.parse(req.body.toString("utf8")) : req.body;
 
-        // console.log("====================================");
-        // console.log("RAZORPAY REFUND WEBHOOK VERIFIED");
-        // console.log("====================================");
-
-        // console.log("body data", body)
-        // console.log("payment entry", body.payload.payment.entity)
-        // console.log("refund entry", body.payload.refund.entity)
-
 
         if (body.event === 'refund.created') {
 
@@ -672,6 +452,408 @@ exports.RefundWebhook = async (req, res, next) => {
         console.error("Refund Webhook Error:", error);
         return next(error);
     }
+};
+
+
+
+const mapShiprocketStatusToOrderStatus = (status, statusId) => {
+    // 1. By status ID (Shiprocket internal tracking status IDs)
+    if (statusId !== undefined && statusId !== null) {
+        const idNum = Number(statusId);
+        const idMap = {
+            1: "processing",        // AWB Assigned
+            2: "processing",        // Label Generated
+            3: "processing",        // Pickup Scheduled
+            4: "processing",        // Pickup Rescheduled
+            5: "processing",        // Pickup Error
+            13: "processing",       // Pickup Exception
+            15: "processing",       // Out for Pickup
+            21: "processing",       // Reached Pickup Hub
+
+            11: "pending",          // Pending / Unshipped
+
+            6: "shipped",           // Shipped
+            17: "shipped",          // In Transit
+            18: "shipped",          // Reached at Destination Hub
+            19: "shipped",          // Misrouted
+            22: "shipped",          // Reached Origin Hub
+            23: "shipped",          // Picked Up
+            42: "shipped",          // Reached Delivery Hub
+
+            16: "out_for_delivery", // Out for Delivery
+
+            7: "delivered",         // Delivered
+
+            8: "cancelled",         // Cancelled
+            9: "cancelled",         // RTO Initiated
+            10: "cancelled",        // RTO Delivered
+            12: "cancelled",        // Lost
+            20: "cancelled",        // RTO Acknowledged
+            43: "cancelled",        // Shipment Lost
+            44: "cancelled"         // Shipment Damaged
+        };
+
+        if (idMap[idNum]) {
+            return idMap[idNum];
+        }
+    }
+
+    // 2. By string status name
+    if (!status || typeof status !== "string") return null;
+    const normalized = status.trim().toUpperCase().replace(/[_-]/g, " ");
+
+    const textMap = {
+        // Pending
+        "NEW": "pending",
+        "PENDING": "pending",
+
+        // Accepted / Processing
+        "ACCEPTED": "accepted",
+        "CONFIRMED": "accepted",
+        "ORDER CONFIRMED": "accepted",
+        "AWB ASSIGNED": "processing",
+        "LABEL GENERATED": "processing",
+        "MANIFEST GENERATED": "processing",
+        "PICKUP GENERATED": "processing",
+        "PICKUP SCHEDULED": "processing",
+        "PICKUP QUEUED": "processing",
+        "PICKUP RESCHEDULED": "processing",
+        "OUT FOR PICKUP": "processing",
+        "PICKUP ERROR": "processing",
+        "PICKUP EXCEPTION": "processing",
+        "REACHED PICKUP HUB": "processing",
+        "PACKED": "processing",
+        "PROCESSING": "processing",
+        "READY TO SHIP": "processing",
+
+        // Shipped
+        "PICKED UP": "shipped",
+        "IN TRANSIT": "shipped",
+        "SHIPPED": "shipped",
+        "DISPATCHED": "shipped",
+        "IN FLIGHT": "shipped",
+        "REACHED AT DESTINATION": "shipped",
+        "REACHED AT DESTINATION HUB": "shipped",
+        "REACHED DESTINATION HUB": "shipped",
+        "REACHED ORIGIN HUB": "shipped",
+        "REACHED DELIVERY HUB": "shipped",
+        "TRANSIT": "shipped",
+        "MISROUTED": "shipped",
+
+        // Out for Delivery
+        "OUT FOR DELIVERY": "out_for_delivery",
+        "OUT FOR DELIVERY TODAY": "out_for_delivery",
+
+        // Delivered
+        "DELIVERED": "delivered",
+        "COMPLETED": "delivered",
+
+        // Cancelled / RTO
+        "CANCEL": "cancelled",
+        "CANCELED": "cancelled",
+        "CANCELLED": "cancelled",
+        "LOST": "cancelled",
+        "SHIPMENT LOST": "cancelled",
+        "SHIPMENT DAMAGE": "cancelled",
+        "SHIPMENT DAMAGED": "cancelled",
+        "DAMAGED": "cancelled",
+        "RTO INITIATED": "cancelled",
+        "RTO IN TRANSIT": "cancelled",
+        "RTO DELIVERED": "cancelled",
+        "RTO ACKNOWLEDGED": "cancelled",
+        "RTO CANCELLED": "cancelled",
+        "RTO": "cancelled",
+        "RETURN DELIVERED": "cancelled"
+    };
+
+    return textMap[normalized] || null;
+};
+
+const handleShippingWebhookLogic = async (req, res, next, requireAuth = true) => {
+    try {
+        if (requireAuth && process.env.SHIPROKET_WEBHOOK_API_KEY) {
+            const rawApiKey = req.headers["x-api-key"] || req.headers["x-api-token"] || req.headers["authorization"];
+            const expectedKey = process.env.SHIPROKET_WEBHOOK_API_KEY.trim();
+            const cleanApiKey = rawApiKey ? rawApiKey.replace(/^Bearer\s+/i, "").trim() : "";
+
+            if (cleanApiKey !== expectedKey) {
+                return res.status(401).json({
+                    success: false,
+                    message: "Unauthorized webhook"
+                });
+            }
+        }
+
+        const payload = Array.isArray(req.body) ? req.body[0] : req.body;
+        console.log("Shiprocket Webhook received:", JSON.stringify(payload));
+
+        if (!payload || typeof payload !== "object") {
+            return res.status(400).json({ success: false, message: "Invalid webhook payload" });
+        }
+
+        const isReturn = payload.is_return == 1 || payload.is_return === "1" || payload.is_return === true;
+
+        // Build search conditions to reliably find the matching order
+        const searchConditions = [];
+        if (payload.sr_order_id) {
+            searchConditions.push({ shiprocketOrderId: String(payload.sr_order_id) });
+        }
+        if (payload.shipment_id) {
+            searchConditions.push({ shiprocketShipmentId: String(payload.shipment_id) });
+        }
+        if (payload.order_id) {
+            searchConditions.push({ orderNumber: String(payload.order_id) });
+            searchConditions.push({ shiprocketOrderId: String(payload.order_id) });
+        }
+        if (payload.channel_order_id) {
+            searchConditions.push({ orderNumber: String(payload.channel_order_id) });
+        }
+        if (payload.awb) {
+            searchConditions.push({ trackingNumber: String(payload.awb) });
+        }
+        if (payload.return_awb_code) {
+            searchConditions.push({ trackingNumber: String(payload.return_awb_code) });
+        }
+
+        let order = null;
+        if (searchConditions.length > 0) {
+            order = await orderModel.findOne({ $or: searchConditions });
+        }
+
+        // ======================= FORWARD SHIPMENT =======================
+        if (!isReturn) {
+            if (!order) {
+                console.warn("ShippingWebhook: Forward order not found for payload:", {
+                    awb: payload.awb,
+                    sr_order_id: payload.sr_order_id,
+                    order_id: payload.order_id,
+                    shipment_id: payload.shipment_id
+                });
+                return res.status(200).json({
+                    success: false,
+                    message: "Order not found in database"
+                });
+            }
+
+            const rawStatus = payload.current_status || payload.shipment_status || payload.status;
+            const rawStatusId = payload.current_status_id || payload.shipment_status_id;
+            const newStatus = mapShiprocketStatusToOrderStatus(rawStatus, rawStatusId);
+
+            const updateFields = {};
+
+            if (newStatus) {
+                updateFields.status = newStatus;
+
+                if (newStatus === "delivered") {
+                    if (!order.deliveredAt) {
+                        updateFields.deliveredAt = new Date();
+                    }
+                    if (order.payment?.method === "cod" && order.payment?.status === "pending") {
+                        updateFields["payment.status"] = "paid";
+                    }
+                }
+            }
+
+            if (payload.awb) {
+                updateFields.trackingNumber = String(payload.awb);
+                if (!order.trackingUrl) {
+                    updateFields.trackingUrl = `https://shiprocket.co//tracking/${payload.awb}`;
+                }
+            }
+
+            if (payload.sr_order_id && !order.shiprocketOrderId) {
+                updateFields.shiprocketOrderId = String(payload.sr_order_id);
+            }
+            if (payload.shipment_id && !order.shiprocketShipmentId) {
+                updateFields.shiprocketShipmentId = String(payload.shipment_id);
+            }
+
+            const updatedOrder = await orderModel.findByIdAndUpdate(
+                order._id,
+                { $set: updateFields },
+                { returnDocument: 'after' }
+            );
+
+            return res.status(200).json({
+                success: true,
+                message: "Order shipping status updated successfully",
+                orderId: order._id,
+                orderNumber: order.orderNumber,
+                status: updatedOrder.status
+            });
+        }
+
+        // ======================= RETURN / RTO SHIPMENT =======================
+        const rawReturnStatus = (payload.current_status || payload.shipment_status || "").toString().trim().toUpperCase();
+
+        if (rawReturnStatus.startsWith("RTO")) {
+            if (rawReturnStatus === "RTO INITIATED") {
+                if (!order) {
+                    return res.status(200).json({ success: false, message: "Order not found for RTO initiation" });
+                }
+
+                let paymentdata = {
+                    isRequired: order.payment?.status === "paid",
+                    provider: order.payment?.method === "online" ? "razorpay" : "manual",
+                    paymentId: order.payment?.paymentId || null,
+                    refundId: null,
+                    amount: order.totalAmount || 0,
+                    status: order.payment?.status === "paid" ? "pending" : "not_required",
+                    refundedAt: null,
+                };
+
+                let orderData = {
+                    orderId: order._id,
+                    userId: order.userId,
+                    type: "rto",
+                    initiatedBy: "courier",
+                    reason: payload.undelivered_reason || "Courier undelivered / RTO",
+                    status: "processing",
+                };
+
+                let returnOrderData = {
+                    status: payload.current_status || "RTO INITIATED",
+                    shiprocketOrderId: String(payload.sr_order_id || order.shiprocketOrderId || ""),
+                    shiprocketShipmentId: String(payload.shipment_id || order.shiprocketShipmentId || ""),
+                    trackingNumber: payload.return_awb_code || payload.awb || order.trackingNumber
+                };
+
+                if (order.payment?.method === "online" && order.payment?.status === "paid") {
+                    try {
+                        let refundRes = await RazorpayRefundApi(order);
+                        paymentdata.paymentId = refundRes.payment_id;
+                        paymentdata.status = refundRes.status === "pending" ? "processing" : refundRes.status;
+                        paymentdata.refundId = refundRes.id;
+
+                        if (refundRes.status === "processed") {
+                            paymentdata.status = "processed";
+                            paymentdata.refundedAt = Date.now();
+                        }
+                    } catch (refundError) {
+                        console.error("Razorpay RTO Refund Error:", refundError);
+                    }
+                }
+
+                const requestData = {
+                    ...orderData,
+                    refund: paymentdata,
+                    order: returnOrderData
+                };
+
+                await orderRequestsModel.create(requestData);
+                await orderModel.findByIdAndUpdate(order._id, { status: "cancelled" });
+                return res.status(200).json({ success: true, message: "RTO Initiated and order cancelled" });
+            }
+
+            const rtoFilter = {
+                $or: [
+                    ...(payload.sr_order_id ? [{ "order.shiprocketOrderId": String(payload.sr_order_id) }] : []),
+                    ...(payload.order_id ? [{ "order.shiprocketOrderId": String(payload.order_id) }] : []),
+                    ...(order ? [{ orderId: order._id }] : [])
+                ]
+            };
+
+            if (rawReturnStatus === "RTO DELIVERED") {
+                await orderRequestsModel.findOneAndUpdate(
+                    rtoFilter,
+                    { "order.status": payload.current_status, completedAt: Date.now() },
+                    { returnDocument: 'after' }
+                );
+                return res.status(200).json({ success: true, message: "RTO Delivered" });
+            }
+
+            await orderRequestsModel.findOneAndUpdate(
+                rtoFilter,
+                { "order.status": payload.current_status },
+                { returnDocument: 'after' }
+            );
+            return res.status(200).json({ success: true, message: "RTO status updated" });
+        } else {
+            // Return process
+            const returnFilter = {
+                $or: [
+                    ...(payload.sr_order_id ? [{ "order.shiprocketOrderId": String(payload.sr_order_id) }] : []),
+                    ...(payload.order_id ? [{ "order.shiprocketOrderId": String(payload.order_id) }] : []),
+                    ...(order ? [{ orderId: order._id }] : [])
+                ]
+            };
+
+            if (rawReturnStatus === "RETURN DELIVERED") {
+                await orderRequestsModel.findOneAndUpdate(
+                    returnFilter,
+                    { "order.status": payload.current_status, completedAt: Date.now() },
+                    { returnDocument: 'after' }
+                );
+                return res.status(200).json({ success: true, message: "Return Delivered" });
+            }
+
+            if (rawReturnStatus === "RETURN PICKED UP") {
+                const requestorder = await orderRequestsModel.findOneAndUpdate(
+                    returnFilter,
+                    { "order.status": payload.current_status },
+                    { returnDocument: 'after' }
+                );
+
+                if (requestorder) {
+                    const orderDoc = await orderModel.findById(requestorder.orderId);
+
+                    if (orderDoc && orderDoc.payment?.method === "online" && requestorder.refund?.status !== "processed") {
+                        try {
+                            const refundData = await RazorpayRefundApi(orderDoc);
+                            const paymentdata = {
+                                ...(requestorder.refund?.toObject ? requestorder.refund.toObject() : requestorder.refund),
+                                paymentId: refundData.payment_id || orderDoc.payment?.paymentId,
+                                status: refundData.status === "pending" ? "processing" : (refundData.status || "processing"),
+                                refundId: refundData.id
+                            };
+
+                            if (refundData.status === "processed") {
+                                paymentdata.status = "processed";
+                                paymentdata.refundedAt = Date.now();
+                                await orderModel.findByIdAndUpdate(orderDoc._id, { "payment.status": "refunded" });
+                            }
+
+                            await orderRequestsModel.findByIdAndUpdate(requestorder._id, { refund: paymentdata });
+                        } catch (refundErr) {
+                            console.error("Razorpay Return Pickup Refund Error:", refundErr);
+                        }
+                    }
+                }
+
+                return res.status(200).json({ success: true, message: "Return Picked Up and refund processed" });
+            }
+
+            if (rawReturnStatus === "RETURN CANCELLED") {
+                const requestorder = await orderRequestsModel.findOneAndUpdate(
+                    returnFilter,
+                    { "order.status": payload.current_status },
+                    { returnDocument: 'after' }
+                );
+                if (requestorder?.orderId) {
+                    await orderModel.findByIdAndUpdate(requestorder.orderId, { status: "delivered" });
+                }
+                return res.status(200).json({ success: true, message: "Return Cancelled" });
+            }
+
+            await orderRequestsModel.findOneAndUpdate(
+                returnFilter,
+                { "order.status": payload.current_status },
+                { returnDocument: 'after' }
+            );
+            return res.status(200).json({ success: true, message: "Return status updated" });
+        }
+    } catch (error) {
+        console.error("ShippingWebhook Error:", error);
+        return next(error);
+    }
+};
+
+exports.ShippingWebhook = async (req, res, next) => {
+    return handleShippingWebhookLogic(req, res, next, true);
+};
+
+exports.ShippingWebhookTest = async (req, res, next) => {
+    return handleShippingWebhookLogic(req, res, next, false);
 };
 
 

@@ -1,355 +1,331 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useRef } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
-import { IoCheckmarkCircle, IoCardOutline, IoLocationOutline, IoLockClosedOutline, IoCloseOutline, } from "react-icons/io5";
+import {
+    IoFlashOutline,
+    IoShieldCheckmarkOutline,
+    IoLockClosedOutline,
+    IoCloseOutline,
+    IoSparklesOutline,
+    IoBagHandleOutline,
+    IoArrowForward,
+    IoCheckmarkDoneCircle
+} from "react-icons/io5";
 import { useCart } from "../context/CartContext";
 import { useAuth } from "../context/AuthContext";
 import Breadcrumb from "../components/Breadcrumb";
 import { userapiRequest } from "../services/apiService";
 import { toast } from "react-toastify";
+
 declare global {
     interface Window {
         Razorpay?: any;
     }
 }
-const Checkout = () => {
+
+const Checkout: React.FC = () => {
     const { items, subtotal, shipping, clearCart, setShippingCharge } = useCart();
-    const [step, setStep] = useState(1);
-    const [discount, setDiscount] = useState(0);
-    const [CoupenId, setCoupenId] = useState("");
-    const [errorMessage, setErrorMessage] = useState("");
-    const [isProcessing, setIsProcessing] = useState(false);
-    const [paymentMethod, setPaymentMethod] = useState<"upi" | "card" | "netbanking" | "cod">("upi");
-
+    const { user, setSession } = useAuth();
     const navigate = useNavigate();
-    const { user } = useAuth();
 
-    const defaultAddress = user?.address?.find((address) => address.defaultaddress === true);
-    const nameParts = user?.name?.trim().split(" ") || [];
-    const firstName = nameParts[0] || "";
-    const lastName = nameParts.slice(1).join(" ") || "";
-    const storedCoupon: any = sessionStorage.getItem("appliedCoupon");
-    const appliedCoupon = JSON.parse(storedCoupon);
+    const [discount, setDiscount] = useState<number>(0);
+    const [couponId, setCouponId] = useState<string>("");
+    const [errorMessage, setErrorMessage] = useState<string>("");
+    const [isProcessing, setIsProcessing] = useState<boolean>(false);
+    const autoLaunchTriggered = useRef<boolean>(false);
 
-    const loadRazorpay = () => {
-        return new Promise<boolean>((resolve) => {
-            if (window.Razorpay) {
-                resolve(true);
-                return;
-            }
-
-            const script = document.createElement("script");
-
-            script.src =
-                "https://checkout.razorpay.com/v1/checkout.js";
-
-            script.onload = () => resolve(true);
-
-            script.onerror = () => resolve(false);
-
-            document.body.appendChild(script);
-        });
-    };
-
-    const getErrorMessage = (error: any) => {
-        if (error?.response?.data) {
-            const data = error.response.data;
-            if (typeof data?.message === "string") {
-                return data.message;
-            }
-            if (typeof data?.error === "string") {
-                return data.error;
-            }
-            if (typeof data?.errors === "string") {
-                return data.errors;
-            }
-            if (data?.errors && typeof data.errors === "object") {
-                const messages = Object.values(data.errors).flat().filter(Boolean);
-                if (messages.length > 0) {
-                    return messages.join(", ");
-                }
-            }
-        }
-
-        if (typeof error?.message === "string") {
-            return error.message;
-        }
-        if (typeof error === "string") {
-            return error;
-        }
-        return "Something went wrong. Please try again.";
-    };
-
-    const handlePlaceOrder = (e: React.FormEvent) => {
-        e.preventDefault();
-
-        setErrorMessage("");
-        setIsProcessing(true);
-
-        setTimeout(() => {
-            clearCart();
-
-            sessionStorage.removeItem("shippingCharge");
-            sessionStorage.removeItem("appliedCoupon");
-
-            navigate("/order-confirmation");
-
-            setIsProcessing(false);
-        }, 2000);
-    };
-
-    const handleCODClick = async () => {
-        const shippingCartIds = items.filter((item) => item.shipping === true).map((item) => item._id).filter(Boolean);
-        if (shippingCartIds.length === 0) {
-            setShippingCharge(0);
-            return;
-        }
-        if (!defaultAddress) {
-            console.log("Default address not found. Please add a default address.");
-        }
-        const res = await userapiRequest("/user/api/v1/common/checkshiping", "POST", { addressId: defaultAddress?._id, cartIds: shippingCartIds, cod: true });
-
-        setShippingCharge(res.shipping)
-        if (appliedCoupon?.type == "shipping") {
-            setDiscount(Number(res.shipping))
-        }
-    };
-
-    const handleOnlinePaymentClick = async () => {
-        const shippingCartIds = items.filter((item) => item.shipping === true).map((item) => item._id).filter(Boolean);
-        if (shippingCartIds.length === 0) {
-            setShippingCharge(0);
-            return;
-        }
-
-        if (!defaultAddress) {
-            console.log("Default address not found. Please add a default address.");
-        }
-        const res = await userapiRequest("/user/api/v1/common/checkshiping", "POST", { addressId: defaultAddress?._id, cartIds: shippingCartIds, cod: false });
-        setShippingCharge(res.shipping)
-        if (appliedCoupon?.type == "shipping") {
-            setDiscount(Number(res.shipping))
-        }
-    };
-
-    const handleRazorpayPayment = async () => {
-        try {
-            // Old error clear
-            setErrorMessage("");
-            setIsProcessing(true);
-
-            // Address check
-            if (!defaultAddress?._id) {
-                toast.warning("Please add and select a default shipping address.")
-
-                setErrorMessage("Please add and select a default shipping address.");
-                setIsProcessing(false);
-                setStep(1);
-                return;
-            }
-            const cartIds = items.map((item) => item._id).filter(Boolean);
-            if (!cartIds.length) {
-                setErrorMessage("Cart items not found.");
-                setIsProcessing(false);
-                return;
-            }
-
-            // 1. Load Razorpay SDK
-            const sdkLoaded = await loadRazorpay();
-
-            if (!sdkLoaded) {
-                setErrorMessage("Razorpay SDK failed to load. Please try again.");
-                setIsProcessing(false);
-                return;
-            }
-            const result = await userapiRequest("/user/api/v1/common/paymentOrder", "POST", { cartIds, discount, shippingcharge: shipping, });
-
-            if (result?.success === false) {
-                toast.error(result?.message || "Unable to create payment order.")
-                setIsProcessing(false);
-                return;
-            }
-            if (!result?.order?.id) {
-                setErrorMessage(result?.message || "Razorpay order ID not found.");
-                setIsProcessing(false);
-                return;
-            }
-            setIsProcessing(false);
-
-            const options = {
-                key: "rzp_test_TVSL7tlw4NS59L",
-                amount: result.order.amount,
-                currency: result.order.currency,
-                order_id: result.order.id,
-                name: "NEHDO",
-                description: "Nehdo Order Payment",
-                prefill: { name: user?.name || "", email: user?.email || "", contact: user?.phone || "", },
-                theme: { color: "#000000", },
-
-                handler: async function (response: any) {
-                    try {
-                        setErrorMessage("");
-                        setIsProcessing(true);
-
-
-                        const verifyResponse = await userapiRequest("/user/api/v1/common/verifypayment", "POST", {
-                            razorpay_order_id: response.razorpay_order_id,
-                            razorpay_payment_id: response.razorpay_payment_id,
-                            razorpay_signature: response.razorpay_signature,
-                            coupenId: CoupenId,
-                            addressId: defaultAddress._id,
-                            cartIds,
-                            shipping,
-                            discount,
-                        });
-
-                        if (verifyResponse?.success === false) {
-                            toast.error(verifyResponse?.message|| "Payment verification failed.")
-                            setIsProcessing(false);
-                            return;
-                        }
-
-                        if (verifyResponse?.success) {
-                            if (verifyResponse?.order?.orderNumber) {
-                                localStorage.setItem("orderId", verifyResponse.order.orderNumber);
-                            }
-                            toast.success(verifyResponse.message)
-                            setIsProcessing(false);
-                            setStep(3);
-                        } else {
-                            toast.error(verifyResponse?.message || "Payment verification failed.")
-                            setIsProcessing(false);
-                        }
-                    } catch (error: any) {
-                            toast.error(getErrorMessage(error))
-
-                        setIsProcessing(false);
-                    }
-                },
-            };
-            const razorpay = new window.Razorpay(options);
-            razorpay.on("payment.failed", function (response: any) {
-                toast.error(response?.error?.description || response?.error?.reason || "Payment failed. Please try again.")
-                setIsProcessing(false);
-            }
-            );
-            razorpay.open();
-        } catch (error: any) {
-            toast.error(getErrorMessage(error))
-            setErrorMessage(getErrorMessage(error));
-            setIsProcessing(false);
-        }
-    };
-
-    const handleCODOrder = async () => {
-        setIsProcessing(true);
-        const cartIds = items.map((item) => item._id).filter(Boolean);
-        if (!cartIds.length) {
-            setErrorMessage("Cart items not found.");
-            setIsProcessing(false);
-            return;
-        }
-
-        const verifyResponse = await userapiRequest("/user/api/v1/common/cod-order", "POST", { coupenId: CoupenId, addressId: defaultAddress._id, cartIds, shipping, discount, });
-
-        if (verifyResponse?.success) {
-            if (verifyResponse?.order?.orderNumber) {
-                toast.success(verifyResponse.message)
-                localStorage.setItem("orderId", verifyResponse.order.orderNumber);
-            }
-            setIsProcessing(false);
-            setErrorMessage("")
-            setStep(3);
-        } else {
-            toast.error(verifyResponse?.message);
-            setIsProcessing(false);
-        }
-    };
-
-
-    const checkshipingpagerender = async () => {
-        try {
-            const shippingCartIds = items.filter((item) => item.shipping === true).map((item) => item._id).filter(Boolean);
-            if (shippingCartIds.length === 0) {
-                setShippingCharge(0);
-                return;
-            }
-
-            if (!defaultAddress) {
-                setErrorMessage("Default address not found. Please add a default address.");
-            }
-            const res = await userapiRequest("/user/api/v1/common/checkshiping", "POST", { addressId: defaultAddress?._id, cartIds: shippingCartIds, cod: false });
-            setShippingCharge(res.shipping)
-            if (appliedCoupon?.type == "shipping") {
-                setDiscount(Number(res.shipping))
-            }
-        } catch (error) {
-            setErrorMessage(getErrorMessage(error))
-        }
-    }
-    useEffect(() => {
-        checkshipingpagerender()
-    }, [])
-
+    // Load applied coupons or shipping charges from session storage if present
     useEffect(() => {
         const storedShipping = sessionStorage.getItem("shippingCharge");
         if (storedShipping !== null) {
             setShippingCharge(Number(storedShipping));
         }
+
         const storedCoupon = sessionStorage.getItem("appliedCoupon");
         if (storedCoupon) {
             try {
-                const appliedCoupon = JSON.parse(storedCoupon);
-                if (appliedCoupon?.discount) {
-                    setDiscount(Number(appliedCoupon.discount));
-                    setCoupenId(appliedCoupon.couponId || "");
+                const parsed = JSON.parse(storedCoupon);
+                if (parsed?.discount) {
+                    setDiscount(Number(parsed.discount));
                 }
-
-                if (appliedCoupon?.type == "shipping") {
-                    setDiscount(Number(storedShipping))
+                if (parsed?.couponId) {
+                    setCouponId(parsed.couponId);
                 }
-            } catch (error) {
-                console.error("Coupon parse error:", error);
+            } catch (err) {
+                console.error("Coupon parse error:", err);
             }
         }
     }, [setShippingCharge]);
 
-    const finalTotal = subtotal - discount + shipping;
+    // Load Razorpay Magic Checkout SDK script
+    const loadRazorpay = (): Promise<boolean> => {
+        return new Promise<boolean>((resolve) => {
+            if (window.Razorpay) {
+                resolve(true);
+                return;
+            }
+            const script = document.createElement("script");
+            script.src = "https://checkout.razorpay.com/v1/magic-checkout.js";
+            script.onload = () => resolve(true);
+            script.onerror = () => resolve(false);
+            document.body.appendChild(script);
+        });
+    };
+
+    const getErrorMessage = (error: any): string => {
+        if (error?.response?.data) {
+            const data = error.response.data;
+            if (typeof data?.message === "string") return data.message;
+            if (typeof data?.error === "string") return data.error;
+            if (typeof data?.errors === "string") return data.errors;
+        }
+        if (typeof error?.message === "string") return error.message;
+        if (typeof error === "string") return error;
+        return "Failed to complete checkout. Please try again.";
+    };
+
+    // ⚡ 1-Click Razorpay Magic Checkout
+    const handleRazorpayMagicCheckout = async () => {
+        try {
+            setErrorMessage("");
+            setIsProcessing(true);
+
+            if (!items.length) {
+                toast.error("Cart is empty.");
+                setIsProcessing(false);
+                return;
+            }
+
+            const sdkLoaded = await loadRazorpay();
+            if (!sdkLoaded) {
+                toast.error("Razorpay SDK failed to load. Please check your internet connection.");
+                setIsProcessing(false);
+                return;
+            }
+
+            // Extract cart IDs or item payload for guest items
+            const cartIds = items.map((item) => item._id).filter(Boolean);
+            const itemsPayload = items.map((item) => ({
+                productId: (item.productId as any)?._id || item.productId || item._id,
+                size: item.size,
+                color: item.color,
+                quantity: item.quantity,
+                price: item.price
+            }));
+
+            // Create Razorpay payment order configured for Magic Checkout
+            const result = await userapiRequest("/api/v1/magic-checkout/create-order", "POST", {
+                cartIds,
+                items: itemsPayload,
+                discount,
+                shippingcharge: shipping,
+                couponId: couponId,
+                magic: true,
+                contact: user?.phone || "",
+                email: user?.email || "",
+                name: user?.name || ""
+            });
+
+            if (result?.success === false || !result?.order?.id) {
+                toast.error(result?.message || "Unable to initiate Magic Checkout.");
+                setIsProcessing(false);
+                return;
+            }
+
+            const razorpayKey = result.key || result.key_id || "rzp_live_TlHEi6zwAq3CaX";
+
+            const clientLineItems = (result?.line_items || []).map((li: any) => ({
+                item_id: li.variant_id || li.sku,
+                variant_id: li.variant_id || li.sku,
+                name: li.name,
+                amount: li.price,
+                price: li.price,
+                offer_price: li.offer_price || li.price,
+                currency: "INR",
+                quantity: li.quantity,
+                sku: li.sku,
+                image: li.image_url,
+                image_url: li.image_url
+            }));
+
+            const options = {
+                key: razorpayKey,
+                amount: result.order.amount,
+                currency: result.order.currency,
+                order_id: result.order.id,
+                name: "NEHDO",
+                description: "1-Click Magic Checkout (Prepaid / COD)",
+                image: `${window.location.origin}/logo.png`,
+                one_click_checkout: true, // Activates Magic Checkout UI
+                show_coupons: true,
+                line_items: clientLineItems,
+                prefill: {
+                    contact: user?.phone || "",
+                    email: user?.email || "",
+                    name: user?.name || ""
+                },
+                notes: {
+                    userId: user?._id || "",
+                    cartIds: cartIds.join(","),
+                    couponId: couponId || "",
+                    discount: String(discount || 0),
+                    shippingcharge: String(shipping || 0),
+                    contact: user?.phone || "",
+                    phone: user?.phone || "",
+                    email: user?.email || "",
+                    name: user?.name || "",
+                    magic_checkout: "true"
+                },
+                theme: { color: "#000000" },
+                modal: {
+                    ondismiss: function () {
+                        setIsProcessing(false);
+                    }
+                },
+                handler: async function (response: any) {
+                    try {
+                        setErrorMessage("");
+                        setIsProcessing(true);
+
+                        const isCod = Boolean(
+                            response?.method === "cod" ||
+                            !response?.razorpay_signature
+                        );
+
+                        // Call Magic Order Completion API
+                        const completeRes = await userapiRequest("/api/v1/magic-checkout/verify-order", "POST", {
+                            razorpay_order_id: response.razorpay_order_id,
+                            razorpay_payment_id: response.razorpay_payment_id || (isCod ? `cod_${Date.now()}` : ""),
+                            razorpay_signature: response.razorpay_signature || "",
+                            isCod,
+                            method: isCod ? "cod" : "online",
+                            couponId: couponId,
+                            cartIds,
+                            items: itemsPayload,
+                            shipping,
+                            discount,
+                            contact: response?.contact || user?.phone || "",
+                            email: response?.email || user?.email || "",
+                            customer: {
+                                contact: response?.contact || user?.phone || "",
+                                email: response?.email || user?.email || "",
+                                name: response?.name || user?.name || ""
+                            }
+                        });
+
+                        if (completeRes?.success) {
+                            // Automatically log user in if token and user details are returned
+                            if (completeRes?.accessToken && completeRes?.user) {
+                                setSession(completeRes.user, completeRes.accessToken);
+                            }
+
+                            if (completeRes?.order?.orderNumber) {
+                                localStorage.setItem("orderId", completeRes.order.orderNumber);
+                            }
+
+                            toast.success(completeRes.message || "Order placed successfully!");
+                            clearCart();
+                            sessionStorage.removeItem("shippingCharge");
+                            sessionStorage.removeItem("appliedCoupon");
+                            setIsProcessing(false);
+                            navigate("/order-confirmation");
+                        } else {
+                            toast.error(completeRes?.message || "Order completion failed.");
+                            setIsProcessing(false);
+                        }
+                    } catch (error: any) {
+                        toast.error(getErrorMessage(error));
+                        setErrorMessage(getErrorMessage(error));
+                        setIsProcessing(false);
+                    }
+                }
+            };
+
+            const razorpay = new window.Razorpay(options);
+            razorpay.on("payment.failed", function (response: any) {
+                toast.error(response?.error?.description || response?.error?.reason || "Payment failed. Please try again.");
+                setIsProcessing(false);
+            });
+
+            razorpay.open();
+            setIsProcessing(false);
+        } catch (error: any) {
+            toast.error(getErrorMessage(error));
+            setErrorMessage(getErrorMessage(error));
+            setIsProcessing(false);
+        }
+    };
+
+    // Auto-launch Magic Checkout once if items exist
+    useEffect(() => {
+        if (!autoLaunchTriggered.current && items.length > 0) {
+            autoLaunchTriggered.current = true;
+            // Short timeout to let the page mount cleanly
+            const timer = setTimeout(() => {
+                handleRazorpayMagicCheckout();
+            }, 500);
+            return () => clearTimeout(timer);
+        }
+    }, [items.length]);
+
+    const finalTotal = Math.max(0, subtotal - discount + shipping);
 
     if (items.length === 0 && !isProcessing) {
         return (
-            <div className="max-w-[1440px] mx-auto px-4 py-20 text-center">
-                <h2 className="font-heading text-2xl font-bold mb-4"> Your cart is empty </h2>
-                <Link to="/shop" className="text-brand font-semibold hover:underline" > Return to Shop </Link>
+            <div className="max-w-[1440px] mx-auto px-4 py-24 text-center">
+                <div className="w-20 h-20 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-6 text-gray-400">
+                    <IoBagHandleOutline size={36} />
+                </div>
+                <h2 className="font-heading text-3xl font-bold mb-3 text-gray-900">Your Cart is Empty</h2>
+                <p className="text-gray-500 mb-8 max-w-md mx-auto">
+                    Looks like you haven't added any items to your cart yet. Explore our latest collection!
+                </p>
+                <Link
+                    to="/shop"
+                    className="inline-flex items-center gap-2 px-8 py-4 bg-brand text-white font-bold rounded-2xl shadow-button hover:bg-brand-light transition-all"
+                >
+                    Continue Shopping <IoArrowForward size={18} />
+                </Link>
             </div>
         );
     }
 
     return (
-        <div className="bg-surface-warm min-h-screen pb-20">
-
-            {/* ================= HEADER ================= */}
+        <div className="bg-surface-warm min-h-screen pb-24">
+            {/* Header */}
             <div className="bg-white border-b border-gray-200">
                 <div className="max-w-[1440px] mx-auto px-4 md:px-8 lg:px-16 py-4 flex items-center justify-between">
-                    <Link to="/" className="font-heading text-xl font-bold text-brand" > NEHDO </Link>
-                    <div className="flex items-center gap-1 text-sm text-green-600 font-semibold">
-                        <IoLockClosedOutline size={16} />Secure Checkout
+                    <Link to="/" className="font-heading text-2xl font-bold text-brand tracking-tight">
+                        NEHDO
+                    </Link>
+                    <div className="flex items-center gap-2 text-sm text-green-700 bg-green-50 px-3 py-1.5 rounded-full font-semibold border border-green-200">
+                        <IoLockClosedOutline size={16} />
+                        <span>100% Secure Checkout</span>
                     </div>
                 </div>
             </div>
 
             <div className="max-w-[1200px] mx-auto px-4 md:px-8 lg:px-16 py-8">
                 <div className="mb-6">
-                    <Breadcrumb items={[{ label: "Cart", href: "/cart", }, { label: "Checkout", },]} />
+                    <Breadcrumb items={[{ label: "Cart", href: "/cart" }, { label: "Magic Checkout" }]} />
                 </div>
 
+                {/* Error Banner */}
                 <AnimatePresence>
                     {errorMessage && (
-                        <motion.div initial={{ opacity: 0, y: -10, }} animate={{ opacity: 1, y: 0, }} exit={{ opacity: 0, y: -10, }} className="mb-6 max-w-[700px] mx-auto">
+                        <motion.div
+                            initial={{ opacity: 0, y: -10 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            exit={{ opacity: 0, y: -10 }}
+                            className="mb-6 max-w-full mx-auto"
+                        >
                             <div className="flex items-center justify-between gap-4 px-4 py-3 bg-red-50 border border-red-200 rounded-xl text-red-600">
                                 <p className="text-sm font-medium">{errorMessage}</p>
-
-                                <button type="button" onClick={() => setErrorMessage("")} className="flex-shrink-0 hover:opacity-70" >
+                                <button
+                                    type="button"
+                                    onClick={() => setErrorMessage("")}
+                                    className="flex-shrink-0 hover:opacity-70"
+                                >
                                     <IoCloseOutline size={20} />
                                 </button>
                             </div>
@@ -357,251 +333,165 @@ const Checkout = () => {
                     )}
                 </AnimatePresence>
 
-
-
-                <div className="flex items-center justify-between max-w-lg mx-auto mb-10 relative">
-                    <div className="absolute top-1/2 left-0 right-0 h-1 bg-gray-200 -translate-y-1/2 z-0" />
-                    <div className="absolute top-1/2 left-0 h-1 bg-brand -translate-y-1/2 z-0 transition-all duration-500"
-                        style={{ width: step === 1 ? "0%" : step === 2 ? "50%" : "100%", }} />
-
-                    {[1, 2, 3].map((s) => (
-                        <div key={s} className={`relative z-10 w-8 h-8 rounded-full flex items-center justify-center font-bold text-sm transition-colors ${step >= s ? "bg-brand text-white" : "bg-gray-200 text-gray-500"}`} >
-                            {step > s ? (<IoCheckmarkCircle size={18} />) : (s)}
-                        </div>
-                    ))}
-                </div>
-
-                <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-12">
+                <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-12 items-start">
+                    {/* Left Column: Magic Checkout Card */}
                     <div className="lg:col-span-7 space-y-6">
-                        <AnimatePresence mode="wait">
-                            {step === 1 && (
-                                <motion.form key="s1" initial={{ opacity: 0, x: -20, }} animate={{ opacity: 1, x: 0, }} exit={{ opacity: 0, x: -20, }}
-                                    onSubmit={(e) => {
-                                        e.preventDefault();
-                                        setErrorMessage("");
-                                        if (!defaultAddress?._id) {
-                                            setErrorMessage("Please add a default shipping address.");
-                                            return;
-                                        }
-                                        setStep(2);
-                                    }} className="bg-white rounded-3xl p-6 md:p-8 shadow-card">
-                                    <div className="flex items-center gap-3 mb-6">
-                                        <IoLocationOutline size={24} className="text-brand" />
-                                        <h2 className="font-heading text-xl font-bold">Shipping Address</h2>
+                        <div className="bg-white rounded-3xl p-6 md:p-8 shadow-card border border-gray-100">
+                            <div className="flex items-center justify-between mb-6">
+                                <div className="flex items-center gap-3">
+                                    <div className="w-12 h-12 rounded-2xl bg-gradient-to-r from-indigo-600 via-purple-600 to-indigo-700 flex items-center justify-center text-white shadow-md">
+                                        <IoFlashOutline size={26} className="animate-pulse" />
                                     </div>
-                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
-                                        <input type="text" value={firstName} readOnly className="w-full px-4 py-3 rounded-xl border border-gray-200 bg-gray-50 cursor-not-allowed" />
-                                        <input type="text" value={lastName} readOnly className="w-full px-4 py-3 rounded-xl border border-gray-200 bg-gray-50 cursor-not-allowed" />
-                                    </div>
-                                    <input type="email" value={user?.email || ""} readOnly className="w-full px-4 py-3 rounded-xl border border-gray-200 bg-gray-50 cursor-not-allowed mb-4" />
-                                    <input type="text" value={defaultAddress ? `${defaultAddress.addressline || ""} ${defaultAddress.landmark || ""}`.trim() : ""} readOnly className="w-full px-4 py-3 rounded-xl border border-gray-200 bg-gray-50 cursor-not-allowed mb-4" />
-                                    <div className="grid grid-cols-2 gap-4 mb-6">
-                                        <input type="text" value={defaultAddress?.city || ""} readOnly className="w-full px-4 py-3 rounded-xl border border-gray-200 bg-gray-50 cursor-not-allowed" />
-                                        <input type="text" value={defaultAddress?.postalCode || ""} readOnly className="w-full px-4 py-3 rounded-xl border border-gray-200 bg-gray-50 cursor-not-allowed" />
-                                    </div>
-
-                                    <button type="submit" className="w-full py-4 bg-brand text-white font-bold rounded-xl shadow-button hover:bg-brand-light transition-all" >
-                                        Continue to Payment
-                                    </button>
-
-                                </motion.form>
-                            )}
-
-                            {step === 2 && (
-                                <motion.div key="s2" initial={{ opacity: 0, x: 20, }} animate={{ opacity: 1, x: 0, }} exit={{ opacity: 0, x: 20, }} className="bg-white rounded-3xl p-6 md:p-8 shadow-card" >
-
-                                    <div className="flex items-center gap-3 mb-6">
-                                        <IoCardOutline size={24} className="text-brand" />
-                                        <h2 className="font-heading text-xl font-bold">Payment Method</h2>
-                                    </div>
-                                    <div className="space-y-3 mb-6">
-
-                                        <button type="button" onClick={() => { setPaymentMethod("upi"); handleOnlinePaymentClick(); }}
-                                            className={`w-full p-4 rounded-xl border-2 flex items-center justify-between transition-all ${paymentMethod === "upi" ? "border-brand bg-brand/5" : "border-gray-200"}`} >
-                                            <div className="flex items-center gap-4">
-                                                <div className="w-10 h-10 rounded-lg bg-gray-100 flex items-center justify-center font-bold">UPI</div>
-                                                <div className="text-left"><p className="font-semibold text-gray-900">UPI</p>
-                                                    <p className="text-xs text-muted">Google Pay, PhonePe, Paytm & more</p>
-                                                </div>
-                                            </div>
-                                            <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center ${paymentMethod === "upi" ? "border-brand" : "border-gray-300"}`} >
-                                                {paymentMethod === "upi" && (<div className="w-2.5 h-2.5 rounded-full bg-brand" />)}
-                                            </div>
-                                        </button>
-
-                                        <button type="button" onClick={() => { setPaymentMethod("card"); handleOnlinePaymentClick(); }}
-                                            className={`w-full p-4 rounded-xl border-2 flex items-center justify-between transition-all ${paymentMethod === "card" ? "border-brand bg-brand/5" : "border-gray-200"}`} >
-                                            <div className="flex items-center gap-4">
-                                                <div className="w-10 h-10 rounded-lg bg-gray-100 flex items-center justify-center">
-                                                    <IoCardOutline size={22} />
-                                                </div>
-                                                <div className="text-left">
-                                                    <p className="font-semibold text-gray-900"> Credit / Debit Card </p>
-                                                    <p className="text-xs text-muted"> Visa, Mastercard, RuPay & more </p>
-                                                </div>
-
-                                            </div>
-
-                                            <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center ${paymentMethod === "card" ? "border-brand" : "border-gray-300"}`} >
-                                                {paymentMethod === "card" && (<div className="w-2.5 h-2.5 rounded-full bg-brand" />)}
-                                            </div>
-
-                                        </button>
-
-                                        <button type="button" onClick={() => { setPaymentMethod("netbanking"); handleOnlinePaymentClick(); }}
-                                            className={`w-full p-4 rounded-xl border-2 flex items-center justify-between transition-all ${paymentMethod === "netbanking" ? "border-brand bg-brand/5" : "border-gray-200"}`} >
-                                            <div className="flex items-center gap-4">
-                                                <div className="w-10 h-10 rounded-lg bg-gray-100 flex items-center justify-center">
-                                                    🏦
-                                                </div>
-
-                                                <div className="text-left">
-                                                    <p className="font-semibold text-gray-900"> Net Banking </p>
-
-                                                    <p className="text-xs text-muted"> Pay using your bank account </p>
-                                                </div>
-
-                                            </div>
-
-                                            <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center ${paymentMethod === "netbanking" ? "border-brand" : "border-gray-300"}`} >
-                                                {paymentMethod === "netbanking" && (<div className="w-2.5 h-2.5 rounded-full bg-brand" />)}
-                                            </div>
-
-                                        </button>
-
-                                        <button type="button" onClick={() => { setPaymentMethod("cod"); handleCODClick(); }}
-                                            className={`w-full p-4 rounded-xl border-2 flex items-center justify-between transition-all ${paymentMethod === "cod" ? "border-brand bg-brand/5" : "border-gray-200"}`} >
-                                            <div className="flex items-center gap-4">
-                                                <div className="w-10 h-10 rounded-lg bg-gray-100 flex items-center justify-center"> 🏦 </div>
-                                                <div className="text-left">
-                                                    <p className="font-semibold text-gray-900"> COD </p>
-                                                </div>
-                                            </div>
-                                            <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center ${paymentMethod === "cod" ? "border-brand" : "border-gray-300"}`} >
-                                                {paymentMethod === "cod" && (<div className="w-2.5 h-2.5 rounded-full bg-brand" />)}
-                                            </div>
-                                        </button>
-                                    </div>
-
-                                    <div className="p-5 bg-gray-50 rounded-xl mb-6">
-                                        <div className="flex justify-between items-center">
-                                            <span className="font-semibold text-gray-700"> Amount Payable </span>
-                                            <span className="font-heading font-bold text-2xl text-brand"> ₹{finalTotal.toFixed(2)} </span>
-                                        </div>
-                                    </div>
-
-                                    <div className="flex gap-4">
-
-                                        <button type="button" onClick={() => { setErrorMessage(""); setStep(1); }} disabled={isProcessing} className="px-6 py-4 rounded-xl font-bold text-gray-700 bg-gray-100 hover:bg-gray-200 transition-all disabled:opacity-50" >
-                                            Back
-                                        </button>
-
-                                        {paymentMethod === "cod" ? (
-                                            <button type="button" onClick={handleCODOrder} disabled={isProcessing} className="flex-1 py-4 bg-brand text-white font-bold rounded-xl shadow-button hover:bg-brand-light transition-all disabled:opacity-70 flex items-center justify-center gap-2">
-                                                {isProcessing ? (
-                                                    <><span className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />Processing...</>
-                                                ) : (
-                                                    "Confirm Order"
-                                                )}
-                                            </button>
-                                        ) : (
-                                            <button type="button" onClick={handleRazorpayPayment} disabled={isProcessing} className="flex-1 py-4 bg-brand text-white font-bold rounded-xl shadow-button hover:bg-brand-light transition-all disabled:opacity-70 flex items-center justify-center gap-2" >
-                                                {isProcessing ? (
-                                                    <><span className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />Processing...</>
-                                                ) : (
-                                                    `Pay Now ₹${finalTotal.toFixed(2)}`
-                                                )}
-                                            </button>
-                                        )}
-
-                                    </div>
-
-                                </motion.div>
-                            )}
-
-                            {/* ================= STEP 3 ================= */}
-
-                            {step === 3 && (
-                                <motion.form key="s3" initial={{ opacity: 0, scale: 0.95, }} animate={{ opacity: 1, scale: 1, }} onSubmit={handlePlaceOrder} className="bg-white rounded-3xl p-6 md:p-8 shadow-card text-center" >
-
-                                    <h2 className="font-heading text-2xl font-bold mb-2"> Review Your Order </h2>
-
-                                    <p className="text-muted mb-8"> Please confirm your details before placing the order.
-                                    </p>
-
-                                    <div className="text-left bg-gray-50 p-6 rounded-2xl mb-8">
-
-                                        <h3 className="font-semibold text-gray-900 mb-2 border-b border-gray-200 pb-2"> Shipping To: </h3>
-
-                                        <p className="text-sm text-gray-600 leading-relaxed">{firstName} {lastName}<br />
-                                            {defaultAddress ? `${defaultAddress.addressline || ""} ${defaultAddress.landmark || ""}`.trim() : ""}
-                                            <br />
-                                            {defaultAddress?.city || ""},{" "}{defaultAddress?.state || ""}{" "}{defaultAddress?.postalCode || ""}
-                                        </p>
-                                    </div>
-
-                                    <div className="flex gap-4">
-                                        <button type="button" onClick={() => { setErrorMessage(""); setStep(2); }} disabled={isProcessing} className="px-6 py-4 rounded-xl font-bold text-gray-700 bg-gray-100 hover:bg-gray-200 transition-all disabled:opacity-50" >
-                                            Back
-                                        </button>
-
-                                        <button type="submit" disabled={isProcessing} className="flex-1 py-4 bg-brand text-white font-bold rounded-xl shadow-button hover:bg-brand-light transition-all flex items-center justify-center gap-2" >
-                                            {isProcessing ? (<span className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />) : ("View Order Confirmation")}
-                                        </button>
-                                    </div>
-                                </motion.form>
-                            )}
-                        </AnimatePresence>
-                    </div>
-
-
-
-                    <div className="lg:col-span-5">
-                        <div className="sticky top-8 bg-white rounded-3xl p-6 md:p-8 shadow-card">
-                            <h2 className="font-heading text-xl font-bold mb-6">
-                                Order Summary
-                            </h2>
-                            <div className="space-y-4 max-h-[40vh] overflow-y-auto mb-6 pr-2">
-                                {items.map((item) => (
-                                    <div key={`${item.productId}-${item.size}-${item.color}`} className="flex gap-4" >
-                                        <div className="w-16 h-20 rounded-lg overflow-hidden bg-gray-100 flex-shrink-0 relative">
-                                            <img src={item.image} alt={item.name} className="w-full h-full object-cover" />
-                                            <span className="absolute -top-1 -right-1 w-5 h-5 bg-gray-900 text-white text-[10px] rounded-full flex items-center justify-center border-2 border-white">
-                                                {item.quantity}
+                                    <div>
+                                        <div className="flex items-center gap-2">
+                                            <h2 className="font-heading font-bold text-xl md:text-2xl text-gray-900">
+                                                Razorpay Magic Checkout
+                                            </h2>
+                                            <span className="bg-indigo-100 text-indigo-700 text-xs font-extrabold px-2.5 py-0.5 rounded-full uppercase tracking-wider">
+                                                Fast & Simple
                                             </span>
                                         </div>
+                                        <p className="text-sm text-gray-500 mt-0.5">
+                                            Order directly without prior login • Dynamic user details
+                                        </p>
+                                    </div>
+                                </div>
+                            </div>
 
+                            {/* Feature Checklist */}
+                            <div className="bg-gradient-to-br from-indigo-50/70 via-purple-50/50 to-blue-50/70 border border-indigo-100 rounded-2xl p-5 mb-8">
+                                <h3 className="font-semibold text-gray-900 text-sm mb-3 flex items-center gap-2">
+                                    <IoSparklesOutline className="text-indigo-600" size={18} />
+                                    How Magic Checkout Works:
+                                </h3>
+                                <div className="space-y-2.5 text-xs md:text-sm text-gray-700">
+                                    <div className="flex items-start gap-2.5">
+                                        <IoCheckmarkDoneCircle className="text-indigo-600 mt-0.5 flex-shrink-0" size={18} />
+                                        <span><strong>No prior password needed:</strong> Simply verify via OTP in Magic Checkout.</span>
+                                    </div>
+                                    <div className="flex items-start gap-2.5">
+                                        <IoCheckmarkDoneCircle className="text-indigo-600 mt-0.5 flex-shrink-0" size={18} />
+                                        <span><strong>Auto-saved Addresses:</strong> Auto-fetches your delivery address across 100M+ stores.</span>
+                                    </div>
+                                    <div className="flex items-start gap-2.5">
+                                        <IoCheckmarkDoneCircle className="text-indigo-600 mt-0.5 flex-shrink-0" size={18} />
+                                        <span><strong>Dynamic Coupons & Live Delivery:</strong> Automatically shows eligible discounts and courier rates for your pincode.</span>
+                                    </div>
+                                    <div className="flex items-start gap-2.5">
+                                        <IoCheckmarkDoneCircle className="text-indigo-600 mt-0.5 flex-shrink-0" size={18} />
+                                        <span><strong>All Payment Methods:</strong> UPI (Google Pay, PhonePe, Paytm), Cards, Net Banking, and COD.</span>
+                                    </div>
+                                </div>
+                            </div>
+
+                            {/* Action Button */}
+                            <button
+                                type="button"
+                                onClick={handleRazorpayMagicCheckout}
+                                disabled={isProcessing}
+                                className="w-full py-4 px-6 bg-gradient-to-r from-indigo-600 via-purple-600 to-indigo-700 hover:from-indigo-700 hover:to-purple-700 text-white font-bold rounded-2xl shadow-button hover:shadow-button-hover transition-all flex items-center justify-center gap-3 text-base md:text-lg cursor-pointer disabled:opacity-60"
+                            >
+                                {isProcessing ? (
+                                    <>
+                                        <span className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                                        <span>Opening Magic Checkout...</span>
+                                    </>
+                                ) : (
+                                    <>
+                                        <IoFlashOutline size={22} className="animate-pulse" />
+                                        <span>Pay & Place Order with Magic Checkout ⚡</span>
+                                    </>
+                                )}
+                            </button>
+
+                            {/* Security Badges */}
+                            <div className="flex flex-wrap items-center justify-center gap-4 mt-6 text-xs text-gray-500 font-medium">
+                                <span className="flex items-center gap-1.5 text-green-700">
+                                    <IoShieldCheckmarkOutline size={16} /> 100% Safe & Secure Payments
+                                </span>
+                                <span>•</span>
+                                <span>Razorpay 1CC Protected</span>
+                                <span>•</span>
+                                <span>Prepaid & COD Available</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* Right Column: Order Summary */}
+                    <div className="lg:col-span-5">
+                        <div className="bg-white rounded-3xl p-6 md:p-8 shadow-card border border-gray-100 sticky top-6">
+                            <h3 className="font-heading font-bold text-xl mb-4 text-gray-900">
+                                Order Summary ({items.length} {items.length === 1 ? "item" : "items"})
+                            </h3>
+
+                            {/* Items List */}
+                            <div className="divide-y divide-gray-100 max-h-[360px] overflow-y-auto pr-1 mb-6">
+                                {items.map((item, idx) => (
+                                    <div key={idx} className="py-3 flex items-center gap-3">
+                                        <div className="w-16 h-16 rounded-xl bg-gray-50 overflow-hidden flex-shrink-0 border border-gray-100">
+                                            {item.image ? (
+                                                <img
+                                                    src={item.image}
+                                                    alt={item.name}
+                                                    className="w-full h-full object-cover"
+                                                />
+                                            ) : (
+                                                <div className="w-full h-full flex items-center justify-center text-gray-300">
+                                                    🛍️
+                                                </div>
+                                            )}
+                                        </div>
                                         <div className="flex-1 min-w-0">
-                                            <p className="font-semibold text-sm text-gray-900 truncate">{item.name}</p>
-                                            <p className="text-xs text-muted mt-0.5">{item.size} / {item.color}</p>
-                                            <p className="text-sm font-bold text-accent mt-1">₹{(item.price * item.quantity).toFixed(2)}</p>
+                                            <h4 className="font-semibold text-sm text-gray-900 truncate">
+                                                {item.name}
+                                            </h4>
+                                            <div className="flex items-center gap-2 text-xs text-gray-500 mt-0.5">
+                                                {item.size && <span>Size: {item.size}</span>}
+                                                {item.size && item.color && <span>•</span>}
+                                                {item.color && <span>Color: {item.color}</span>}
+                                                <span>•</span>
+                                                <span>Qty: {item.quantity}</span>
+                                            </div>
+                                            <p className="font-bold text-sm text-brand mt-1">
+                                                ₹{(Number(item.price || 0) * Number(item.quantity || 1)).toFixed(2)}
+                                            </p>
                                         </div>
                                     </div>
                                 ))}
                             </div>
-                            <div className="border-t border-gray-100 pt-4 space-y-3 text-sm mb-4">
-                                <div className="flex justify-between">
-                                    <span className="text-muted">Subtotal</span>
-                                    <span className="font-semibold">₹{subtotal.toFixed(2)}</span>
+
+                            {/* Breakdown */}
+                            <div className="space-y-3 border-t border-gray-100 pt-4 text-sm">
+                                <div className="flex justify-between text-gray-600">
+                                    <span>Subtotal</span>
+                                    <span className="font-medium text-gray-900">₹{subtotal.toFixed(2)}</span>
                                 </div>
-                                <div className="flex justify-between">
-                                    <span className="text-muted">Shipping</span>
-                                    <span className="font-semibold">{shipping === 0 ? "FREE" : `₹${shipping.toFixed(2)}`}</span>
+
+                                {discount > 0 && (
+                                    <div className="flex justify-between text-green-600 font-medium">
+                                        <span>Coupon Discount</span>
+                                        <span>-₹{discount.toFixed(2)}</span>
+                                    </div>
+                                )}
+
+                                <div className="flex justify-between text-gray-600 text-xs">
+                                    <span>Delivery & COD Charges</span>
+                                    <span className="text-gray-500 italic">Calculated in Magic Checkout</span>
+                                </div>
+
+                                <div className="h-px bg-gray-200 my-2" />
+
+                                <div className="flex justify-between items-center text-base md:text-lg font-bold">
+                                    <span className="text-gray-900">Estimated Total</span>
+                                    <span className="text-brand">₹{finalTotal.toFixed(2)}</span>
                                 </div>
                             </div>
-                            {discount !== 0 && (
-                                <div className="flex justify-between">
-                                    <span className="text-muted">Discount</span>
-                                    <span className="font-semibold text-green-600">-₹{discount.toFixed(2)}</span>
-                                </div>
-                            )}
-                            <div className="border-t border-gray-100 pt-4 flex justify-between items-end">
-                                <span className="font-heading font-bold text-lg">Total</span>
-                                <span className="font-heading font-bold text-2xl text-brand">₹{finalTotal.toFixed(2)}</span>
-                            </div>
+
+                            <p className="text-[11px] text-gray-400 mt-4 text-center">
+                                Final shipping charges and COD fees are calculated dynamically based on your pincode inside Razorpay Magic Checkout.
+                            </p>
                         </div>
                     </div>
-
                 </div>
             </div>
         </div>

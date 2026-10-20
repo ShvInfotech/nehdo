@@ -29,6 +29,7 @@ interface AuthContextType {
   authModalMode: 'login' | 'signup' | null;
   openAuthModal: (mode?: 'login' | 'signup') => void;
   closeAuthModal: () => void;
+  setSession: (user: User, token: string) => void;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -160,6 +161,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setAuthModalMode(null);
   }, []);
 
+  const setSession = useCallback((userData: User, token: string) => {
+    setUser(userData);
+    if (token) {
+      localStorage.setItem('accessToken', token);
+    }
+    localStorage.setItem('user', JSON.stringify(userData));
+  }, []);
+
   return (
     <AuthContext.Provider
       value={{
@@ -171,7 +180,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         updateProfile,
         authModalMode,
         openAuthModal,
-        closeAuthModal
+        closeAuthModal,
+        setSession
       }}
     >
       {children}

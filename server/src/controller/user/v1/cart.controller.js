@@ -128,3 +128,53 @@ exports.Deletecart = async (req, res, next) => {
     return next(error)
   }
 }
+
+exports.SyncCart = async (req, res, next) => {
+  try {
+    const items = req.body?.items;
+    if (!Array.isArray(items) || items.length === 0) {
+      return res.status(200).json({ success: true, message: "No items to sync" });
+    }
+
+    for (const item of items) {
+      if (!item.productId || !mongoose.isValidObjectId(item.productId)) continue;
+      if (!item.size || !item.color) continue;
+      const qty = Math.max(1, Number(item.quantity || 1));
+
+      // Check if product with size + color already exists in user's cart
+      let cart = await cartModel.findOneAndUpdate(
+        {
+          userId: req.user._id,
+          productId: item.productId,
+          size: item.size,
+          color: item.color
+        },
+        {
+          $inc: { quantity: qty }
+        },
+        {
+          returnDocument: 'after'
+        }
+      );
+
+      if (!cart) {
+        await cartModel.create({
+          userId: req.user._id,
+          productId: item.productId,
+          size: item.size,
+          color: item.color,
+          quantity: qty
+        });
+      }
+    }
+
+    const carts = await cartModel.aggregate(GetCartPipeline(req.user._id));
+    return res.status(200).json({
+      success: true,
+      message: "Cart synced successfully",
+      carts
+    });
+  } catch (error) {
+    return next(error);
+  }
+};
