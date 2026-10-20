@@ -49,6 +49,7 @@ router.get("/promotions", getPromotions);
 router.post("/apply-promotion", applyPromotion);
 router.get("/apply-promotion", applyPromotion);
 router.post("/apply-promo", applyPromotion);
+router.get("/apply-promo", applyPromotion);
 
 // Webhook endpoint
 router.post("/webhook", razorpayWebhook);

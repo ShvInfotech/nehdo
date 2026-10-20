@@ -179,14 +179,13 @@ exports.ReturnOrder = async (req, res, next) => {
 
         const order_items = order.items.map(item => ({
             name: item.name,
-            qc_enable: false,
+            qc_enable: true,
             qc_product_name: item.name,
             sku: item.sku,
             units: Number(item.quantity),
             selling_price: Number(item.price),
             discount: 0,
             qc_product_image: `https://dad-panda-rocklike.ngrok-free.dev${item.image}`,
-
         }))
 
         const data = {
