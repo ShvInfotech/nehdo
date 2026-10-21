@@ -50,8 +50,7 @@ const Contact = () => {
                             </div>
                             <div>
                                 <h3 className="font-bold text-gray-900 mb-1">Email Address</h3>
-                                <p className="text-muted">support@nehdo.com</p>
-                                <p className="text-muted">info@nehdo.com</p>
+                                <p className="text-muted"><a href="mailto:nehdoshopping@gmail.com" className="hover:text-brand transition-colors">nehdoshopping@gmail.com</a></p>
                             </div>
                         </div>
 

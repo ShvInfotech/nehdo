@@ -1,0 +1,17 @@
+<IfModule mod_rewrite.c>
+  RewriteEngine On
+  RewriteBase /
+
+  # 1. Reverse Proxy API requests to Node.js backend (Port 8001)
+  RewriteRule ^admin/api/(.*)$ http://127.0.0.1:8001/admin/api/$1 [P,L]
+  RewriteRule ^user/api/(.*)$ http://127.0.0.1:8001/user/api/$1 [P,L]
+  RewriteRule ^api/(.*)$ http://127.0.0.1:8001/api/$1 [P,L]
+  RewriteRule ^uploads/(.*)$ http://127.0.0.1:8001/uploads/$1 [P,L]
+
+  # 2. React Router SPA Frontend Fallback
+  RewriteRule ^index\.html$ - [L]
+  RewriteCond %{REQUEST_FILENAME} !-f
+  RewriteCond %{REQUEST_FILENAME} !-d
+  RewriteCond %{REQUEST_FILENAME} !-l
+  RewriteRule . /index.html [L]
+</IfModule>

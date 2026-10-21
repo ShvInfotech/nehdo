@@ -1,6 +1,6 @@
 import { toast } from "react-toastify";
 
-const API_URL = 'http://192.168.29.73:8001';
+const API_URL = import.meta.env.VITE_API_URL !== undefined ? import.meta.env.VITE_API_URL : '';
 
 export const apiRequest = async (url: string,method: string = 'GET',bodyData: any = null,params: Record<string, any> = {}) => {
   const token = localStorage.getItem('admin_token');
@@ -45,7 +45,7 @@ export const apiRequest = async (url: string,method: string = 'GET',bodyData: an
   if (response.status === 401) {
     localStorage.removeItem('admin_token');
     localStorage.removeItem('nehdo_admin');
-    window.location.href = '/nehdo/admin/login';
+    window.location.href = '/admin/login';
     return Promise.reject(new Error('Session expired'));
   }
 

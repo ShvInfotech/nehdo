@@ -60,8 +60,7 @@ const AuthModal = () => {
       }
 
       const swPath = `${import.meta.env.BASE_URL}firebase-messaging-sw.js`;
-      const registration = await navigator.serviceWorker.register("/nehdo/firebase-messaging-sw.js"
-      );
+      const registration = await navigator.serviceWorker.register(swPath);
       const token = await getToken(messaging, {vapidKey: "BJ9rA0mIYGOm2eoQIY5w3CX3iUf_jf8Hl_TU4BZYEtWCW6NSdITn5CRY0Bz25Fa1CYyfbTdt1xWEh7ylwru0BiY",serviceWorkerRegistration: registration,});
       return token;
     } catch (error) {

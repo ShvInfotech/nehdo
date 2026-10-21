@@ -76,7 +76,7 @@ function App() {
     return <PageLoader />;
   }
   return (
-    <BrowserRouter basename="/nehdo">
+    <BrowserRouter>
       <Suspense fallback={<PageLoader />}>
         <Routes>
           <Route element={<Layout />}>
