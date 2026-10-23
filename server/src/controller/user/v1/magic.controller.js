@@ -298,6 +298,7 @@ exports.createMagicOrder = async (req, res, next) => {
             { orderId: razorpayOrder.id },
             {
                 orderId: razorpayOrder.id,
+                receipt: options.receipt,
                 userId: req.user?._id || null,
                 cartIds: (req.body?.cartIds || []).filter((id) => mongoose.isValidObjectId(id)),
                 items: validatedItems,
@@ -351,7 +352,53 @@ exports.getShippingInfo = async (req, res) => {
         const orderId = body.order_id || body.orderId || query.order_id || query.orderId || "";
 
         // Retrieve persistent checkout session
-        const checkoutSession = orderId ? await magicCheckoutModel.findOne({ orderId }) : null;
+        let checkoutSession = null;
+        if (orderId) {
+            checkoutSession = await magicCheckoutModel.findOne({
+                $or: [{ orderId }, { receipt: orderId }]
+            });
+
+            if (!checkoutSession && typeof orderId === "string" && orderId.startsWith("rcpt_")) {
+                try {
+                    const rzpOrders = await razorpay.orders.all({ receipt: orderId, count: 1 });
+                    if (rzpOrders?.items?.length) {
+                        const rzpOrder = rzpOrders.items[0];
+                        checkoutSession = await magicCheckoutModel.findOne({ orderId: rzpOrder.id });
+                        if (checkoutSession && !checkoutSession.receipt) {
+                            checkoutSession.receipt = orderId;
+                            await checkoutSession.save();
+                        }
+                    }
+                } catch (e) {
+                    console.warn("Could not fetch rzp order by receipt in getShippingInfo:", e?.error?.description || e?.message || e);
+                }
+            }
+        }
+
+        if (!checkoutSession && (customer.contact || body.contact || customer.email || body.email)) {
+            const rawPhone = customer.contact || body.contact || "";
+            const rawEmail = customer.email || body.email || "";
+            const cleanPhone = rawPhone ? String(rawPhone).replace(/\D/g, "").slice(-10) : "";
+            const queryConds = [];
+            if (cleanPhone) {
+                queryConds.push({ "customer.contact": { $regex: cleanPhone } });
+            }
+            if (rawEmail && rawEmail.includes("@")) {
+                queryConds.push({ "customer.email": rawEmail.toLowerCase().trim() });
+            }
+            if (queryConds.length > 0) {
+                checkoutSession = await magicCheckoutModel.findOne({
+                    status: "created",
+                    $or: queryConds
+                }).sort({ createdAt: -1 });
+
+                if (checkoutSession && orderId && orderId.startsWith("rcpt_") && !checkoutSession.receipt) {
+                    checkoutSession.receipt = orderId;
+                    await checkoutSession.save();
+                }
+            }
+        }
+
         const subtotal = checkoutSession?.subtotal || 0;
 
         // Calculate package weight and dimensions from order items
@@ -445,9 +492,8 @@ exports.getShippingInfo = async (req, res) => {
                 }
             }
 
-            // Business rule: Free shipping on orders >= ₹250
-            const isFreeShipping = subtotal >= 250;
-            const shippingFeePaise = isServiceable ? (isFreeShipping ? 0 : Math.round(shippingRateRupees * 100)) : 0;
+            // Use actual courier shipping charge from Shiprocket API
+            const shippingFeePaise = isServiceable ? Math.round(shippingRateRupees * 100) : 0;
             const codFeePaise = 0; // standard free COD or configured fee
 
             if (i === 0) {
@@ -459,9 +505,12 @@ exports.getShippingInfo = async (req, res) => {
             }
 
             // Save verified address and shipping details to persistent checkout session
-            if (orderId && isServiceable && (addressline || city || pincode)) {
+            if ((checkoutSession || orderId) && isServiceable && (addressline || city || pincode)) {
+                const sessionQuery = checkoutSession?._id
+                    ? { _id: checkoutSession._id }
+                    : { $or: [{ orderId }, { receipt: orderId }] };
                 await magicCheckoutModel.findOneAndUpdate(
-                    { orderId },
+                    sessionQuery,
                     {
                         customer: { contact, email, name },
                         address: {
@@ -485,8 +534,8 @@ exports.getShippingInfo = async (req, res) => {
             const shippingMethods = isServiceable ? [
                 {
                     id: "express_delivery",
-                    name: isFreeShipping ? "Free Express Delivery" : "Express Delivery",
-                    description: isFreeShipping ? "Free shipping on orders above ₹250 (2-4 Days)" : "Delivered within 2-4 business days",
+                    name: "Express Delivery",
+                    description: `Delivered within ${estimatedDays} business days`,
                     serviceable: true,
                     shipping_fee: shippingFeePaise,
                     cod: codServiceable,
@@ -509,8 +558,8 @@ exports.getShippingInfo = async (req, res) => {
         const shippingMethods = primaryServiceable ? [
             {
                 id: "express_delivery",
-                name: subtotal >= 250 ? "Free Express Delivery" : "Express Delivery",
-                description: subtotal >= 250 ? "Free shipping on orders above ₹250 (2-4 Days)" : "Delivered within 2-4 business days",
+                name: "Express Delivery",
+                description: `Delivered within ${primaryDeliveryDays} business days`,
                 serviceable: true,
                 shipping_fee: primaryShippingFeeInPaise,
                 cod: primaryCodServiceable,
@@ -604,11 +653,18 @@ exports.getPromotions = async (req, res) => {
                 description: desc,
                 discount_type: isPercent ? "percentage" : "fixed_amount",
                 discount_value: discountValuePaise,
+                value: discountValuePaise,
+                value_type: isPercent ? "percentage" : "fixed_amount",
+                type: "offer",
                 minimum_order_value: Math.round((c.minimumPurchase || 0) * 100),
                 promotion: {
                     code: c.couponCode,
                     title: c.couponCode,
-                    reference_id: String(c._id)
+                    reference_id: String(c._id),
+                    value: discountValuePaise,
+                    value_type: isPercent ? "percentage" : "fixed_amount",
+                    type: "offer",
+                    description: desc
                 }
             };
         });
@@ -626,7 +682,15 @@ exports.getPromotions = async (req, res) => {
  */
 exports.applyPromotion = async (req, res) => {
     try {
-        const { code, order_id } = req.body || {};
+        const body = req.body || {};
+        const query = req.query || {};
+        const code = body.code || query.code;
+        const order_id = body.order_id || body.orderId || query.order_id || query.orderId;
+        const contact = body.contact || body.phone || query.contact || query.phone;
+        const email = body.email || query.email;
+
+        console.log("applyPromotion received:", { code, order_id, contact, email });
+
         if (!code) {
             return res.status(200).json({
                 success: false,
@@ -648,7 +712,7 @@ exports.applyPromotion = async (req, res) => {
             });
         }
 
-        // 🛠️ FIX: Strict timezone check using current standard time allocation
+        // Strict timezone check using current standard time allocation
         const now = new Date();
         if (coupon.startDate && new Date(coupon.startDate) > now) {
             return res.status(200).json({
@@ -664,7 +728,7 @@ exports.applyPromotion = async (req, res) => {
             return res.status(200).json({
                 success: false,
                 error: {
-                    code: "INVALID_PROMO_CODE",
+                    code: "EXPIRED_CODE",
                     description: "This coupon has expired"
                 }
             });
@@ -673,20 +737,76 @@ exports.applyPromotion = async (req, res) => {
         // Fetch subtotal from persistent checkout session or Razorpay order
         let subtotalRupees = 0;
         let checkoutSession = null;
+
         if (order_id) {
-            checkoutSession = await magicCheckoutModel.findOne({ orderId: order_id });
-            if (checkoutSession?.subtotal) {
-                subtotalRupees = checkoutSession.subtotal;
-            } else {
+            // 1. Try finding by orderId (Razorpay order ID) or receipt
+            checkoutSession = await magicCheckoutModel.findOne({
+                $or: [{ orderId: order_id }, { receipt: order_id }]
+            });
+
+            // 2. If not found in DB and order_id is a receipt (e.g. rcpt_1792754912980),
+            // fetch order from Razorpay by receipt filter to locate the linked session
+            if (!checkoutSession && typeof order_id === "string" && order_id.startsWith("rcpt_")) {
+                try {
+                    const rzpOrders = await razorpay.orders.all({ receipt: order_id, count: 1 });
+                    if (rzpOrders?.items?.length) {
+                        const rzpOrder = rzpOrders.items[0];
+                        checkoutSession = await magicCheckoutModel.findOne({ orderId: rzpOrder.id });
+                        if (checkoutSession) {
+                            if (!checkoutSession.receipt) {
+                                checkoutSession.receipt = order_id;
+                                await checkoutSession.save();
+                            }
+                        } else if (rzpOrder.amount) {
+                            subtotalRupees = rzpOrder.amount / 100;
+                        }
+                    }
+                } catch (rzpErr) {
+                    console.warn("Could not fetch rzp order by receipt for promo validation:", rzpErr?.error?.description || rzpErr?.message || rzpErr);
+                }
+            } else if (!checkoutSession && typeof order_id === "string" && order_id.startsWith("order_")) {
+                // If it is a Razorpay Order ID (starts with order_)
                 try {
                     const rzpOrder = await razorpay.orders.fetch(order_id);
                     if (rzpOrder?.amount) {
                         subtotalRupees = rzpOrder.amount / 100;
                     }
                 } catch (rzpErr) {
-                    console.warn("Could not fetch rzp order for promo validation:", rzpErr.message);
+                    console.warn("Could not fetch rzp order for promo validation:", rzpErr?.error?.description || rzpErr?.message || rzpErr);
                 }
             }
+        }
+
+        // 3. Fallback: Lookup by customer contact or email in recent active checkout sessions
+        if (!checkoutSession && (contact || email)) {
+            const rawPhone = contact ? String(contact).replace(/\D/g, "").slice(-10) : "";
+            const orConds = [];
+            if (rawPhone) {
+                orConds.push({ "customer.contact": { $regex: rawPhone } });
+            }
+            if (email && typeof email === "string" && email.includes("@")) {
+                orConds.push({ "customer.email": email.toLowerCase().trim() });
+            }
+            if (orConds.length > 0) {
+                checkoutSession = await magicCheckoutModel.findOne({
+                    status: "created",
+                    $or: orConds
+                }).sort({ createdAt: -1 });
+
+                if (checkoutSession && order_id) {
+                    if (order_id.startsWith("rcpt_") && !checkoutSession.receipt) {
+                        checkoutSession.receipt = order_id;
+                        await checkoutSession.save();
+                    } else if (order_id.startsWith("order_") && !checkoutSession.orderId) {
+                        checkoutSession.orderId = order_id;
+                        await checkoutSession.save();
+                    }
+                }
+            }
+        }
+
+        if (checkoutSession?.subtotal) {
+            subtotalRupees = checkoutSession.subtotal;
         }
 
         // Validate minimum purchase amount
@@ -695,7 +815,7 @@ exports.applyPromotion = async (req, res) => {
             return res.status(200).json({
                 success: false,
                 error: {
-                    code: "MINIMUM_ORDER_NOT_MET",
+                    code: "REQUIREMENT_NOT_MET",
                     description: `Minimum purchase of ₹${minPurchase} required for this coupon`
                 }
             });
@@ -722,9 +842,18 @@ exports.applyPromotion = async (req, res) => {
         const discountPaise = Math.round(discountRupees * 100);
 
         // Update persistent checkout session with applied coupon
-        if (order_id) {
+        if (checkoutSession?._id) {
+            await magicCheckoutModel.findByIdAndUpdate(
+                checkoutSession._id,
+                {
+                    couponId: coupon._id,
+                    couponCode: coupon.couponCode,
+                    discount: discountRupees
+                }
+            );
+        } else if (order_id) {
             await magicCheckoutModel.findOneAndUpdate(
-                { orderId: order_id },
+                { $or: [{ orderId: order_id }, { receipt: order_id }] },
                 {
                     couponId: coupon._id,
                     couponCode: coupon.couponCode,
@@ -733,15 +862,28 @@ exports.applyPromotion = async (req, res) => {
             );
         }
 
-        // 🛠️ FIX: Razorpay Magic Checkout standard promotion success schema mapping
+        const description = coupon.description || `${coupon.couponCode} applied (-₹${discountRupees})`;
+        const promoPayload = {
+            reference_id: String(coupon._id),
+            type: "offer",
+            code: coupon.couponCode,
+            value: discountPaise,
+            discount_amount: discountPaise,
+            value_type: "fixed_amount",
+            description
+        };
+
+        // Razorpay Magic Checkout standard promotion success response (providing promotion, data, and top-level fields)
         return res.status(200).json({
             success: true,
-            promotion: {
-                code: coupon.couponCode,
-                discount_amount: discountPaise, // strictly in paise nested under promotion object mapping
-                reference_id: String(coupon._id),
-                description: coupon.description || "Coupon applied successfully"
-            }
+            promotion: promoPayload,
+            data: promoPayload,
+            reference_id: String(coupon._id),
+            code: coupon.couponCode,
+            value: discountPaise,
+            discount_amount: discountPaise,
+            value_type: "fixed_amount",
+            description
         });
     } catch (error) {
         console.error("applyPromotion Error:", error);
@@ -817,7 +959,17 @@ exports.completeMagicOrder = async (req, res, next) => {
         }
 
         // 2. Retrieve persistent checkout session
-        const checkoutSession = await magicCheckoutModel.findOne({ orderId: razorpay_order_id });
+        let checkoutSession = await magicCheckoutModel.findOne({
+            $or: [{ orderId: razorpay_order_id }, { receipt: razorpay_order_id }]
+        });
+        if (!checkoutSession && typeof razorpay_order_id === "string" && razorpay_order_id.startsWith("rcpt_")) {
+            try {
+                const rzpOrders = await razorpay.orders.all({ receipt: razorpay_order_id, count: 1 });
+                if (rzpOrders?.items?.length) {
+                    checkoutSession = await magicCheckoutModel.findOne({ orderId: rzpOrders.items[0].id });
+                }
+            } catch (err) {}
+        }
         if (checkoutSession && checkoutSession.status === "completed" && checkoutSession.completedOrderId) {
             const completed = await orderModel.findById(checkoutSession.completedOrderId);
             if (completed) {
@@ -1216,8 +1368,11 @@ exports.completeMagicOrder = async (req, res, next) => {
         const createdOrder = await orderModel.create(orderData);
 
         // Update persistent checkout session to completed
+        const sessionUpdateQuery = checkoutSession?._id
+            ? { _id: checkoutSession._id }
+            : { $or: [{ orderId: razorpay_order_id }, { receipt: razorpay_order_id }] };
         await magicCheckoutModel.findOneAndUpdate(
-            { orderId: razorpay_order_id },
+            sessionUpdateQuery,
             {
                 status: "completed",
                 completedOrderId: createdOrder._id
