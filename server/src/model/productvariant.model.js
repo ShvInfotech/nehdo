@@ -9,7 +9,6 @@ const variantSchema = mongoose.Schema({
     },
     size: {
         type: [String],
-        enum: ['XS', 'S', 'M', 'L', 'XL', 'XXL', '3XL'],
         default: []
     },
     colorOptions: {

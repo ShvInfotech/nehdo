@@ -14,8 +14,7 @@ import { userapiRequest } from '../services/apiService';
 import { useWishlist } from '../context/WishlistContext';
 import { useCart } from '../context/CartContext';
 import { signInWithPopup } from "firebase/auth";
-import { auth, googleProvider, messaging } from "../services/firebase";
-import { getToken } from "firebase/messaging";
+import { auth, googleProvider, getDeviceToken } from "../services/firebase";
 import { toast } from 'react-toastify';
 // import {messaging} from "../../public/"
 
@@ -51,23 +50,7 @@ const AuthModal = () => {
 
 
 
-  const getDeviceToken = async () => {
-    try {
-      const permission = await Notification.requestPermission();
-      if (permission !== "granted") {
-        console.log("Notification permission denied");
-        return null;
-      }
 
-      const swPath = `${import.meta.env.BASE_URL}firebase-messaging-sw.js`;
-      const registration = await navigator.serviceWorker.register(swPath);
-      const token = await getToken(messaging, {vapidKey: "BJ9rA0mIYGOm2eoQIY5w3CX3iUf_jf8Hl_TU4BZYEtWCW6NSdITn5CRY0Bz25Fa1CYyfbTdt1xWEh7ylwru0BiY",serviceWorkerRegistration: registration,});
-      return token;
-    } catch (error) {
-      console.error("FCM Token Error:", error);
-      return null;
-    }
-  };
 
 
 

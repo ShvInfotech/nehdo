@@ -130,6 +130,9 @@ exports.UserLogin = async (req, res, next) => {
         };
 
         if (req.body.deviceToken) {
+            if (!Array.isArray(user.deviceToken)) {
+                await userModel.findByIdAndUpdate(user._id, { $set: { deviceToken: [] } });
+            }
             addToSetData.deviceToken = req.body.deviceToken;
         }
 

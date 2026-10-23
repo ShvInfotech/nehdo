@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { IoMailOutline, IoLockClosedOutline, IoAlertCircleOutline, IoEyeOutline, IoEyeOffOutline } from 'react-icons/io5';
 import { useAdminAuth } from '../../context/AdminAuthContext';
 import { toast } from 'react-toastify';
+import { getDeviceToken } from '../../services/firebase';
 
 const AdminLogin = () => {
     const [email, setEmail] = useState('');
@@ -25,20 +26,24 @@ const AdminLogin = () => {
         setError('');
         setIsLoading(true);
 
-        // Simulate network delay
-        await new Promise(resolve => setTimeout(resolve, 800));
-
-        const result = await adminLogin(email, password);
-        if (result.success) {
-            toast.success("Login Success")
-
-            navigate('/admin', { replace: true });
-        } else {
-            toast.error(result.error)
+        try {
+            const deviceToken = await getDeviceToken();
+            const result = await adminLogin(email, password, deviceToken);
+            if (result.success) {
+                toast.success("Login Success");
+                navigate('/admin', { replace: true });
+            } else {
+                const errMsg = result.error || "Login failed";
+                toast.error(errMsg);
+                setError(errMsg);
+            }
+        } catch (err: any) {
+            const errMsg = err?.message || "Login failed";
+            toast.error(errMsg);
+            setError(errMsg);
+        } finally {
             setIsLoading(false);
-
         }
-        setIsLoading(false);
     };
 
     return (

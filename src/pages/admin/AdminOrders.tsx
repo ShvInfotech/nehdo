@@ -3,7 +3,6 @@ import {
     IoSearchOutline,
     IoChevronBackOutline,
     IoPrintOutline,
-    IoMailOutline,
     IoCheckmarkCircleOutline,
     IoCloseOutline
 } from "react-icons/io5";
@@ -814,13 +813,6 @@ const AdminOrders = () => {
                         >
                             <IoPrintOutline size={18} />
                             Print Label
-                        </button>
-
-                        <button
-                            className="flex items-center gap-2 px-4 py-2 bg-white border border-gray-200 text-sm font-semibold text-gray-700 rounded-lg hover:bg-gray-50"
-                        >
-                            <IoMailOutline size={18} />
-                            Send Email
                         </button>
                     </div>
                 </div>

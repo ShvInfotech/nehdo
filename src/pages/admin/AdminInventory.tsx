@@ -2,8 +2,6 @@ import React, { useEffect, useMemo, useState } from "react";
 import {
     IoWarningOutline,
     IoSearchOutline,
-    IoCloudDownloadOutline,
-    IoCloudUploadOutline,
 } from "react-icons/io5";
 
 import { apiRequest } from "../../services/apiService";
@@ -393,59 +391,6 @@ const AdminInventory = () => {
                     <p className="text-sm text-gray-500 mt-1">
                         Manage stock levels and receive alerts.
                     </p>
-                </div>
-
-                <div className="flex gap-2">
-                    <button
-                        className="
-                            flex items-center gap-2
-                            px-4 py-2
-                            bg-white
-                            border border-gray-200
-                            text-sm font-semibold
-                            text-gray-700
-                            rounded-lg
-                            hover:bg-gray-50
-                        "
-                    >
-                        <IoCloudDownloadOutline size={18} />
-                        Export CSV
-                    </button>
-
-                    <button
-                        className="
-                            flex items-center gap-2
-                            px-4 py-2
-                            bg-white
-                            border border-gray-200
-                            text-sm font-semibold
-                            text-gray-700
-                            rounded-lg
-                            hover:bg-gray-50
-                        "
-                    >
-                        <IoCloudUploadOutline size={18} />
-                        Import CSV
-                    </button>
-
-                    <button
-                        onClick={() =>
-                            setShowBulkUpdate(!showBulkUpdate)
-                        }
-                        className="
-                            flex items-center gap-2
-                            px-4 py-2
-                            bg-brand
-                            text-white
-                            text-sm font-semibold
-                            rounded-lg
-                            shadow-sm
-                            hover:bg-brand-light
-                            transition-colors
-                        "
-                    >
-                        Bulk Update
-                    </button>
                 </div>
             </div>
 
