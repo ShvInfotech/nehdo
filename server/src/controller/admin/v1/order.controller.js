@@ -63,6 +63,7 @@ exports.PendingOrder = async (req, res, next) => {
                     discount: 1,
                     shippingCharge: 1,
                     trackingNumber: 1,
+                    trackingUrl: 1,
                     shiprocketOrderId: 1,
                     shiprocketShipmentId: 1,
                     pickupDate: 1,
@@ -136,6 +137,7 @@ exports.AccepteOrder = async (req, res, next) => {
                     shiprocketOrderId: 1,
                     shiprocketShipmentId: 1,
                     trackingNumber: 1,
+                    trackingUrl: 1,
 
                     user: {
                         name: "$user.name",
@@ -318,10 +320,13 @@ exports.AccepteOrder = async (req, res, next) => {
                 }
             }
 
+            const trackingUrl = trackingNumber ? `https://shiprocket.co/tracking/${trackingNumber}` : (order.trackingUrl || null);
+
             await orderModel.findByIdAndUpdate(order._id, {
                 shiprocketOrderId: confirmorderData?.order_id || order.shiprocketOrderId || null,
                 shiprocketShipmentId: confirmorderData?.shipment_id || order.shiprocketShipmentId || null,
                 trackingNumber: trackingNumber || "",
+                trackingUrl: trackingUrl || null,
                 status: 'accepted',
                 ...(pickupDate ? { pickupDate } : {}),
                 ...(pickupScheduledDate ? { pickupScheduledDate } : {}),
@@ -332,6 +337,7 @@ exports.AccepteOrder = async (req, res, next) => {
             order.shiprocketOrderId = confirmorderData?.order_id || order.shiprocketOrderId || null;
             order.shiprocketShipmentId = confirmorderData?.shipment_id || order.shiprocketShipmentId || null;
             order.trackingNumber = trackingNumber || "";
+            order.trackingUrl = trackingUrl || null;
             order.status = 'accepted';
             order.pickupDate = pickupDate;
             order.pickupScheduledDate = pickupScheduledDate;
@@ -985,7 +991,7 @@ const handleShippingWebhookLogic = async (req, res, next, requireAuth = true) =>
             if (payload.awb) {
                 updateFields.trackingNumber = String(payload.awb);
                 if (!order.trackingUrl) {
-                    updateFields.trackingUrl = `https://shiprocket.co//tracking/${payload.awb}`;
+                    updateFields.trackingUrl = `https://shiprocket.co/tracking/${payload.awb}`;
                 }
             }
 

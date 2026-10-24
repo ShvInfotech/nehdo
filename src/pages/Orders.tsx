@@ -12,6 +12,7 @@ import {
     IoStar,
     IoShieldCheckmarkOutline,
     IoCloseOutline,
+    IoOpenOutline,
 } from "react-icons/io5";
 
 import Breadcrumb from "../components/Breadcrumb";
@@ -936,42 +937,48 @@ const OrderCard = ({
 
                                         {order.trackingNumber ? (
                                             <div>
-
                                                 <p className="text-sm text-gray-600">
-                                                    Tracking
-                                                    Number
+                                                    Tracking Number
                                                 </p>
-
-                                                <p className="font-semibold text-gray-900 mt-1">
-                                                    {
-                                                        order.trackingNumber
+                                                <a
+                                                    href={
+                                                        order.trackingUrl ||
+                                                        `https://shiprocket.co/tracking/${order.trackingNumber}`
                                                     }
-                                                </p>
+                                                    target="_blank"
+                                                    rel="noopener noreferrer"
+                                                    onClick={(e) =>
+                                                        e.stopPropagation()
+                                                    }
+                                                    className="inline-flex items-center gap-1.5 font-semibold text-brand hover:underline mt-1"
+                                                >
+                                                    <span>
+                                                        {order.trackingNumber}
+                                                    </span>
+                                                    <IoOpenOutline size={15} />
+                                                </a>
 
-                                                {order.trackingUrl && (
+                                                <div>
                                                     <a
                                                         href={
-                                                            order.trackingUrl
+                                                            order.trackingUrl ||
+                                                            `https://shiprocket.co/tracking/${order.trackingNumber}`
                                                         }
                                                         target="_blank"
                                                         rel="noopener noreferrer"
-                                                        onClick={(
-                                                            e
-                                                        ) =>
+                                                        onClick={(e) =>
                                                             e.stopPropagation()
                                                         }
-                                                        className="inline-block mt-3 px-4 py-2 bg-brand text-white rounded-xl text-sm font-semibold hover:opacity-90"
+                                                        className="inline-flex items-center gap-2 mt-3 px-4 py-2 bg-brand text-white rounded-xl text-sm font-semibold hover:opacity-90 shadow-sm transition-all"
                                                     >
-                                                        Track
-                                                        Order
+                                                        <span>Track Order</span>
+                                                        <IoOpenOutline size={15} />
                                                     </a>
-                                                )}
-
+                                                </div>
                                             </div>
                                         ) : (
                                             <p className="text-sm text-gray-600">
-                                                Tracking not
-                                                available yet
+                                                Tracking not available yet
                                             </p>
                                         )}
 

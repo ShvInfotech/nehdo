@@ -4,7 +4,8 @@ import {
     IoChevronBackOutline,
     IoPrintOutline,
     IoCheckmarkCircleOutline,
-    IoCloseOutline
+    IoCloseOutline,
+    IoOpenOutline
 } from "react-icons/io5";
 import Barcode from "react-barcode";
 import QRCode from "react-qr-code";
@@ -1180,11 +1181,24 @@ const AdminOrders = () => {
                                         awb Number
                                     </p>
 
-                                    <p className="text-sm font-medium text-gray-900">
-                                        {
-                                            selectedOrder?.trackingNumber || "N/A"
-                                        }
-                                    </p>
+                                    {selectedOrder?.trackingNumber ? (
+                                        <a
+                                            href={
+                                                selectedOrder?.trackingUrl ||
+                                                `https://shiprocket.co/tracking/${selectedOrder.trackingNumber}`
+                                            }
+                                            target="_blank"
+                                            rel="noopener noreferrer"
+                                            className="inline-flex items-center gap-1.5 text-sm font-medium text-indigo-600 hover:text-indigo-800 hover:underline"
+                                        >
+                                            <span>{selectedOrder.trackingNumber}</span>
+                                            <IoOpenOutline size={14} />
+                                        </a>
+                                    ) : (
+                                        <p className="text-sm font-medium text-gray-900">
+                                            N/A
+                                        </p>
+                                    )}
                                 </div>
 
                                 <div>

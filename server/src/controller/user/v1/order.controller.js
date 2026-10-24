@@ -41,13 +41,17 @@ exports.GetOrders = async (req, res, next) => {
     try {
         const orders = await orderModel.find({ userId: req.user._id }).sort({ createdAt: -1 });
 
-        const updatedOrders = orders.map(order => ({
-            ...order.toObject(),
-            items: order.items.map(item => ({
-                ...item.toObject(),
-                image: cleanAndFormatImageUrl(item.image)
-            }))
-        }));
+        const updatedOrders = orders.map(order => {
+            const orderObj = order.toObject();
+            return {
+                ...orderObj,
+                trackingUrl: orderObj.trackingUrl || (orderObj.trackingNumber ? `https://shiprocket.co/tracking/${orderObj.trackingNumber}` : null),
+                items: order.items.map(item => ({
+                    ...item.toObject(),
+                    image: cleanAndFormatImageUrl(item.image)
+                }))
+            };
+        });
 
         return res.status(200).json({ success: true, message: 'get orders', orders: updatedOrders });
     } catch (error) {
@@ -213,7 +217,7 @@ exports.ReturnOrder = async (req, res, next) => {
             units: Number(item.quantity),
             selling_price: Number(item.price),
             discount: 0,
-            qc_product_image: `https://dad-panda-rocklike.ngrok-free.dev${item.image}`,
+            qc_product_image: `${process.env.BACKEND_DOMIN_URL}${item.image}`,
         }))
 
         const data = {
