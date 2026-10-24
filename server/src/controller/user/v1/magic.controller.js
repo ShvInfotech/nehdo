@@ -942,6 +942,16 @@ exports.completeMagicOrder = async (req, res, next) => {
             return res.status(422).json({ success: false, message: "razorpay_order_id is required" });
         }
 
+
+        // Fetch order details directly from Razorpay (contains customer_details, shipping_address, billing_address, etc.)
+        let rzpOrder = null;
+        try {
+            rzpOrder = await razorpay.orders.fetch(razorpay_order_id);
+            console.log("Razorpay Order:", rzpOrder);
+        } catch (fetchErr) {
+            console.warn("Could not fetch razorpay order:", fetchErr.message);
+        }
+
         // 1. Idempotency Check: Check if order already recorded in orderModel
         const existingOrder = await orderModel.findOne({
             $or: [
@@ -985,13 +995,6 @@ exports.completeMagicOrder = async (req, res, next) => {
         // Never treat missing signature as proof of COD.
         let isCashOnDelivery = false;
         let rzpPayment = null;
-        let rzpOrder = null;
-
-        try {
-            rzpOrder = await razorpay.orders.fetch(razorpay_order_id);
-        } catch (fetchErr) {
-            console.warn("Could not fetch razorpay order:", fetchErr.message);
-        }
 
         // Check if Razorpay has an authenticated payment entity for this order
         if (razorpay_payment_id && !razorpay_payment_id.startsWith("cod_")) {
@@ -1072,6 +1075,9 @@ exports.completeMagicOrder = async (req, res, next) => {
                         message: "Invalid COD order confirmation. Missing Razorpay verification."
                     });
                 }
+            } else if (rzpOrder?.status === "paid" || rzpPayment?.status === "captured") {
+                // If payment is already captured/paid on Razorpay (e.g. Magic Checkout prepaid completed)
+                isCashOnDelivery = false;
             } else {
                 return res.status(422).json({
                     success: false,
@@ -1080,9 +1086,14 @@ exports.completeMagicOrder = async (req, res, next) => {
             }
         }
 
-        // 4. Resolve Customer Information
+        // 4. Resolve Customer Information (from Razorpay customer_details, payment, checkoutSession, notes, etc.)
+        const rzpCustomer = rzpOrder?.customer_details || {};
+        const rzpShipping = rzpCustomer.shipping_address || rzpCustomer.billing_address || {};
         const orderNotes = rzpOrder?.notes || {};
+
         const rawContact =
+            rzpCustomer.contact ||
+            rzpShipping.contact ||
             rzpPayment?.contact ||
             checkoutSession?.customer?.contact ||
             checkoutSession?.address?.contact ||
@@ -1095,6 +1106,7 @@ exports.completeMagicOrder = async (req, res, next) => {
             "";
 
         const rawEmail =
+            rzpCustomer.email ||
             rzpPayment?.email ||
             checkoutSession?.customer?.email ||
             checkoutSession?.address?.email ||
@@ -1105,6 +1117,9 @@ exports.completeMagicOrder = async (req, res, next) => {
             "";
 
         const rawName =
+            rzpShipping.name ||
+            rzpCustomer.name ||
+            rzpPayment?.notes?.name ||
             checkoutSession?.customer?.name ||
             checkoutSession?.address?.name ||
             clientCustomer?.name ||
@@ -1192,11 +1207,30 @@ exports.completeMagicOrder = async (req, res, next) => {
             console.warn("Could not generate session token:", tokenErr.message);
         }
 
-        // 6. Resolve Shipping Address
-        // Never generate fake default addresses. Validate required fields.
+        // 6. Resolve Shipping Address (from Razorpay customer_details, checkoutSession, or client)
         let shippingAddress = null;
 
-        if (checkoutSession?.address?.postalCode && checkoutSession?.address?.addressline) {
+        const rzpZipcode = String(
+            rzpShipping.zipcode ||
+            rzpShipping.postal_code ||
+            rzpShipping.postalCode ||
+            rzpShipping.pincode ||
+            ""
+        ).trim();
+        const rzpLine1 = (rzpShipping.line1 || rzpShipping.addressline || rzpShipping.address || "").trim();
+        const rzpLine2 = (rzpShipping.line2 || rzpShipping.landmark || "").trim();
+        const rzpCity = (rzpShipping.city || "").trim();
+        const rzpState = (rzpShipping.state || rzpShipping.state_code || "").trim();
+
+        if (rzpZipcode && (rzpLine1 || rzpLine2)) {
+            shippingAddress = {
+                addressline: rzpLine1 || rzpLine2,
+                landmark: rzpLine2 || rzpLine1,
+                city: rzpCity,
+                state: rzpState,
+                postalCode: rzpZipcode
+            };
+        } else if (checkoutSession?.address?.postalCode && checkoutSession?.address?.addressline) {
             shippingAddress = {
                 addressline: checkoutSession.address.addressline,
                 landmark: checkoutSession.address.landmark || "",
@@ -1250,7 +1284,7 @@ exports.completeMagicOrder = async (req, res, next) => {
                 await addressModel.create({
                     userId,
                     addressline: shippingAddress.addressline,
-                    landmark: shippingAddress.landmark || "",
+                    landmark: shippingAddress.landmark || shippingAddress.city || "N/A",
                     city: shippingAddress.city,
                     state: shippingAddress.state,
                     postalCode: shippingAddress.postalCode,
@@ -1337,7 +1371,10 @@ exports.completeMagicOrder = async (req, res, next) => {
         // 9. Consistent Calculations for Order Amounts
         const subtotal = orderItems.reduce((sum, item) => sum + item.total, 0);
         const discount = Number(checkoutSession?.discount || orderNotes.discount || 0);
-        const shippingCharge = Number(checkoutSession?.shippingFee || orderNotes.shippingcharge || 0);
+        let shippingCharge = Number(checkoutSession?.shippingFee || orderNotes.shippingcharge || 0);
+        if (!shippingCharge && rzpOrder?.shipping_fee) {
+            shippingCharge = Number(rzpOrder.shipping_fee) / 100;
+        }
         const totalAmount = Math.max(0, subtotal + shippingCharge - discount);
 
         // 10. Create Order in MongoDB
@@ -1375,7 +1412,15 @@ exports.completeMagicOrder = async (req, res, next) => {
             sessionUpdateQuery,
             {
                 status: "completed",
-                completedOrderId: createdOrder._id
+                completedOrderId: createdOrder._id,
+                ...(shippingAddress ? { address: shippingAddress } : {}),
+                ...(customerName || cleanedPhone || cleanedEmail ? {
+                    customer: {
+                        name: customerName,
+                        email: cleanedEmail || "",
+                        contact: cleanedPhone || ""
+                    }
+                } : {})
             }
         );
 
