@@ -291,31 +291,42 @@ exports.AccepteOrder = async (req, res, next) => {
 
 exports.GanrateLabel = async (req, res, next) => {
     try {
-
-        if (!req.body?.shipmentIds && !req.body?.shipmentIds?.length) {
-            return CustomeError(422, "shipmentId not provide")
+        if (!req.body?.shipmentIds || !req.body?.shipmentIds?.length) {
+            return next(CustomeError(422, "shipmentId not provided"));
         }
-        console.log(req.body?.shipmentIds)
-        const respons = await GenerateLabel(req.body?.shipmentIds)
-        
+        console.log("GenerateLabel shipmentIds:", req.body?.shipmentIds);
+        const respons = await GenerateLabel(req.body?.shipmentIds);
+        console.log("Shiprocket GenerateLabel Response:", JSON.stringify(respons, null, 2));
 
-        const notCreatedShipmentIds = Object.keys(respons.not_created);
-        const successfulShipmentIds = req.body?.shipmentIds.filter((shipmentId) => !notCreatedShipmentIds.includes(String(shipmentId)));
+        const notCreatedShipmentIds = respons?.not_created && typeof respons.not_created === "object"
+            ? (Array.isArray(respons.not_created) ? respons.not_created : Object.keys(respons.not_created))
+            : [];
 
-
-
-
-        const updateOrders = await orderModel.updateMany(
-            { shiprocketShipmentId: { $in: successfulShipmentIds }, status: "accepted" },
-            { $set: { status: "processing" } }
+        const successfulShipmentIds = (req.body?.shipmentIds || []).filter(
+            (shipmentId) => !notCreatedShipmentIds.map(String).includes(String(shipmentId))
         );
 
-        console.log("Updated orders:", updateOrders.modifiedCount);
+        if (successfulShipmentIds.length > 0) {
+            const updateOrders = await orderModel.updateMany(
+                { shiprocketShipmentId: { $in: successfulShipmentIds }, status: "accepted" },
+                { $set: { status: "processing" } }
+            );
+            console.log("Updated orders to processing:", updateOrders.modifiedCount);
+        }
 
-        return res.status(200).json({ success: true, message: `label Genareted`,label_url:respons?.label_url  })
+        return res.status(200).json({
+            success: true,
+            message: respons?.message || "Label Generated",
+            label_url: respons?.label_url || null,
+            respons
+        });
 
     } catch (error) {
-        return next(error)
+        console.error(
+            "GenerateLabel Error:",
+            JSON.stringify(error.response?.data || error.message, null, 2)
+        );
+        return next(error);
     }
 }
 
