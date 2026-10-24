@@ -74,6 +74,9 @@ interface Order {
     shiprocketShipmentId?: string | null;
     trackingNumber?: string | null;
     trackingUrl?: string | null;
+    pickupDate?: string | Date | null;
+    pickupScheduledDate?: string | null;
+    pickupTokenNumber?: string | null;
     updatedAt?: string;
     createdAt?: string;
 }
@@ -1179,14 +1182,37 @@ const AdminOrders = () => {
 
                                     <p className="text-sm font-medium text-gray-900">
                                         {
-                                            selectedOrder?.trackingNumber
+                                            selectedOrder?.trackingNumber || "N/A"
                                         }
                                     </p>
                                 </div>
 
+                                <div>
+                                    <p className="text-xs font-semibold text-gray-400 uppercase">
+                                        Pickup Scheduled Date
+                                    </p>
 
+                                    <p className="text-sm font-medium text-indigo-700 font-mono">
+                                        {
+                                            selectedOrder?.pickupScheduledDate ||
+                                            (selectedOrder?.pickupDate
+                                                ? new Date(selectedOrder.pickupDate).toLocaleString("en-IN")
+                                                : "Not Scheduled")
+                                        }
+                                    </p>
+                                </div>
 
+                                <div>
+                                    <p className="text-xs font-semibold text-gray-400 uppercase">
+                                        Pickup Token Number
+                                    </p>
 
+                                    <p className="text-sm font-medium text-gray-900 break-all font-mono">
+                                        {
+                                            selectedOrder?.pickupTokenNumber || "N/A"
+                                        }
+                                    </p>
+                                </div>
                             </div>
                         </div>
 
@@ -1579,6 +1605,11 @@ const AdminOrders = () => {
                                                     }
                                                 )
                                                 : "-"}
+                                            {order.pickupScheduledDate && (
+                                                <p className="text-[11px] font-semibold text-indigo-600 mt-1">
+                                                    Pickup: {order.pickupScheduledDate}
+                                                </p>
+                                            )}
                                         </td>
 
                                         {/* ITEMS */}

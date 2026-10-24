@@ -65,6 +65,9 @@ exports.PendingOrder = async (req, res, next) => {
                     trackingNumber: 1,
                     shiprocketOrderId: 1,
                     shiprocketShipmentId: 1,
+                    pickupDate: 1,
+                    pickupScheduledDate: 1,
+                    pickupTokenNumber: 1,
                     totalAmount: 1,
                     status: 1,
                     createdAt: 1,
@@ -324,6 +327,15 @@ exports.AccepteOrder = async (req, res, next) => {
                 ...(pickupScheduledDate ? { pickupScheduledDate } : {}),
                 ...(pickupTokenNumber ? { pickupTokenNumber } : {})
             });
+
+            // Update in-memory order object so res.json immediately returns the new pickup details
+            order.shiprocketOrderId = confirmorderData?.order_id || order.shiprocketOrderId || null;
+            order.shiprocketShipmentId = confirmorderData?.shipment_id || order.shiprocketShipmentId || null;
+            order.trackingNumber = trackingNumber || "";
+            order.status = 'accepted';
+            order.pickupDate = pickupDate;
+            order.pickupScheduledDate = pickupScheduledDate;
+            order.pickupTokenNumber = pickupTokenNumber;
         }
 
         return res.status(200).json({ success: true, message: "Order Accepted", orders })
