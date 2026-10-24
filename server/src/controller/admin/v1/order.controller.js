@@ -41,8 +41,14 @@ exports.PendingOrder = async (req, res, next) => {
                                     {
                                         image: {
                                             $cond: [
-                                                { $ne: ["$$item.image", null] },
-                                                { $concat: [process.env.BACKEND_DOMIN_URL, "$$item.image"] },
+                                                { $and: [{ $ne: ["$$item.image", null] }, { $ne: ["$$item.image", ""] }] },
+                                                {
+                                                    $cond: [
+                                                        { $regexMatch: { input: "$$item.image", regex: "^https?://" } },
+                                                        "$$item.image",
+                                                        { $concat: [process.env.BACKEND_DOMIN_URL || "", "$$item.image"] }
+                                                    ]
+                                                },
                                                 null
                                             ]
                                         }

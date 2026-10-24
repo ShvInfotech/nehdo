@@ -8,6 +8,35 @@ const { OrderCancelledMail } = require("../../../helper/emailTemplate");
 const { ShiprocketCancel, getReturnshippingcharg, ShiproketReturnCreate, AssignCourierAndAWB } = require("../../../services/shiproketapis");
 
 
+const cleanAndFormatImageUrl = (img) => {
+    if (!img || typeof img !== "string") return "";
+    let clean = img.trim();
+    if (!clean) return "";
+
+    const domain = (process.env.BACKEND_DOMIN_URL || "").replace(/\/+$/, "");
+
+    // Strip duplicate domain if repeated (e.g., https://domain.comhttps://domain.com/...)
+    if (domain) {
+        const escapedDomain = domain.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+        const doubleDomainRegex = new RegExp(`^(?:${escapedDomain})+`, "i");
+        if (doubleDomainRegex.test(clean)) {
+            clean = clean.replace(doubleDomainRegex, "");
+        }
+    }
+
+    clean = clean.replace(/^(?:https?:\/\/[^/]+)+(?=\/)/i, (match) => {
+        const parts = match.match(/https?:\/\/[^/]+/gi);
+        return parts ? parts[parts.length - 1] : match;
+    });
+
+    if (clean.startsWith("http://") || clean.startsWith("https://")) {
+        return clean;
+    }
+
+    const path = clean.startsWith("/") ? clean : `/${clean}`;
+    return domain ? `${domain}${path}` : path;
+};
+
 exports.GetOrders = async (req, res, next) => {
     try {
         const orders = await orderModel.find({ userId: req.user._id }).sort({ createdAt: -1 });
@@ -16,14 +45,13 @@ exports.GetOrders = async (req, res, next) => {
             ...order.toObject(),
             items: order.items.map(item => ({
                 ...item.toObject(),
-                image: item.image ? `${process.env.BACKEND_DOMIN_URL}${item.image}` : ''
+                image: cleanAndFormatImageUrl(item.image)
             }))
         }));
 
-
-        return res.status(200).json({ success: true, message: 'get orders', orders: updatedOrders })
+        return res.status(200).json({ success: true, message: 'get orders', orders: updatedOrders });
     } catch (error) {
-        return next(error)
+        return next(error);
     }
 }
 
