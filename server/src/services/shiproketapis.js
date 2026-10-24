@@ -122,6 +122,28 @@ exports.GenerateLabel = async (data) => {
 }
 
 
+exports.GeneratePickup = async (shipmentIds, pickupDate = null) => {
+    const url = "https://apiv2.shiprocket.in/v1/external/courier/generate/pickup";
+    const token = await getShiproketAccessToken();
+    const ids = Array.isArray(shipmentIds) ? shipmentIds : [shipmentIds];
+    const payload = {
+        shipment_id: ids.map(id => Number(id) || id),
+        ...(pickupDate ? { pickup_date: pickupDate } : {})
+    };
+    const response = await axios.post(
+        url,
+        payload,
+        {
+            headers: {
+                Authorization: `Bearer ${token}`,
+                "Content-Type": "application/json"
+            }
+        }
+    );
+    return response.data;
+}
+
+
 
 exports.ShiprocketCancel = async (id) => {
     console.log(id)

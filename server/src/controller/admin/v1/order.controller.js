@@ -4,7 +4,7 @@ const orderRequestsModel = require('../../../model/orderRequests.model')
 const crypto = require("crypto");
 const { CustomeError } = require("../../../middleware/globelError");
 const { RazorpayRefundApi } = require("../../../services/razorpayapi");
-const { getshippingcharg, CreatOrderINShiproket, AssignCourierAndAWB, GenerateLabel } = require("../../../services/shiproketapis");
+const { getshippingcharg, CreatOrderINShiproket, AssignCourierAndAWB, GenerateLabel, GeneratePickup } = require("../../../services/shiproketapis");
 
 
 exports.PendingOrder = async (req, res, next) => {
@@ -270,11 +270,59 @@ exports.AccepteOrder = async (req, res, next) => {
                     trackingNumber;
             }
 
+            // 4. Request Pickup from Shiprocket
+            let pickupScheduledDate = null;
+            let pickupDate = null;
+            let pickupTokenNumber = null;
+
+            if (confirmorderData?.shipment_id) {
+                try {
+                    const customPickupDate = req.body?.pickupDate || req.body?.pickup_date || null;
+                    const pickupResponse = await GeneratePickup(confirmorderData.shipment_id, customPickupDate);
+                    console.log("Shiprocket GeneratePickup Response:", JSON.stringify(pickupResponse, null, 2));
+
+                    pickupScheduledDate =
+                        pickupResponse?.response?.pickup_scheduled_date ||
+                        pickupResponse?.response?.data?.pickup_scheduled_date ||
+                        pickupResponse?.pickup_scheduled_date ||
+                        pickupResponse?.data?.pickup_scheduled_date ||
+                        null;
+
+                    pickupTokenNumber =
+                        pickupResponse?.response?.pickup_token_number ||
+                        pickupResponse?.pickup_token_number ||
+                        null;
+
+                    if (pickupScheduledDate) {
+                        const parsedDate = new Date(pickupScheduledDate);
+                        pickupDate = isNaN(parsedDate.getTime()) ? new Date() : parsedDate;
+                    } else if (customPickupDate) {
+                        const parsedDate = new Date(customPickupDate);
+                        pickupDate = isNaN(parsedDate.getTime()) ? null : parsedDate;
+                        pickupScheduledDate = String(customPickupDate);
+                    }
+                } catch (pickupErr) {
+                    console.warn(
+                        "Shiprocket GeneratePickup warning:",
+                        pickupErr.response?.data || pickupErr.message
+                    );
+                    if (req.body?.pickupDate || req.body?.pickup_date) {
+                        const customPickupDate = req.body.pickupDate || req.body.pickup_date;
+                        const parsedDate = new Date(customPickupDate);
+                        pickupDate = isNaN(parsedDate.getTime()) ? null : parsedDate;
+                        pickupScheduledDate = String(customPickupDate);
+                    }
+                }
+            }
+
             await orderModel.findByIdAndUpdate(order._id, {
                 shiprocketOrderId: confirmorderData?.order_id || order.shiprocketOrderId || null,
                 shiprocketShipmentId: confirmorderData?.shipment_id || order.shiprocketShipmentId || null,
                 trackingNumber: trackingNumber || "",
-                status: 'accepted'
+                status: 'accepted',
+                ...(pickupDate ? { pickupDate } : {}),
+                ...(pickupScheduledDate ? { pickupScheduledDate } : {}),
+                ...(pickupTokenNumber ? { pickupTokenNumber } : {})
             });
         }
 
