@@ -124,6 +124,9 @@ exports.AccepteOrder = async (req, res, next) => {
                     payment: 1,
                     status: 1,
                     createdAt: 1,
+                    shiprocketOrderId: 1,
+                    shiprocketShipmentId: 1,
+                    trackingNumber: 1,
 
                     user: {
                         name: "$user.name",
@@ -135,43 +138,30 @@ exports.AccepteOrder = async (req, res, next) => {
         ]);
 
         for (const order of orders) {
-
-            const length = Math.max(...order.items.map(item => Number(item.dimensions?.length || 0)), 0);
-            const breadth = Math.max(...order.items.map(item => Number(item.dimensions?.width || 0)), 0);
-            const height = order.items.reduce((total, item) => total + Number(item.dimensions?.height || 0) * Number(item.quantity || 1), 0);
-            const weight = order.items.reduce((total, item) => total + Number(item.weight || 0) * Number(item.quantity || 1), 0);
+            const length = Math.max(...order.items.map(item => Number(item.dimensions?.length || 0)), 0.5);
+            const breadth = Math.max(...order.items.map(item => Number(item.dimensions?.width || 0)), 0.5);
+            const height = Math.max(order.items.reduce((total, item) => total + Number(item.dimensions?.height || 0) * Number(item.quantity || 1), 0), 0.5);
+            const weight = Math.max(order.items.reduce((total, item) => total + Number(item.weight || 0) * Number(item.quantity || 1), 0), 0.1);
 
             const packageDetails = {
-                pincode: order.shippingAddress.postalCode,
+                pincode: order.shippingAddress?.postalCode,
                 weight,
-                cod: order.payment.method === "cod" ? 1 : 0,
+                cod: order.payment?.method === "cod" ? 1 : 0,
                 length,
                 breadth,
                 height
             };
 
-
-            const data = await getshippingcharg(packageDetails);
-
-            if (data.status === 400 || data.status === 404) {
-                return next(CustomeError(data.status, data.message))
+            let courierCompanyId = null;
+            try {
+                const data = await getshippingcharg(packageDetails);
+                if (data?.data?.available_courier_companies?.length) {
+                    const bestCourier = data.data.available_courier_companies.reduce((best, current) => current.rate < best.rate ? current : best);
+                    courierCompanyId = bestCourier.courier_company_id;
+                }
+            } catch (chargeErr) {
+                console.warn("Could not fetch shipping serviceability:", chargeErr.response?.data || chargeErr.message);
             }
-
-            const bestCourier = data.data.available_courier_companies.reduce((best, current) => current.rate < best.rate ? current : best);
-
-            const courierDetails = {
-                courierCompanyId: bestCourier.courier_company_id,
-                courierId: bestCourier.id,
-                courierName: bestCourier.courier_name,
-                rate: bestCourier.rate,
-                freightCharge: bestCourier.freight_charge,
-                chargeWeight: bestCourier.charge_weight,
-                estimatedDeliveryDays: bestCourier.estimated_delivery_days,
-                etd: bestCourier.etd,
-                zone: bestCourier.zone
-            };
-
-            // અહીં order પ્રમાણે courier store/use કરી શકો
 
             const order_items = order.items.map(item => ({
                 name: item.name,
@@ -181,59 +171,105 @@ exports.AccepteOrder = async (req, res, next) => {
                 discount: 0,
                 tax: 0,
                 hsn: item.HSCode || ""
-            })),
+            }));
 
+            const createorderData = {
+                order_id: order.orderNumber,
+                order_date: new Date(order.createdAt).toISOString().slice(0, 16).replace("T", " "),
+                pickup_location: process.env.SHIPROKET_PICKUP_LOCATION || "HOME",
+                channel_id: "",
+                comment: "Order",
 
-                createorderData = {
-                    order_id: order.orderNumber,
-                    order_date: new Date(order.createdAt).toISOString().slice(0, 16).replace("T", " "),
-                    pickup_location: process.env.SHIPROKET_PICKUP_LOCATION || "HOME",
-                    channel_id: "",
-                    comment: "Test order",
+                billing_customer_name: order.user?.name || "Customer",
+                billing_last_name: order.user?.name || "Customer",
+                billing_address: order.shippingAddress?.addressline || "",
+                billing_address_2: order.shippingAddress?.landmark || "",
+                billing_city: order.shippingAddress?.city || "",
+                billing_pincode: order.shippingAddress?.postalCode || "",
+                billing_state: order.shippingAddress?.state || "",
+                billing_country: "India",
+                billing_email: order.user?.email || "customer@nehdo.com",
+                billing_phone: order.user?.phone || "",
 
-                    billing_customer_name: order.user.name,
-                    billing_last_name: order.user.name,
-                    billing_address: order.shippingAddress.addressline,
-                    billing_address_2: order.shippingAddress.landmark,
-                    billing_city: order.shippingAddress.city,
-                    billing_pincode: order.shippingAddress.postalCode,
-                    billing_state: order.shippingAddress.state,
-                    billing_country: "India",
-                    billing_email: order.user.email,
-                    billing_phone: order.user.phone,
+                shipping_is_billing: true,
+                order_items,
+                payment_method: order.payment?.method === "cod" ? "COD" : "Prepaid",
+                shipping_charges: 0,
+                giftwrap_charges: 0,
+                transaction_charges: 0,
+                total_discount: 0,
+                sub_total: order.totalAmount,
+                length,
+                breadth,
+                height,
+                weight
+            };
 
-                    shipping_is_billing: true,
-                    order_items,
-                    payment_method: order.payment?.method === "cod" ? "COD" : "Prepaid",
-                    shipping_charges: 0,
-                    giftwrap_charges: 0,
-                    transaction_charges: 0,
-                    total_discount: 0,
-                    sub_total: order.totalAmount,
-                    length,
-                    breadth,
-                    height,
-                    weight
+            let confirmorderData = null;
+            if (order.shiprocketOrderId && order.shiprocketShipmentId) {
+                confirmorderData = {
+                    order_id: order.shiprocketOrderId,
+                    shipment_id: order.shiprocketShipmentId
+                };
+            } else {
+                try {
+                    confirmorderData = await CreatOrderINShiproket(createorderData);
+                } catch (createErr) {
+                    const errMsg = JSON.stringify(createErr.response?.data || {});
+                    if (errMsg.toLowerCase().includes("already exists") || createErr.response?.data?.errors?.order_id) {
+                        console.warn("Order ID already exists in Shiprocket, retrying with unique order_id suffix:", errMsg);
+                        createorderData.order_id = `${order.orderNumber}_${Date.now()}`;
+                        confirmorderData = await CreatOrderINShiproket(createorderData);
+                    } else {
+                        throw createErr;
+                    }
                 }
-
-
-
-
-            const confirmorderData = await CreatOrderINShiproket(createorderData)
-
-            const awsData = {
-                shipment_id: confirmorderData.shipment_id,
-                courier_id: courierDetails.courierId,
-
-            }
-            const awsNumber = await AssignCourierAndAWB(awsData)    // pending aws not provide by shiproket in test mode 
-
-            if (!awsNumber.data?.errors) {
-                await orderModel.findByIdAndUpdate(order._id, { shiprocketOrderId: confirmorderData.order_id, shiprocketShipmentId: confirmorderData.shipment_id, trackingNumber: awsNumber.awb_code, status: 'accepted' })
             }
 
-            // await orderModel.findByIdAndUpdate(order._id, { shiprocketOrderId: confirmorderData.order_id, shiprocketShipmentId: confirmorderData.shipment_id, trackingNumber: '123456', status: 'accepted' })
+            let awsNumber = null;
+            let trackingNumber = order.trackingNumber || "";
 
+            if (confirmorderData?.shipment_id) {
+                try {
+                    // Try assigning with best courier's courier_company_id
+                    const awsData = {
+                        shipment_id: confirmorderData.shipment_id,
+                        ...(courierCompanyId ? { courier_id: Number(courierCompanyId) } : {})
+                    };
+                    awsNumber = await AssignCourierAndAWB(awsData);
+                } catch (assignErr) {
+                    console.warn(
+                        "Shiprocket assign courier with courier_company_id failed, retrying auto-assignment without courier_id:",
+                        assignErr.response?.data || assignErr.message
+                    );
+                    try {
+                        // Fallback: omit courier_id so Shiprocket auto-selects based on account priority rules
+                        awsNumber = await AssignCourierAndAWB({
+                            shipment_id: confirmorderData.shipment_id
+                        });
+                    } catch (autoErr) {
+                        console.warn(
+                            "Shiprocket auto-assign AWB failed (e.g. test mode or insufficient wallet balance):",
+                            autoErr.response?.data || autoErr.message
+                        );
+                    }
+                }
+            }
+
+            if (awsNumber) {
+                trackingNumber =
+                    awsNumber.response?.data?.awb_code ||
+                    awsNumber.response?.awb_code ||
+                    awsNumber.awb_code ||
+                    trackingNumber;
+            }
+
+            await orderModel.findByIdAndUpdate(order._id, {
+                shiprocketOrderId: confirmorderData?.order_id || order.shiprocketOrderId || null,
+                shiprocketShipmentId: confirmorderData?.shipment_id || order.shiprocketShipmentId || null,
+                trackingNumber: trackingNumber || "",
+                status: 'accepted'
+            });
         }
 
         return res.status(200).json({ success: true, message: "Order Accepted", orders })

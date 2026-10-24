@@ -241,7 +241,7 @@ exports.ReturnOrder = async (req, res, next) => {
 
         const courierDetails = {
             courierCompanyId: bestCourier.courier_company_id,
-            courierId: bestCourier.id,
+            courierId: bestCourier.courier_company_id,
             courierName: bestCourier.courier_name,
             rate: bestCourier.rate,
             freightCharge: bestCourier.freight_charge,
