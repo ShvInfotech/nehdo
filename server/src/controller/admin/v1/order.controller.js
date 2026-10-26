@@ -175,7 +175,7 @@ exports.AccepteOrder = async (req, res, next) => {
             }
 
             const order_items = order.items.map(item => ({
-                name: item.name,
+                name: `${item.name} - ${item.size}`,
                 sku: item.sku,
                 units: Number(item.quantity),
                 selling_price: Number(item.price),
