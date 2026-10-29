@@ -83,3 +83,40 @@ exports.Updatecategory = async (req, res, next) => {
         return next(error)
     }
 }
+
+exports.DeleteCategory = async (req, res, next) => {
+    try {
+        const id = req.params.id
+        if (!mongoose.isValidObjectId(id)) {
+            return next(CustomeError(422, 'category id invalid'))
+        }
+
+        const category = await categoryModel.findById(id)
+        if (!category) {
+            return next(CustomeError(404, 'category not found'))
+        }
+
+        if (category.logo) {
+            DeleteImage(category.logo)
+        }
+
+        // Also delete subcategories under this category
+        const subcategoryModel = require('../../../model/subcategory.model')
+        const subcategories = await subcategoryModel.find({ categoryId: id })
+        if (subcategories && subcategories.length) {
+            subcategories.forEach(sub => {
+                if (sub.logo) DeleteImage(sub.logo)
+            })
+            await subcategoryModel.deleteMany({ categoryId: id })
+        }
+
+        await categoryModel.findByIdAndDelete(id)
+
+        return res.status(200).json({
+            success: true,
+            message: 'category deleted successfully'
+        })
+    } catch (error) {
+        return next(error)
+    }
+}

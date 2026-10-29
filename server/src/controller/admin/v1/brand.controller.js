@@ -114,3 +114,30 @@ exports.UpdateBrand = async (req, res, next) => {
         return next(error)
     }
 }
+
+exports.DeleteBrand = async (req, res, next) => {
+    try {
+        const id = req.params.id
+        if (!mongoose.isValidObjectId(id)) {
+            return next(CustomeError(422, 'brand id invalid'))
+        }
+
+        const brand = await brandModel.findById(id)
+        if (!brand) {
+            return next(CustomeError(404, 'brand not found'))
+        }
+
+        if (brand.logo) {
+            DeleteImage(brand.logo)
+        }
+
+        await brandModel.findByIdAndDelete(id)
+
+        return res.status(200).json({
+            success: true,
+            message: 'brand deleted successfully'
+        })
+    } catch (error) {
+        return next(error)
+    }
+}

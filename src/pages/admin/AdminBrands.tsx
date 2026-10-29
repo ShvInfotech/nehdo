@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { IoAddOutline, IoSearchOutline, IoEllipsisVertical, IoCloseOutline, IoCloudUploadOutline, IoImageOutline,} from "react-icons/io5";
+import { IoAddOutline, IoSearchOutline, IoEllipsisVertical, IoCloseOutline, IoCloudUploadOutline, IoImageOutline, IoTrashOutline } from "react-icons/io5";
 import { apiRequest } from "../../services/apiService";
 import { toast } from "react-toastify";
 const AdminBrands = () => {
@@ -135,6 +135,19 @@ const AdminBrands = () => {
     useEffect(() => {
         getbrand();
     }, []);
+
+    const handleDeleteBrand = async (id: string) => {
+        if (!window.confirm("Are you sure you want to delete this brand?")) {
+            return;
+        }
+        try {
+            const res = await apiRequest(`/admin/api/v1/brand/delete/${id}`, "DELETE");
+            toast.success(res.message || "Brand deleted successfully");
+            await getbrand();
+        } catch (error: any) {
+            toast.error(error?.message || "Failed to delete brand");
+        }
+    };
 
     const filteredBrands = brands.filter((brand) =>
         brand.name.toLowerCase().includes(searchTerm.toLowerCase())
@@ -449,8 +462,12 @@ const AdminBrands = () => {
                                             >
                                                 Edit
                                             </button>
-                                            <button className="p-2 text-gray-400 hover:text-brand hover:bg-brand/10 rounded-lg transition-colors">
-                                                <IoEllipsisVertical size={18} />
+                                            <button
+                                                onClick={() => handleDeleteBrand(brand._id)}
+                                                className="p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                                                title="Delete Brand"
+                                            >
+                                                <IoTrashOutline size={18} />
                                             </button>
                                         </div>
                                     </td>

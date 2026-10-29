@@ -127,3 +127,30 @@ exports.UpdateSubcategory = async (req, res, next) => {
         return next(error)
     }
 }
+
+exports.DeleteSubcategory = async (req, res, next) => {
+    try {
+        const id = req.params.id
+        if (!mongoose.isValidObjectId(id)) {
+            return next(CustomeError(422, 'subcategory id invalid'))
+        }
+
+        const subcategory = await subcategoryModel.findById(id)
+        if (!subcategory) {
+            return next(CustomeError(404, 'subcategory not found'))
+        }
+
+        if (subcategory.logo) {
+            DeleteImage(subcategory.logo)
+        }
+
+        await subcategoryModel.findByIdAndDelete(id)
+
+        return res.status(200).json({
+            success: true,
+            message: 'subcategory deleted successfully'
+        })
+    } catch (error) {
+        return next(error)
+    }
+}
