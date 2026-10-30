@@ -4,7 +4,9 @@ const orderRequestsModel = require('../../../model/orderRequests.model')
 const crypto = require("crypto");
 const { CustomeError } = require("../../../middleware/globelError");
 const { RazorpayRefundApi } = require("../../../services/razorpayapi");
-const { getshippingcharg, CreatOrderINShiproket, AssignCourierAndAWB, GenerateLabel, GeneratePickup } = require("../../../services/shiproketapis");
+const { getshippingcharg, CreatOrderINShiproket, AssignCourierAndAWB, GenerateLabel, GeneratePickup, ShiprocketCancel } = require("../../../services/shiproketapis");
+const productvariantModel = require("../../../model/productvariant.model");
+const productinventoryModel = require("../../../model/productinventory.model");
 
 
 exports.PendingOrder = async (req, res, next) => {
@@ -570,113 +572,66 @@ exports.RefundWebhook = async (req, res, next) => {
 
 
 const mapShiprocketStatusToOrderStatus = (status, statusId) => {
-    // 1. By status ID (Shiprocket internal tracking status IDs)
-    if (statusId !== undefined && statusId !== null) {
-        const idNum = Number(statusId);
-        const idMap = {
-            1: "processing",        // AWB Assigned
-            2: "processing",        // Label Generated
-            3: "processing",        // Pickup Scheduled
-            4: "processing",        // Pickup Rescheduled
-            5: "processing",        // Pickup Error
-            13: "processing",       // Pickup Exception
-            15: "processing",       // Out for Pickup
-            21: "processing",       // Reached Pickup Hub
-
-            11: "pending",          // Pending / Unshipped
-
-            6: "shipped",           // Shipped
-            17: "shipped",          // In Transit
-            18: "shipped",          // Reached at Destination Hub
-            19: "shipped",          // Misrouted
-            22: "shipped",          // Reached Origin Hub
-            23: "shipped",          // Picked Up
-            42: "shipped",          // Reached Delivery Hub
-
-            16: "out_for_delivery", // Out for Delivery
-
-            7: "delivered",         // Delivered
-
-            8: "cancelled",         // Cancelled
-            9: "cancelled",         // RTO Initiated
-            10: "cancelled",        // RTO Delivered
-            12: "cancelled",        // Lost
-            20: "cancelled",        // RTO Acknowledged
-            43: "cancelled",        // Shipment Lost
-            44: "cancelled"         // Shipment Damaged
-        };
-
-        if (idMap[idNum]) {
-            return idMap[idNum];
+    // Check text first if explicitly cancelled, delivered, or out for delivery
+    if (status && typeof status === "string") {
+        const normalized = status.trim().toUpperCase().replace(/[_-]/g, " ");
+        if (
+            normalized === "CANCEL" ||
+            normalized === "CANCELED" ||
+            normalized === "CANCELLED" ||
+            normalized.startsWith("CANCEL")
+        ) {
+            return "cancelled";
+        }
+        if (normalized === "DELIVERED" || normalized === "COMPLETED") {
+            return "delivered";
+        }
+        if (normalized === "OUT FOR DELIVERY" || normalized === "OUT FOR DELIVERY TODAY") {
+            return "out_for_delivery";
         }
     }
 
-    // 2. By string status name
-    if (!status || typeof status !== "string") return null;
-    const normalized = status.trim().toUpperCase().replace(/[_-]/g, " ");
+    // 1. By status ID (Shiprocket internal tracking status IDs)
+    if (statusId !== undefined && statusId !== null) {
+        const idNum = Number(statusId);
+        if (!Number.isNaN(idNum)) {
+            const idMap = {
+                1: "processing",        // AWB Assigned
+                2: "processing",        // Label Generated
+                3: "processing",        // Pickup Scheduled
+                4: "processing",        // Pickup Rescheduled
+                5: "cancelled",         // Cancelled / Canceled (Shiprocket status 5)
+                13: "processing",       // Pickup Exception
+                15: "processing",       // Out for Pickup
+                21: "processing",       // Reached Pickup Hub
 
-    const textMap = {
-        // Pending
-        "NEW": "pending",
-        "PENDING": "pending",
+                11: "pending",          // Pending / Unshipped
 
-        // Accepted / Processing
-        "ACCEPTED": "accepted",
-        "CONFIRMED": "accepted",
-        "ORDER CONFIRMED": "accepted",
-        "AWB ASSIGNED": "processing",
-        "LABEL GENERATED": "processing",
-        "MANIFEST GENERATED": "processing",
-        "PICKUP GENERATED": "processing",
-        "PICKUP SCHEDULED": "processing",
-        "PICKUP QUEUED": "processing",
-        "PICKUP RESCHEDULED": "processing",
-        "OUT FOR PICKUP": "processing",
-        "PICKUP ERROR": "processing",
-        "PICKUP EXCEPTION": "processing",
-        "REACHED PICKUP HUB": "processing",
-        "PACKED": "processing",
-        "PROCESSING": "processing",
-        "READY TO SHIP": "processing",
+                6: "shipped",           // Shipped
+                17: "shipped",          // In Transit
+                18: "shipped",          // Reached at Destination Hub
+                19: "shipped",          // Misrouted
+                22: "shipped",          // Reached Origin Hub
+                23: "shipped",          // Picked Up
+                42: "shipped",          // Reached Delivery Hub
 
-        // Shipped
-        "PICKED UP": "shipped",
-        "IN TRANSIT": "shipped",
-        "SHIPPED": "shipped",
-        "DISPATCHED": "shipped",
-        "IN FLIGHT": "shipped",
-        "REACHED AT DESTINATION": "shipped",
-        "REACHED AT DESTINATION HUB": "shipped",
-        "REACHED DESTINATION HUB": "shipped",
-        "REACHED ORIGIN HUB": "shipped",
-        "REACHED DELIVERY HUB": "shipped",
-        "TRANSIT": "shipped",
-        "MISROUTED": "shipped",
+                16: "out_for_delivery", // Out for Delivery
 
-        // Out for Delivery
-        "OUT FOR DELIVERY": "out_for_delivery",
-        "OUT FOR DELIVERY TODAY": "out_for_delivery",
+                7: "delivered",         // Delivered
 
-        // Delivered
-        "DELIVERED": "delivered",
-        "COMPLETED": "delivered",
+                8: "cancelled",         // Cancelled
+                9: "cancelled",         // RTO Initiated
+                10: "cancelled",        // RTO Delivered
+                12: "cancelled",        // Lost
+                20: "cancelled",        // RTO Acknowledged
+                43: "cancelled",        // Shipment Lost
+                44: "cancelled"         // Shipment Damaged
+            };
 
-        // Cancelled / RTO
-        "CANCEL": "cancelled",
-        "CANCELED": "cancelled",
-        "CANCELLED": "cancelled",
-        "LOST": "cancelled",
-        "SHIPMENT LOST": "cancelled",
-        "SHIPMENT DAMAGE": "cancelled",
-        "SHIPMENT DAMAGED": "cancelled",
-        "DAMAGED": "cancelled",
-        "RTO INITIATED": "cancelled",
-        "RTO IN TRANSIT": "cancelled",
-        "RTO DELIVERED": "cancelled",
-        "RTO ACKNOWLEDGED": "cancelled",
-        "RTO CANCELLED": "cancelled",
-        "RTO": "cancelled",
-        "RETURN DELIVERED": "cancelled"
+            if (idMap[idNum]) {
+                return idMap[idNum];
+            }
+        }
     };
 
     return textMap[normalized] || null;
@@ -972,11 +927,41 @@ const handleShippingWebhookLogic = async (req, res, next, requireAuth = true) =>
                 });
             }
 
-            const newStatus = mapShiprocketStatusToOrderStatus(rawStatus, rawStatusId);
+            const isCancelled =
+                rawStatus.includes("CANCEL") ||
+                (payload.shipment_status && String(payload.shipment_status).toUpperCase().includes("CANCEL")) ||
+                String(payload.current_status_id) === "5" ||
+                String(payload.current_status_id) === "8" ||
+                String(payload.shipment_status_id) === "5" ||
+                String(payload.shipment_status_id) === "8";
+
+            const newStatus = isCancelled ? "cancelled" : mapShiprocketStatusToOrderStatus(rawStatus, rawStatusId);
             const updateFields = {};
 
             if (newStatus) {
                 updateFields.status = newStatus;
+
+                if (newStatus === "cancelled" && order.status !== "cancelled") {
+                    // Restore inventory stock back to variants and products
+                    if (Array.isArray(order.items)) {
+                        for (const item of order.items) {
+                            try {
+                                if (item.variantId) {
+                                    await productvariantModel.findOneAndUpdate(
+                                        { "variant._id": item.variantId },
+                                        { $inc: { "variant.$.stock": item.quantity } }
+                                    );
+                                }
+                                await productinventoryModel.findOneAndUpdate(
+                                    { productId: item.productId },
+                                    { $inc: { stock: item.quantity } }
+                                );
+                            } catch (stockErr) {
+                                console.error("Error restoring stock on cancellation webhook:", stockErr.message);
+                            }
+                        }
+                    }
+                }
 
                 if (newStatus === "delivered") {
                     if (!order.deliveredAt) {
@@ -1034,3 +1019,65 @@ exports.ShippingWebhookTest = async (req, res, next) => {
 
 
 
+
+
+exports.CancelOrderAdmin = async (req, res, next) => {
+    try {
+        const { orderId, orderNumber, reason } = req.body || {};
+        const query = [];
+        if (orderId && mongoose.isValidObjectId(orderId)) query.push({ _id: orderId });
+        if (orderNumber) query.push({ orderNumber: String(orderNumber).trim() });
+        if (!query.length) {
+            return next(CustomeError(422, "orderId or orderNumber is required"));
+        }
+
+        const order = await orderModel.findOne({ $or: query });
+        if (!order) {
+            return next(CustomeError(404, "Order not found"));
+        }
+
+        if (order.status === "cancelled") {
+            return res.status(200).json({ success: true, message: "Order is already cancelled", order });
+        }
+
+        // Cancel on Shiprocket if shiprocketOrderId exists
+        if (order.shiprocketOrderId) {
+            try {
+                await ShiprocketCancel(order.shiprocketOrderId);
+            } catch (srErr) {
+                console.warn("Could not cancel on Shiprocket:", srErr.message);
+            }
+        }
+
+        // Restore inventory stock
+        if (Array.isArray(order.items)) {
+            for (const item of order.items) {
+                try {
+                    if (item.variantId) {
+                        await productvariantModel.findOneAndUpdate(
+                            { "variant._id": item.variantId },
+                            { $inc: { "variant.$.stock": item.quantity } }
+                        );
+                    }
+                    await productinventoryModel.findOneAndUpdate(
+                        { productId: item.productId },
+                        { $inc: { stock: item.quantity } }
+                    );
+                } catch (stockErr) {
+                    console.error("Error restoring stock on admin cancellation:", stockErr.message);
+                }
+            }
+        }
+
+        order.status = "cancelled";
+        await order.save();
+
+        return res.status(200).json({
+            success: true,
+            message: `Order ${order.orderNumber} cancelled successfully`,
+            order
+        });
+    } catch (err) {
+        return next(err);
+    }
+};

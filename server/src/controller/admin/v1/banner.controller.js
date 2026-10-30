@@ -62,15 +62,36 @@ exports.GetBanner = async (req, res, next) => {
     try {
         const banners = await bannerModel.find({ isDeleted: false });
 
-        const baseUrl = process.env.BACKEND_DOMIN_URL
+        let baseUrl = (process.env.BACKEND_DOMIN_URL || "").trim().replace(/\/+$/, "");
+        if (!baseUrl || baseUrl.includes("127.0.0.1") || baseUrl.includes("localhost")) {
+            const forwardedHost = req.get("x-forwarded-host") || req.get("host");
+            const forwardedProto = req.get("x-forwarded-proto") || req.protocol || "https";
+            if (forwardedHost && !forwardedHost.includes("127.0.0.1") && !forwardedHost.includes("localhost")) {
+                baseUrl = `${forwardedProto}://${forwardedHost}`;
+            } else {
+                baseUrl = "https://nehdowellness.com";
+            }
+        }
+        baseUrl = baseUrl.replace(/\/+$/, "");
+
+        const formatBannerImg = (imgPath) => {
+            if (!imgPath || typeof imgPath !== "string") return "";
+            let clean = imgPath.trim();
+            clean = clean.replace(/^https?:\/\/(127\.0\.0\.1|localhost)(:\d+)?/i, "");
+            if (clean.startsWith("http://") || clean.startsWith("https://")) {
+                return clean;
+            }
+            const slash = clean.startsWith("/") ? "" : "/";
+            return `${baseUrl}${slash}${clean}`;
+        };
 
         const formattedBanners = banners.map((banner) => {
             const bannerObj = banner.toObject();
 
             return {
                 ...bannerObj,
-                desktopImage: bannerObj.desktopImage ? `${baseUrl}${bannerObj.desktopImage}` : "",
-                mobileImage: bannerObj.mobileImage ? `${baseUrl}${bannerObj.mobileImage}` : "",
+                desktopImage: formatBannerImg(bannerObj.desktopImage),
+                mobileImage: formatBannerImg(bannerObj.mobileImage),
             };
         });
 
