@@ -462,84 +462,122 @@ const ProductDetail = () => {
                         </div>
                     )}
 
-                    {/* Quantity + Add to Cart */}
-                    <div className="flex flex-wrap items-center gap-4 mb-6">
+                    {/* Quantity + Add to Cart + Buy Now + Wishlist */}
+                    <div className="flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-4 mb-6">
 
-                        <div className="flex items-center border border-gray-200 rounded-xl overflow-hidden">
-
-                            <button
-                                onClick={() =>
-                                    setQuantity((q) =>
-                                        Math.max(
-                                            1,
-                                            q - 1
+                        {/* Quantity selector & Mobile Wishlist */}
+                        <div className="flex items-center justify-between sm:justify-start gap-3">
+                            <div className="flex items-center border border-gray-200 rounded-xl overflow-hidden bg-white shadow-sm sm:shadow-none">
+                                <button
+                                    type="button"
+                                    onClick={() =>
+                                        setQuantity((q) =>
+                                            Math.max(
+                                                1,
+                                                q - 1
+                                            )
                                         )
-                                    )
-                                }
-                                className="px-4 py-3 hover:bg-gray-100 transition-colors"
-                            >
-                                <IoRemoveOutline size={18} />
-                            </button>
+                                    }
+                                    className="px-3.5 py-2.5 sm:px-4 sm:py-3 hover:bg-gray-100 transition-colors"
+                                    aria-label="Decrease quantity"
+                                >
+                                    <IoRemoveOutline size={18} />
+                                </button>
 
-                            <span className="px-4 py-3 font-semibold text-sm min-w-[48px] text-center">
-                                {quantity}
-                            </span>
+                                <span className="px-3 py-2.5 sm:px-4 sm:py-3 font-semibold text-sm min-w-[42px] sm:min-w-[48px] text-center select-none">
+                                    {quantity}
+                                </span>
 
+                                <button
+                                    type="button"
+                                    onClick={() =>
+                                        setQuantity(
+                                            (q) => q + 1
+                                        )
+                                    }
+                                    className="px-3.5 py-2.5 sm:px-4 sm:py-3 hover:bg-gray-100 transition-colors"
+                                    aria-label="Increase quantity"
+                                >
+                                    <IoAddOutline size={18} />
+                                </button>
+                            </div>
+
+                            {/* Mobile Wishlist Button */}
                             <button
+                                type="button"
                                 onClick={() =>
-                                    setQuantity(
-                                        (q) => q + 1
-                                    )
+                                    toggle(product.id)
                                 }
-                                className="px-4 py-3 hover:bg-gray-100 transition-colors"
+                                className={`sm:hidden h-[44px] w-[44px] rounded-xl border-2 transition-all flex items-center justify-center ${
+                                    inWishlist
+                                        ? "border-red-200 bg-red-50 text-red-500"
+                                        : "border-gray-200 text-gray-600 hover:border-brand"
+                                }`}
+                                aria-label="Add to wishlist"
                             >
-                                <IoAddOutline size={18} />
+                                {inWishlist ? (
+                                    <IoHeart size={22} className="text-red-500" />
+                                ) : (
+                                    <IoHeartOutline size={22} className="text-gray-600" />
+                                )}
                             </button>
-
                         </div>
 
-                        <button
-                            onClick={handleAddToCart}
-                            disabled={isOutOfStock}
-                            className={`flex-1 py-4 rounded-2xl text-base font-bold transition-all flex items-center justify-center gap-2 disabled:opacity-50 ${
-                                added
-                                    ? "bg-green-500 text-white"
-                                    : "bg-brand text-white shadow-button hover:shadow-button-hover hover:bg-brand-light"
-                            }`}
-                        >
-                            {added
-                                ? "✓ Added to Cart!"
-                                : "Add to Cart"}
-                        </button>
+                        {/* Add to Cart & Buy Now Action Buttons */}
+                        <div className="grid grid-cols-2 sm:flex sm:flex-1 items-center gap-3">
+                            <button
+                                type="button"
+                                onClick={handleAddToCart}
+                                disabled={isOutOfStock}
+                                className={`w-full py-3.5 sm:py-4 px-3 sm:px-4 rounded-xl sm:rounded-2xl text-sm sm:text-base font-bold transition-all flex items-center justify-center gap-1.5 sm:gap-2 whitespace-nowrap disabled:opacity-50 ${
+                                    added
+                                        ? "bg-green-500 text-white"
+                                        : "bg-brand text-white shadow-button hover:shadow-button-hover hover:bg-brand-light"
+                                }`}
+                            >
+                                {added ? (
+                                    <>
+                                        <span className="hidden sm:inline">✓ Added to Cart!</span>
+                                        <span className="sm:hidden">✓ Added!</span>
+                                    </>
+                                ) : (
+                                    "Add to Cart"
+                                )}
+                            </button>
 
+                            <button
+                                type="button"
+                                onClick={handleBuyNow}
+                                disabled={isOutOfStock || isBuyingNow}
+                                className="w-full py-3.5 sm:py-4 px-3 sm:px-4 rounded-xl sm:rounded-2xl text-sm sm:text-base font-bold text-white bg-gradient-to-r from-indigo-600 via-purple-600 to-indigo-700 hover:from-indigo-700 hover:to-purple-700 shadow-button hover:shadow-button-hover transition-all flex items-center justify-center gap-1.5 sm:gap-2 whitespace-nowrap disabled:opacity-50 cursor-pointer"
+                            >
+                                {isBuyingNow ? (
+                                    <>
+                                        <span className="w-4 h-4 sm:w-5 sm:h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                                        <span className="hidden sm:inline">Opening Checkout...</span>
+                                        <span className="sm:hidden">Opening...</span>
+                                    </>
+                                ) : (
+                                    <>
+                                        <IoFlashOutline size={18} className="animate-pulse" />
+                                        <span>Buy Now</span>
+                                    </>
+                                )}
+                            </button>
+                        </div>
+
+                        {/* Desktop Wishlist Button */}
                         <button
                             type="button"
-                            onClick={handleBuyNow}
-                            disabled={isOutOfStock || isBuyingNow}
-                            className="flex-1 py-4 rounded-2xl text-base font-bold text-white bg-gradient-to-r from-indigo-600 via-purple-600 to-indigo-700 hover:from-indigo-700 hover:to-purple-700 shadow-button hover:shadow-button-hover transition-all flex items-center justify-center gap-2 disabled:opacity-50 cursor-pointer"
-                        >
-                            {isBuyingNow ? (
-                                <>
-                                    <span className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                                    <span>Opening Checkout...</span>
-                                </>
-                            ) : (
-                                <>
-                                    <IoFlashOutline size={20} className="animate-pulse" />
-                                    <span>Buy Now</span>
-                                </>
-                            )}
-                        </button>
-
-                        <button
                             onClick={() =>
                                 toggle(product.id)
                             }
-                            className={`p-4 rounded-2xl border-2 transition-all ${
+                            className={`hidden sm:flex p-4 rounded-2xl border-2 transition-all items-center justify-center ${
                                 inWishlist
                                     ? "border-red-200 bg-red-50"
                                     : "border-gray-200 hover:border-brand"
                             }`}
+                            aria-label="Add to wishlist"
                         >
                             {inWishlist ? (
                                 <IoHeart
