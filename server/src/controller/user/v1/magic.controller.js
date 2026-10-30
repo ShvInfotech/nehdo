@@ -980,6 +980,24 @@ exports.completeMagicOrder = async (req, res, next) => {
                 }
             } catch (err) {}
         }
+        if (!checkoutSession && rzpOrder?.receipt) {
+            checkoutSession = await magicCheckoutModel.findOne({
+                $or: [{ orderId: rzpOrder.receipt }, { receipt: rzpOrder.receipt }]
+            });
+            if (checkoutSession && !checkoutSession.orderId) {
+                checkoutSession.orderId = razorpay_order_id;
+                await checkoutSession.save().catch(() => {});
+            }
+        }
+        if (!checkoutSession && (rzpOrder?.notes?.userId || req.user?._id)) {
+            const possibleUserId = rzpOrder?.notes?.userId || req.user?._id;
+            if (mongoose.isValidObjectId(possibleUserId)) {
+                checkoutSession = await magicCheckoutModel.findOne({
+                    userId: possibleUserId,
+                    status: "created"
+                }).sort({ createdAt: -1 });
+            }
+        }
         if (checkoutSession && checkoutSession.status === "completed" && checkoutSession.completedOrderId) {
             const completed = await orderModel.findById(checkoutSession.completedOrderId);
             if (completed) {
@@ -992,7 +1010,6 @@ exports.completeMagicOrder = async (req, res, next) => {
         }
 
         // 3. Authenticate Payment vs COD
-        // Never treat missing signature as proof of COD.
         let isCashOnDelivery = false;
         let rzpPayment = null;
 
@@ -1005,7 +1022,7 @@ exports.completeMagicOrder = async (req, res, next) => {
             }
         }
 
-        if (!rzpPayment) {
+        if (!rzpPayment && razorpay_order_id) {
             try {
                 const payments = await razorpay.orders.fetchPayments(razorpay_order_id);
                 if (payments?.items?.length) {
@@ -1016,67 +1033,83 @@ exports.completeMagicOrder = async (req, res, next) => {
             }
         }
 
-        // Verify prepaid online payment
-        if (razorpay_signature) {
-            if (!razorpay_payment_id) {
-                return res.status(422).json({
-                    success: false,
-                    message: "razorpay_payment_id is required for signature verification"
-                });
-            }
+        const isWebhookCod = req.isWebhookCod === true;
+        const rzpMethodIsCod = rzpPayment?.method === "cod";
+        const rzpOrderIsPlaced = rzpOrder?.status === "placed";
+        const clientClaimsCod = Boolean(clientIsCod || clientMethod === "cod");
 
-            const expectedSignature = razorpaySignature(razorpay_order_id, razorpay_payment_id);
-            if (expectedSignature !== razorpay_signature) {
-                return res.status(409).json({ success: false, message: "Payment signature verification failed" });
-            }
-
-            // Verify payment was captured on Razorpay
-            if (!rzpPayment || rzpPayment.order_id !== razorpay_order_id) {
-                return res.status(422).json({ success: false, message: "Payment does not match Razorpay order" });
-            }
-
-            if (rzpPayment.status !== "captured") {
-                return res.status(422).json({
-                    success: false,
-                    message: `Payment is not captured (current status: ${rzpPayment.status})`
-                });
-            }
-
-            if (rzpPayment.currency !== "INR") {
-                return res.status(422).json({ success: false, message: "Invalid payment currency" });
-            }
-
-            isCashOnDelivery = false;
-        } else {
-            // No signature provided: Check if officially confirmed COD
-            const isWebhookCod = req.isWebhookCod === true;
-            const rzpMethodIsCod = rzpPayment?.method === "cod";
-            const clientClaimsCod = Boolean(clientIsCod || clientMethod === "cod");
-
-            if (isWebhookCod || rzpMethodIsCod) {
+        // Determine if order is Cash On Delivery (COD):
+        // In Razorpay Magic Checkout (1CC), status === 'placed' explicitly signifies that the COD order was completed
+        if (rzpOrderIsPlaced || rzpMethodIsCod || isWebhookCod) {
+            isCashOnDelivery = true;
+        } else if (clientClaimsCod) {
+            if (rzpPayment && rzpPayment.method === "cod") {
                 isCashOnDelivery = true;
-            } else if (clientClaimsCod) {
-                // If client claims COD, verify against Razorpay payments or order notes
-                if (rzpPayment && rzpPayment.method === "cod") {
+            } else if (rzpOrder && (rzpOrder.status === "attempted" || rzpOrder.status === "created" || rzpOrder.status === "placed")) {
+                if (rzpOrder.status === "placed" || (checkoutSession && checkoutSession.codServiceable)) {
                     isCashOnDelivery = true;
-                } else if (rzpOrder && (rzpOrder.status === "attempted" || rzpOrder.status === "created")) {
-                    // Check if COD was serviceable and selected during 1CC shipping info
-                    if (checkoutSession && checkoutSession.codServiceable) {
-                        isCashOnDelivery = true;
-                    } else {
-                        return res.status(422).json({
-                            success: false,
-                            message: "COD is not verified or not serviceable for this order"
-                        });
-                    }
                 } else {
                     return res.status(422).json({
                         success: false,
-                        message: "Invalid COD order confirmation. Missing Razorpay verification."
+                        message: "COD is not verified or not serviceable for this order"
                     });
                 }
+            } else {
+                return res.status(422).json({
+                    success: false,
+                    message: "Invalid COD order confirmation. Missing Razorpay verification."
+                });
+            }
+        }
+
+        if (isCashOnDelivery) {
+            // For Cash On Delivery orders, no online payment is captured at checkout.
+            // If signature is present and not a client-generated cod_ id, check expected signature
+            if (razorpay_signature && razorpay_payment_id && !razorpay_payment_id.startsWith("cod_")) {
+                const expectedSignature = razorpaySignature(razorpay_order_id, razorpay_payment_id);
+                if (expectedSignature !== razorpay_signature) {
+                    console.warn("COD signature mismatch, but order is verified as placed on Razorpay:", {
+                        orderId: razorpay_order_id,
+                        paymentId: razorpay_payment_id
+                    });
+                    if (!rzpOrderIsPlaced && !rzpMethodIsCod && !isWebhookCod) {
+                        return res.status(409).json({ success: false, message: "Payment signature verification failed" });
+                    }
+                }
+            }
+        } else {
+            // Prepaid online payment verification
+            if (razorpay_signature) {
+                if (!razorpay_payment_id) {
+                    return res.status(422).json({
+                        success: false,
+                        message: "razorpay_payment_id is required for signature verification"
+                    });
+                }
+
+                const expectedSignature = razorpaySignature(razorpay_order_id, razorpay_payment_id);
+                if (expectedSignature !== razorpay_signature) {
+                    return res.status(409).json({ success: false, message: "Payment signature verification failed" });
+                }
+
+                // Verify payment was captured on Razorpay
+                if (!rzpPayment || rzpPayment.order_id !== razorpay_order_id) {
+                    return res.status(422).json({ success: false, message: "Payment does not match Razorpay order" });
+                }
+
+                if (rzpPayment.status !== "captured") {
+                    return res.status(422).json({
+                        success: false,
+                        message: `Payment is not captured (current status: ${rzpPayment.status})`
+                    });
+                }
+
+                if (rzpPayment.currency !== "INR") {
+                    return res.status(422).json({ success: false, message: "Invalid payment currency" });
+                }
+
+                isCashOnDelivery = false;
             } else if (rzpOrder?.status === "paid" || rzpPayment?.status === "captured") {
-                // If payment is already captured/paid on Razorpay (e.g. Magic Checkout prepaid completed)
                 isCashOnDelivery = false;
             } else {
                 return res.status(422).json({
@@ -1370,7 +1403,11 @@ exports.completeMagicOrder = async (req, res, next) => {
 
         // 9. Consistent Calculations for Order Amounts
         const subtotal = orderItems.reduce((sum, item) => sum + item.total, 0);
-        const discount = Number(checkoutSession?.discount || orderNotes.discount || 0);
+        let discount = Number(checkoutSession?.discount || orderNotes.discount || 0);
+        if (!discount && rzpOrder?.promotions?.length) {
+            const promoSum = rzpOrder.promotions.reduce((sum, p) => sum + (Number(p.value || 0) / 100), 0);
+            if (promoSum > 0) discount = promoSum;
+        }
         let shippingCharge = Number(checkoutSession?.shippingFee || orderNotes.shippingcharge || 0);
         if (!shippingCharge && rzpOrder?.shipping_fee) {
             shippingCharge = Number(rzpOrder.shipping_fee) / 100;

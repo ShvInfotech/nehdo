@@ -29,16 +29,16 @@ const sidebarLinks = [
     {
         title: "Marketing & Content", items: [
             { name: "Coupons", path: "/admin/coupons", icon: IoPricetagOutline },
-            { name: "CMS Pages", path: "/admin/cms", icon: IoDocumentTextOutline },
+            // { name: "CMS Pages", path: "/admin/cms", icon: IoDocumentTextOutline },
             { name: "Banners", path: "/admin/banners", icon: IoImagesOutline },
             { name: "Reviews", path: "/admin/reviews", icon: IoStarOutline },
         ]
     },
     {
         title: "Configuration", items: [
-            { name: "Shipping", path: "/admin/shipping", icon: IoAirplaneOutline },
-            { name: "Payment", path: "/admin/payment", icon: IoCardOutline },
-            { name: "Tax / GST", path: "/admin/tax", icon: IoCalculatorOutline },
+            // { name: "Shipping", path: "/admin/shipping", icon: IoAirplaneOutline },
+            // { name: "Payment", path: "/admin/payment", icon: IoCardOutline },
+            // { name: "Tax / GST", path: "/admin/tax", icon: IoCalculatorOutline },
             { name: "Reports", path: "/admin/reports", icon: IoStatsChartOutline },
             { name: "Settings", path: "/admin/settings", icon: IoSettingsOutline },
         ]

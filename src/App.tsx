@@ -151,7 +151,7 @@ function App() {
         />
 
         <a
-          href="https://wa.me/919714920969"
+          href="https://wa.me/916354245275"
           target="_blank"
           rel="noopener noreferrer"
           aria-label="Chat on WhatsApp"

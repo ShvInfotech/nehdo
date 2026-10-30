@@ -62,7 +62,7 @@ exports.GetBanner = async (req, res, next) => {
     try {
         const banners = await bannerModel.find({ isDeleted: false });
 
-        const baseUrl = `${req.protocol}://${req.get("host")}`;
+        const baseUrl = process.env.BACKEND_DOMIN_URL
 
         const formattedBanners = banners.map((banner) => {
             const bannerObj = banner.toObject();

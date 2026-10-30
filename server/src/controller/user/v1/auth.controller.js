@@ -171,7 +171,7 @@ exports.GoogelLogin = async (req, res, next) => {
 
         const decoded = await getAuth(firebaseadmin).verifyIdToken(req.body.GoogleIdToken);
         if (!decoded) {
-            return next(409, "invalid user")
+            return next(CustomeError(409, "invalid user"))
         }
 
         let user = await userModel.findOne({ email: decoded.email })

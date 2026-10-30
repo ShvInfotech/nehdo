@@ -21,9 +21,9 @@ export default function Home() {
             <MarqueeSection />
             <PromotionalBanners />
             <NewArrivals />
-            <TopBrands />
-            <Testimonials />
-            <BlogSection />
+            {/* <TopBrands /> */}
+            {/* <Testimonials /> */}
+            {/* <BlogSection /> */}
             <NewsletterSection />
         </>
     );

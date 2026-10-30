@@ -64,7 +64,7 @@ const Footer = () => {
                             <img src={`${import.meta.env.BASE_URL}images/nehdo-logo.png`} alt="NEHDO" className="h-8 md:h-10 object-contain" />
                         </Link>
                         <p className="text-muted text-sm leading-relaxed max-w-xs mb-6">
-                            We have clothes that suit your style and which you're proud to wear. From women to men, designed for everyone.
+                            Designed for your pleasure, built for your confidence. Explore a curated collection of adult wellness products crafted for all bodies and every desire. From beginners to connoisseurs, discover safe, body-safe, and empowering pleasure designed for everyone.
                         </p>
 
                         {/* Social Icons */}
