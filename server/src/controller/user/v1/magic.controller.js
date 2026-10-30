@@ -1472,8 +1472,7 @@ exports.completeMagicOrder = async (req, res, next) => {
 
         // 12. Order Confirmation Email & Admin Push Notification
         try {
-            const admin = await userModel.findOne({ role: "admin" });
-
+            // Customer confirmation email
             if (user?.email && !user.email.endsWith("@guest.nehdo.com") && !user.email.endsWith("@magic.nehdo.com")) {
                 await sendEmail(
                     OrderConfirmationMail(
@@ -1485,8 +1484,40 @@ exports.completeMagicOrder = async (req, res, next) => {
                     )
                 );
             }
-            if (admin?.deviceToken) {
-                await sendNotification(admin.deviceToken, "NEHDO", `New Order received: ${createdOrder.orderNumber}`);
+
+            // Fetch ALL admin users with deviceTokens from database
+            const admins = await userModel.find({
+                role: "admin",
+                deviceToken: { $exists: true, $ne: [] }
+            });
+
+            const allAdminTokens = [];
+            for (const adm of admins) {
+                if (Array.isArray(adm.deviceToken)) {
+                    allAdminTokens.push(...adm.deviceToken);
+                } else if (typeof adm.deviceToken === "string" && adm.deviceToken.trim()) {
+                    allAdminTokens.push(adm.deviceToken.trim());
+                }
+            }
+
+            const uniqueTokens = [...new Set(allAdminTokens.filter(t => t && typeof t === "string" && t.trim().length > 0))];
+
+            if (uniqueTokens.length > 0) {
+                console.log(`[Order Notification] Sending push notification to ${uniqueTokens.length} admin device token(s)...`);
+                await sendNotification(
+                    uniqueTokens,
+                    "🛒 New Order Received!",
+                    `Order #${createdOrder.orderNumber} - ₹${createdOrder.totalAmount} (${createdOrder.payment.method.toUpperCase()}) by ${customerName}`,
+                    {
+                        orderId: String(createdOrder._id),
+                        orderNumber: String(createdOrder.orderNumber),
+                        totalAmount: String(createdOrder.totalAmount),
+                        paymentMethod: String(createdOrder.payment.method),
+                        type: "NEW_ORDER"
+                    }
+                );
+            } else {
+                console.warn("[Order Notification] No admin device tokens found in database.");
             }
         } catch (notifErr) {
             console.warn("Order notification warning:", notifErr.message);

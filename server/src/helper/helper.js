@@ -348,59 +348,82 @@ exports.generateOrderNumber = async () => {
 
 
 
-exports.sendNotification = async (deviceTokens, title, body) => {
+exports.sendNotification = async (deviceTokens, title, body, dataPayload = {}) => {
     try {
-        if (!Array.isArray(deviceTokens) || deviceTokens.length === 0) {
-            return;
+        let tokens = Array.isArray(deviceTokens) ? deviceTokens : [deviceTokens];
+        tokens = [...new Set(tokens.flat(Infinity).filter(t => t && typeof t === "string" && t.trim().length > 0))];
+
+        if (tokens.length === 0) {
+            return { success: false, message: "No valid device tokens provided" };
+        }
+
+        if (!firebaseadmin) {
+            console.warn("Firebase Admin is not initialized. Skipping push notification.");
+            return { success: false, message: "Firebase Admin is not initialized" };
         }
 
         const messaging = getMessaging(firebaseadmin);
 
-        const res = await messaging.sendEachForMulticast({
-            tokens: deviceTokens,
-
+        const messagePayload = {
+            tokens,
             notification: {
                 title,
                 body,
             },
-
             webpush: {
                 notification: {
+                    title,
+                    body,
                     icon: "https://res.cloudinary.com/dblxejpyp/image/upload/v1788841967/nehdo-logo.png",
+                    click_action: "/admin/orders"
                 },
-            },
-        });
-        console.log("Success:", res.successCount);
-        console.log("Failed:", res.failureCount);
+                fcm_options: {
+                    link: "/admin/orders"
+                }
+            }
+        };
 
-        // Invalid / expired tokens
+        if (dataPayload && typeof dataPayload === "object" && Object.keys(dataPayload).length > 0) {
+            messagePayload.data = Object.fromEntries(
+                Object.entries(dataPayload).map(([k, v]) => [k, String(v)])
+            );
+        }
+
+        const res = await messaging.sendEachForMulticast(messagePayload);
+        console.log("FCM Notification Summary - Success:", res.successCount, "Failed:", res.failureCount);
+
+        // Track invalid / expired / mismatched tokens for automatic DB cleanup
         const invalidTokens = [];
 
         res.responses.forEach((response, index) => {
             if (!response.success) {
                 const errorCode = response.error?.code;
-                if (errorCode === "messaging/registration-token-not-registered" || errorCode === "messaging/invalid-registration-token") {
-                    invalidTokens.push(deviceTokens[index]);
+                if (
+                    errorCode === "messaging/registration-token-not-registered" ||
+                    errorCode === "messaging/invalid-registration-token" ||
+                    errorCode === "messaging/mismatched-credential"
+                ) {
+                    invalidTokens.push(tokens[index]);
                 }
             }
         });
 
-        console.log("Invalid tokens:", invalidTokens);
-
-
-        if (invalidTokens && invalidTokens.length) {
+        if (invalidTokens.length > 0) {
+            console.log("Removing invalid/expired/mismatched tokens from DB:", invalidTokens);
             await userModel.updateMany(
                 { deviceToken: { $in: invalidTokens } },
                 { $pull: { deviceToken: { $in: invalidTokens } } }
             );
         }
+
         return {
             res,
             invalidTokens
-        }
+        };
 
     } catch (error) {
-        console.log("FCM Error:", error);
+        console.error("FCM Send Notification Error:", error.message || error);
+        return { success: false, error: error.message };
     }
 };
 

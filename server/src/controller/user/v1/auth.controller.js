@@ -403,3 +403,18 @@ exports.LogOut = async (req, res, next) => {
 
 
 
+
+exports.UpdateDeviceToken = async (req, res, next) => {
+    try {
+        const { deviceToken } = req.body || {};
+        if (!deviceToken || typeof deviceToken !== "string" || !deviceToken.trim()) {
+            return res.status(400).json({ success: false, message: "Valid deviceToken is required" });
+        }
+        await userModel.findByIdAndUpdate(req.user._id, {
+            $addToSet: { deviceToken: deviceToken.trim() }
+        });
+        return res.status(200).json({ success: true, message: "Device token synced successfully" });
+    } catch (err) {
+        return next(err);
+    }
+};

@@ -1,4 +1,8 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
+import { toast } from "react-toastify";
+import { onMessage } from "firebase/messaging";
+import { messaging, getDeviceToken } from "../services/firebase";
+import { apiRequest } from "../services/apiService";
 import { Link, useLocation, Outlet, useNavigate } from "react-router-dom";
 import {
     IoGridOutline, IoCubeOutline, IoLayersOutline, IoCartOutline,
@@ -51,6 +55,41 @@ const AdminLayout = () => {
     const location = useLocation();
     const navigate = useNavigate();
     const { adminUser, adminLogout } = useAdminAuth();
+
+    // Register / sync admin device token with backend and listen for new order notifications
+    useEffect(() => {
+        let unsubscribe: (() => void) | undefined;
+
+        const syncAdminDeviceToken = async () => {
+            try {
+                const token = await getDeviceToken();
+                if (token) {
+                    await apiRequest('/user/api/v1/auth/device-token', 'POST', { deviceToken: token }).catch(() => {});
+                }
+            } catch (err) {
+                console.warn("Could not sync admin device token:", err);
+            }
+        };
+
+        syncAdminDeviceToken();
+
+        try {
+            unsubscribe = onMessage(messaging, (payload) => {
+                const title = payload.notification?.title || "🛒 New Order Received!";
+                const body = payload.notification?.body || "A new order has been placed.";
+                toast.info(`${title}: ${body}`, {
+                    autoClose: 8000,
+                    onClick: () => navigate("/admin/orders")
+                });
+            });
+        } catch (e) {
+            console.warn("FCM foreground listener error:", e);
+        }
+
+        return () => {
+            if (unsubscribe) unsubscribe();
+        };
+    }, [navigate]);
     const handleLogout = () => {
         adminLogout();
         navigate('/admin/login', { replace: true });
