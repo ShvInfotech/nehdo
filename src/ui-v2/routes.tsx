@@ -18,10 +18,11 @@ const Cart = lazy(() => import("./pages/Cart"));
 const Checkout = lazy(() => import("./pages/Checkout"));
 const OrderConfirmation = lazy(() => import("./pages/OrderConfirmation"));
 
+const Wishlist = lazy(() => import("./pages/Wishlist"));
+const Account = lazy(() => import("./pages/Account"));
+const Orders = lazy(() => import("./pages/Orders"));
+
 // ── v1 pages, pending redesign ──────────────────────────────
-const Wishlist = lazy(() => import("../pages/Wishlist"));
-const Account = lazy(() => import("../pages/Account"));
-const Orders = lazy(() => import("../pages/Orders"));
 const About = lazy(() => import("../pages/About"));
 const FAQ = lazy(() => import("../pages/FAQ"));
 const Terms = lazy(() => import("../pages/Terms"));
