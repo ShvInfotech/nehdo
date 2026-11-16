@@ -7,7 +7,8 @@
  */
 export const FREE_SHIPPING_ABOVE = 250;
 
-export const SUPPORT_WHATSAPP = "919714920969";
+/** Keep in sync with the floating WhatsApp button in src/App.tsx. */
+export const SUPPORT_WHATSAPP = "916354245275";
 /** Official contact email used across v1 policy pages. */
 export const SUPPORT_EMAIL = "nehdoshopping@gmail.com";
 /** Full Instagram profile URL. The footer icon is hidden while this is empty. */

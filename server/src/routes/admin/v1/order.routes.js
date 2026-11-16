@@ -1,4 +1,4 @@
-const { PendingOrder, AccepteOrder, GanrateLabel, ShippingWebhook, CanceledOrderRequest, RefundWebhook,ShippingWebhookTest, TestController } = require('../../../controller/admin/v1/order.controller')
+const { PendingOrder, AccepteOrder, GanrateLabel, ShippingWebhook, CanceledOrderRequest, RefundWebhook, ShippingWebhookTest, CancelOrderAdmin } = require('../../../controller/admin/v1/order.controller')
 const { verifyjwtAccessToken, checkRole } = require('../../../middleware/jwtToken')
 const express = require('express')
 const router = require('express').Router()

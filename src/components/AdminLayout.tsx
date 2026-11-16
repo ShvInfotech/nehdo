@@ -1,4 +1,8 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
+import { toast } from "react-toastify";
+import { onMessage } from "firebase/messaging";
+import { messagingReady, getDeviceToken } from "../services/firebase";
+import { apiRequest } from "../services/apiService";
 import { Link, useLocation, Outlet, useNavigate } from "react-router-dom";
 import {
     IoGridOutline, IoCubeOutline, IoLayersOutline, IoCartOutline,
@@ -29,16 +33,16 @@ const sidebarLinks = [
     {
         title: "Marketing & Content", items: [
             { name: "Coupons", path: "/admin/coupons", icon: IoPricetagOutline },
-            { name: "CMS Pages", path: "/admin/cms", icon: IoDocumentTextOutline },
+            // { name: "CMS Pages", path: "/admin/cms", icon: IoDocumentTextOutline },
             { name: "Banners", path: "/admin/banners", icon: IoImagesOutline },
             { name: "Reviews", path: "/admin/reviews", icon: IoStarOutline },
         ]
     },
     {
         title: "Configuration", items: [
-            { name: "Shipping", path: "/admin/shipping", icon: IoAirplaneOutline },
-            { name: "Payment", path: "/admin/payment", icon: IoCardOutline },
-            { name: "Tax / GST", path: "/admin/tax", icon: IoCalculatorOutline },
+            // { name: "Shipping", path: "/admin/shipping", icon: IoAirplaneOutline },
+            // { name: "Payment", path: "/admin/payment", icon: IoCardOutline },
+            // { name: "Tax / GST", path: "/admin/tax", icon: IoCalculatorOutline },
             { name: "Reports", path: "/admin/reports", icon: IoStatsChartOutline },
             { name: "Settings", path: "/admin/settings", icon: IoSettingsOutline },
         ]
@@ -51,6 +55,47 @@ const AdminLayout = () => {
     const location = useLocation();
     const navigate = useNavigate();
     const { adminUser, adminLogout } = useAdminAuth();
+
+    // Register / sync admin device token with backend and listen for new order notifications
+    useEffect(() => {
+        let unsubscribe: (() => void) | undefined;
+
+        const syncAdminDeviceToken = async () => {
+            try {
+                const token = await getDeviceToken();
+                if (token) {
+                    await apiRequest('/user/api/v1/auth/device-token', 'POST', { deviceToken: token }).catch(() => {});
+                }
+            } catch (err) {
+                console.warn("Could not sync admin device token:", err);
+            }
+        };
+
+        syncAdminDeviceToken();
+
+        // messaging is created asynchronously (and not at all on unsupported browsers)
+        let cancelled = false;
+        messagingReady.then((m) => {
+            if (!m || cancelled) return;
+            try {
+                unsubscribe = onMessage(m, (payload) => {
+                    const title = payload.notification?.title || "🛒 New Order Received!";
+                    const body = payload.notification?.body || "A new order has been placed.";
+                    toast.info(`${title}: ${body}`, {
+                        autoClose: 8000,
+                        onClick: () => navigate("/admin/orders")
+                    });
+                });
+            } catch (e) {
+                console.warn("FCM foreground listener error:", e);
+            }
+        });
+
+        return () => {
+            cancelled = true;
+            if (unsubscribe) unsubscribe();
+        };
+    }, [navigate]);
     const handleLogout = () => {
         adminLogout();
         navigate('/admin/login', { replace: true });

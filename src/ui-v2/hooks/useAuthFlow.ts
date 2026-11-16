@@ -6,30 +6,13 @@ import { useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { toast } from "react-toastify";
 import { signInWithPopup } from "firebase/auth";
-import { getToken } from "firebase/messaging";
 import { useAuth } from "../../context/AuthContext";
 import { useWishlist } from "../../context/WishlistContext";
 import { useCart } from "../../context/CartContext";
 import { userapiRequest } from "../../services/apiService";
-import { auth, googleProvider, messaging } from "../../services/firebase";
+import { auth, googleProvider, getDeviceToken } from "../../services/firebase";
 
-const VAPID_KEY =
-  "BJ9rA0mIYGOm2eoQIY5w3CX3iUf_jf8Hl_TU4BZYEtWCW6NSdITn5CRY0Bz25Fa1CYyfbTdt1xWEh7ylwru0BiY";
-
-const getDeviceToken = async (): Promise<string | null> => {
-  try {
-    if (!messaging || typeof window === "undefined" || !("Notification" in window) || !("serviceWorker" in navigator)) {
-      return null;
-    }
-    const permission = await Notification.requestPermission();
-    if (permission !== "granted") return null;
-    const registration = await navigator.serviceWorker.register(`${import.meta.env.BASE_URL}firebase-messaging-sw.js`);
-    return (await getToken(messaging, { vapidKey: VAPID_KEY, serviceWorkerRegistration: registration })) || null;
-  } catch (error) {
-    console.error("FCM Token Error:", error);
-    return null;
-  }
-};
+// Device token comes from services/firebase (shared with v1 AuthModal / admin).
 
 export type AuthView = "login" | "signup" | "forgot";
 

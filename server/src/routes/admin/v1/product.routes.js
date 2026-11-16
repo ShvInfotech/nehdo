@@ -1,4 +1,4 @@
-const { AddProduct, GetProducts, UpdateProduct, EditProducts, GetInventory, UpdateInventory } = require('../../../controller/admin/v1/product.controller')
+const { AddProduct, GetProducts, UpdateProduct, EditProducts, GetInventory, UpdateInventory, DeleteProduct } = require('../../../controller/admin/v1/product.controller')
 const { verifyjwtAccessToken, checkRole } = require('../../../middleware/jwtToken')
 const UploadImage = require('../../../middleware/imageUploading')
 
@@ -9,6 +9,7 @@ router.post('/add', verifyjwtAccessToken, checkRole('admin'), UploadImage.array(
 router.get('/get', verifyjwtAccessToken, checkRole('admin'), GetProducts)
 router.get('/edit/:id', verifyjwtAccessToken, checkRole('admin'), EditProducts)
 router.patch('/update/:id', verifyjwtAccessToken, checkRole('admin'), UploadImage.array('productImage', 5), UpdateProduct)
+router.delete('/delete/:id', verifyjwtAccessToken, checkRole('admin'), DeleteProduct)
 router.get('/inventory/get',verifyjwtAccessToken,checkRole('admin'), GetInventory)
 router.patch('/inventory/update-stock',verifyjwtAccessToken,checkRole('admin'), UpdateInventory)
 

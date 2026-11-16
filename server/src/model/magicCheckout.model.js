@@ -8,6 +8,11 @@ const magicCheckoutSchema = new mongoose.Schema(
             unique: true,
             index: true,
         },
+        receipt: {
+            type: String,
+            default: null,
+            index: true,
+        },
         userId: {
             type: mongoose.Schema.Types.ObjectId,
             ref: "users",

@@ -1,7 +1,33 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useRef } from "react";
 import {IoAddOutline,IoSearchOutline,IoFilterOutline,IoCloseOutline,IoCloudUploadOutline,IoTrashOutline,IoImageOutline} from "react-icons/io5";
 import { apiRequest } from "../../services/apiService";
 import { toast } from "react-toastify";
+
+const DEFAULT_SIZES = [
+    "XS",
+    "S",
+    "M",
+    "L",
+    "XL",
+    "XXL",
+    "3XL",
+];
+
+interface ColorOption {
+    name: string;
+    color: string;
+}
+
+const DEFAULT_COLORS: ColorOption[] = [
+    { name: "White", color: "#FFFFFF" },
+    { name: "Black", color: "#000000" },
+    { name: "Navy", color: "#1B2A4A" },
+    { name: "Red", color: "#DC2626" },
+    { name: "Blue", color: "#3B82F6" },
+    { name: "Green", color: "#22C55E" },
+    { name: "Beige", color: "#D2B48C" },
+    { name: "Grey", color: "#9CA3AF" },
+];
 
 const AdminProducts = () => {
     const ITEMS_PER_PAGE = 20;
@@ -24,6 +50,7 @@ const AdminProducts = () => {
 
 
     const [productName, setProductName] = useState("");
+    const [sku, setSku] = useState("");
     const [price, setPrice] = useState("");
     const [salePrice, setSalePrice] = useState("");
     const [costPrice, setCostPrice] = useState("");
@@ -45,9 +72,18 @@ const AdminProducts = () => {
 
     const [selectedSizes, setSelectedSizes] = useState<string[]>([]);
     const [selectedColors, setSelectedColors] = useState<string[]>([]);
+    const [availableSizes, setAvailableSizes] = useState<string[]>(DEFAULT_SIZES);
+    const [customSizeInput, setCustomSizeInput] = useState("");
+    const [availableColors, setAvailableColors] = useState<ColorOption[]>(DEFAULT_COLORS);
+    const [customColorName, setCustomColorName] = useState("");
+    const [customColorCode, setCustomColorCode] = useState("#6366F1");
     const [material, setMaterial] = useState("");
     const [variants, setVariants] = useState<any[]>([]);
     const [removedVariants, setRemovedVariants] = useState<string[]>([]);
+    const [deletedVariantIds, setDeletedVariantIds] = useState<string[]>([]);
+    const isInitialEditLoad = useRef(false);
+    const prevSizesRef = useRef<string[]>([]);
+    const prevColorsRef = useRef<string[]>([]);
 
     const [stock, setStock] = useState("0");
     const [lowStock, setLowStock] = useState("0");
@@ -110,26 +146,73 @@ const AdminProducts = () => {
 
     useEffect(() => {
         if (isEditing) {
-            setVariants((prev) => {
-                const generated: string[] = [];
+            if (isInitialEditLoad.current) {
+                isInitialEditLoad.current = false;
+                prevSizesRef.current = selectedSizes;
+                prevColorsRef.current = selectedColors;
+                return;
+            }
 
-                if (selectedSizes.length && selectedColors.length) {
-                    selectedColors.forEach((color) => {
-                        selectedSizes.forEach((size) => {
-                            generated.push(`${color}/${size}`);
-                        });
+            const prevSizes = prevSizesRef.current;
+            const prevColors = prevColorsRef.current;
+
+            const addedSizes = selectedSizes.filter((s) => !prevSizes.includes(s));
+            const removedSizes = prevSizes.filter((s) => !selectedSizes.includes(s));
+            const addedColors = selectedColors.filter((c) => !prevColors.includes(c));
+            const removedColors = prevColors.filter((c) => !selectedColors.includes(c));
+
+            prevSizesRef.current = selectedSizes;
+            prevColorsRef.current = selectedColors;
+
+            setVariants((prev) => {
+                let updated = [...prev];
+
+                // Remove variants if a size or color was unchecked
+                if (removedSizes.length || removedColors.length) {
+                    updated = updated.filter((v) => {
+                        if (v.name && v.name.includes("/")) {
+                            const [c, s] = v.name.split("/");
+                            if (removedColors.includes(c?.trim())) return false;
+                            if (removedSizes.includes(s?.trim())) return false;
+                            return true;
+                        } else {
+                            if (removedSizes.includes(v.name)) return false;
+                            if (removedColors.includes(v.name)) return false;
+                            return true;
+                        }
                     });
-                } else if (selectedSizes.length) {
-                    generated.push(...selectedSizes);
-                } else if (selectedColors.length) {
-                    generated.push(...selectedColors);
                 }
 
-                const existingNames = prev.map((v) => v.name);
+                // Add combinations for newly added sizes or colors only
+                const toAdd: string[] = [];
 
-                const newOnes = generated
-                    .filter((name) => !existingNames.includes(name))
-                    .filter((name) => !removedVariants.includes(name))
+                if (addedSizes.length) {
+                    if (selectedColors.length) {
+                        selectedColors.forEach((color) => {
+                            addedSizes.forEach((size) => {
+                                toAdd.push(`${color}/${size}`);
+                            });
+                        });
+                    } else {
+                        toAdd.push(...addedSizes);
+                    }
+                }
+
+                if (addedColors.length) {
+                    if (selectedSizes.length) {
+                        addedColors.forEach((color) => {
+                            selectedSizes.forEach((size) => {
+                                toAdd.push(`${color}/${size}`);
+                            });
+                        });
+                    } else {
+                        toAdd.push(...addedColors);
+                    }
+                }
+
+                const existingNames = new Set(updated.map((v) => v.name));
+                const newVariants = toAdd
+                    .filter((name) => !existingNames.has(name) && !removedVariants.includes(name))
                     .map((name) => ({
                         name,
                         price: "",
@@ -137,7 +220,7 @@ const AdminProducts = () => {
                         sku: "",
                     }));
 
-                return [...prev, ...newOnes];
+                return [...updated, ...newVariants];
             });
 
             return;
@@ -184,9 +267,94 @@ const AdminProducts = () => {
     }, [selectedSizes, selectedColors, isEditing]);
 
 
-    const handleDeleteVariant = (name: string) => {
+    const handleDeleteVariant = (name: string, variantId?: string) => {
         setRemovedVariants((prev) => [...prev, name]);
-        setVariants((prev) => prev.filter((v) => v.name !== name));
+        if (variantId) {
+            setDeletedVariantIds((prev) => [...prev, variantId]);
+        }
+
+        const remaining = variants.filter((v) =>
+            variantId && v._id ? v._id !== variantId : v.name !== name
+        );
+        setVariants(remaining);
+
+        // Sync selected sizes & colors with remaining variants
+        const usedSizes = new Set<string>();
+        const usedColors = new Set<string>();
+        remaining.forEach((v) => {
+            if (v.name && v.name.includes("/")) {
+                const [c, s] = v.name.split("/");
+                if (c) usedColors.add(c.trim());
+                if (s) usedSizes.add(s.trim());
+            } else if (v.name) {
+                if (selectedSizes.includes(v.name)) usedSizes.add(v.name);
+                if (selectedColors.includes(v.name)) usedColors.add(v.name);
+            }
+        });
+
+        const newSizes = selectedSizes.filter((s) => usedSizes.has(s));
+        const newColors = selectedColors.filter((c) => usedColors.has(c));
+        prevSizesRef.current = newSizes;
+        prevColorsRef.current = newColors;
+        setSelectedSizes(newSizes);
+        setSelectedColors(newColors);
+    };
+
+    const handleAddCustomSize = (e?: React.FormEvent) => {
+        if (e) e.preventDefault();
+        const trimmed = customSizeInput.trim();
+        if (!trimmed) return;
+
+        const existing = availableSizes.find(
+            (s) => s.toLowerCase() === trimmed.toLowerCase()
+        );
+        if (existing) {
+            if (!selectedSizes.includes(existing)) {
+                setSelectedSizes((prev) => [...prev, existing]);
+            }
+        } else {
+            setAvailableSizes((prev) => [...prev, trimmed]);
+            setSelectedSizes((prev) => [...prev, trimmed]);
+        }
+        setCustomSizeInput("");
+    };
+
+    const handleRemoveCustomSize = (sizeToRemove: string, e: React.MouseEvent) => {
+        e.stopPropagation();
+        e.preventDefault();
+        setAvailableSizes((prev) => prev.filter((s) => s !== sizeToRemove));
+        setSelectedSizes((prev) => prev.filter((s) => s !== sizeToRemove));
+    };
+
+    const handleAddCustomColor = (e?: React.FormEvent) => {
+        if (e) e.preventDefault();
+        const trimmedName = customColorName.trim();
+        if (!trimmedName) return;
+
+        const existing = availableColors.find(
+            (c) => c.name.toLowerCase() === trimmedName.toLowerCase()
+        );
+        if (existing) {
+            if (!selectedColors.includes(existing.name)) {
+                setSelectedColors((prev) => [...prev, existing.name]);
+            }
+        } else {
+            const newColor: ColorOption = {
+                name: trimmedName,
+                color: customColorCode || "#6366F1",
+            };
+            setAvailableColors((prev) => [...prev, newColor]);
+            setSelectedColors((prev) => [...prev, trimmedName]);
+        }
+        setCustomColorName("");
+        setCustomColorCode("#6366F1");
+    };
+
+    const handleRemoveCustomColor = (colorName: string, e: React.MouseEvent) => {
+        e.stopPropagation();
+        e.preventDefault();
+        setAvailableColors((prev) => prev.filter((c) => c.name !== colorName));
+        setSelectedColors((prev) => prev.filter((c) => c !== colorName));
     };
 
     const fetchCategories = async () => {
@@ -243,6 +411,7 @@ const AdminProducts = () => {
                 const flags: string[] = [];
 
                 formData.append("name", productName);
+                if (sku) formData.append("sku", sku);
                 formData.append("categoryId", selectedCategory);
                 formData.append("subcategoryId", selectedSubCategory);
                 formData.append("brandId", brandId);
@@ -266,9 +435,26 @@ const AdminProducts = () => {
                 if (newArrival) flags.push("New Arrival");
                 if (trending) flags.push("Trending");
 
+                // Sync sizes and colors with remaining variants
+                const usedSizes = new Set<string>();
+                const usedColors = new Set<string>();
+                variants.forEach((v) => {
+                    if (v.name && v.name.includes("/")) {
+                        const [c, s] = v.name.split("/");
+                        if (c) usedColors.add(c.trim());
+                        if (s) usedSizes.add(s.trim());
+                    } else if (v.name) {
+                        if (selectedSizes.includes(v.name)) usedSizes.add(v.name);
+                        if (selectedColors.includes(v.name)) usedColors.add(v.name);
+                    }
+                });
+
+                const finalSizes = variants.length > 0 && usedSizes.size > 0 ? Array.from(usedSizes) : selectedSizes;
+                const finalColors = variants.length > 0 && usedColors.size > 0 ? Array.from(usedColors) : selectedColors;
+
                 formData.append("flags", JSON.stringify(flags));
-                formData.append("size", JSON.stringify(selectedSizes));
-                formData.append("colors", JSON.stringify(selectedColors));
+                formData.append("size", JSON.stringify(finalSizes));
+                formData.append("colors", JSON.stringify(finalColors));
                 formData.append("material", material);
 
                 formData.append("stock", stock);
@@ -315,6 +501,13 @@ const AdminProducts = () => {
                     "newvariant",
                     JSON.stringify(newVariants)
                 );
+
+                if (deletedVariantIds.length) {
+                    formData.append(
+                        "deletedVariantIds",
+                        JSON.stringify(deletedVariantIds)
+                    );
+                }
 
                 productImages.forEach((file) => {
                     formData.append("productImage", file);
@@ -421,6 +614,7 @@ const AdminProducts = () => {
             setEditProductId(product._id);
             setIsEditing(true);
             setProductName(product.name || "");
+            setSku(product.sku || "");
             setSelectedCategory(product.categoryId || "");
             setSelectedSubCategory(product.subcategoryId || "");
             setBrandId(product.brandId || "");
@@ -437,10 +631,64 @@ const AdminProducts = () => {
             setFeatured(product.flags?.includes("Featured") ||false);
             setNewArrival(product.flags?.includes("New Arrival") ||false);
             setTrending(product.flags?.includes("Trending") ||false);
-            setSelectedSizes(parseArray(variant?.size));
-            setSelectedColors(parseArray(variant?.colorOptions));
+            const dbVariants = (variant?.variant || []).map((v: any) => ({
+                _id: v._id,
+                name: v.name,
+                price: String(v.price || ""),
+                stock: String(v.stock || ""),
+                sku: v.sku || "",
+            }));
+
+            // Derive sizes and colors from actual variants present in DB
+            const usedSizes = new Set<string>();
+            const usedColors = new Set<string>();
+            dbVariants.forEach((v: any) => {
+                if (v.name && v.name.includes("/")) {
+                    const [c, s] = v.name.split("/");
+                    if (c) usedColors.add(c.trim());
+                    if (s) usedSizes.add(s.trim());
+                } else if (v.name) {
+                    if (DEFAULT_SIZES.includes(v.name) || availableSizes.includes(v.name)) {
+                        usedSizes.add(v.name);
+                    } else {
+                        usedColors.add(v.name);
+                    }
+                }
+            });
+
+            const productSizes = dbVariants.length > 0 && usedSizes.size > 0 
+                ? Array.from(usedSizes) 
+                : parseArray(variant?.size);
+            const productColors = dbVariants.length > 0 && usedColors.size > 0 
+                ? Array.from(usedColors) 
+                : parseArray(variant?.colorOptions);
+
+            isInitialEditLoad.current = true;
+            prevSizesRef.current = productSizes;
+            prevColorsRef.current = productColors;
+
+            setSelectedSizes(productSizes);
+            setSelectedColors(productColors);
+
+            setAvailableSizes((prev) => {
+                const combined = [...DEFAULT_SIZES, ...prev, ...productSizes];
+                return Array.from(new Set(combined));
+            });
+
+            setAvailableColors((prev) => {
+                const existingNames = new Set(prev.map((c) => c.name.toLowerCase()));
+                const newColors: ColorOption[] = [];
+                productColors.forEach((cName: string) => {
+                    if (cName && !existingNames.has(cName.toLowerCase())) {
+                        existingNames.add(cName.toLowerCase());
+                        newColors.push({ name: cName, color: "#9CA3AF" });
+                    }
+                });
+                return [...prev, ...newColors];
+            });
+
             setMaterial(variant?.material || "");
-            setVariants((variant?.variant || []).map((v: any) => ({_id: v._id,name: v.name,price: String(v.price || ""),stock: String(v.stock || ""),sku: v.sku || "",})));
+            setVariants(dbVariants);
             setStock(String(inventory?.stock || 0));
             setLowStock(String(inventory?.lowStock || 0));
             setWarehouseLocation(inventory?.warehouseLocation || "");
@@ -461,10 +709,25 @@ const AdminProducts = () => {
         }
     };
 
+    const handleDeleteProduct = async (id: string) => {
+        if (!window.confirm("Are you sure you want to delete this product?")) {
+            return;
+        }
+
+        try {
+            const res = await apiRequest(`/admin/api/v1/product/delete/${id}`, "DELETE");
+            toast.success(res.message || "Product deleted successfully");
+            await fetchProducts();
+        } catch (error: any) {
+            toast.error(error?.message || "Failed to delete product");
+        }
+    };
+
     const resetForm = () => {
         setEditProductId(null);
         setIsEditing(false);
         setProductName("");
+        setSku("");
         setSelectedCategory("");
         setSelectedSubCategory("");
         setBrandId("");
@@ -484,9 +747,13 @@ const AdminProducts = () => {
         setTrending(false);
         setSelectedSizes([]);
         setSelectedColors([]);
+        setCustomSizeInput("");
+        setCustomColorName("");
+        setCustomColorCode("#6366F1");
         setMaterial("");
         setVariants([]);
         setRemovedVariants([]);
+        setDeletedVariantIds([]);
         setStock("0");
         setLowStock("0");
         setWarehouseLocation("");
@@ -584,7 +851,7 @@ const AdminProducts = () => {
                                 <>
                                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
 
-                                        <div className="md:col-span-2">
+                                        <div className={isEditing ? "" : "md:col-span-2"}>
                                             <label className="block text-sm font-semibold text-gray-700 mb-2">
                                                 Product Name *
                                             </label>
@@ -602,29 +869,25 @@ const AdminProducts = () => {
                                             />
                                         </div>
 
-                                        <div>
-                                            <label className="block text-sm font-semibold text-gray-700 mb-2">
-                                                SKU *
-                                            </label>
+                                        {isEditing && (
+                                            <div>
+                                                <label className="block text-sm font-semibold text-gray-700 mb-2">
+                                                    SKU
+                                                </label>
 
-                                            <input
-                                                type="text"
-                                                placeholder="e.g. TEE-WH-001"
-                                                className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:border-brand"
-                                            />
-                                        </div>
-
-                                        <div>
-                                            <label className="block text-sm font-semibold text-gray-700 mb-2">
-                                                Barcode (ISBN, UPC, EAN)
-                                            </label>
-
-                                            <input
-                                                type="text"
-                                                placeholder="e.g. 8901234567890"
-                                                className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:border-brand"
-                                            />
-                                        </div>
+                                                <input
+                                                    type="text"
+                                                    value={sku}
+                                                    onChange={(e) =>
+                                                        setSku(
+                                                            e.target.value
+                                                        )
+                                                    }
+                                                    placeholder="e.g. TEE-WH-001"
+                                                    className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:border-brand font-mono text-sm"
+                                                />
+                                            </div>
+                                        )}
 
                                         <div>
                                             <label className="block text-sm font-semibold text-gray-700 mb-2">
@@ -660,28 +923,6 @@ const AdminProducts = () => {
                                                 placeholder="0.00"
                                                 className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:border-brand"
                                             />
-                                        </div>
-
-                                        <div>
-                                            <label className="block text-sm font-semibold text-gray-700 mb-2">
-                                                Cost per Item (₹)
-                                            </label>
-
-                                            <input
-                                                type="number"
-                                                value={costPrice}
-                                                onChange={(e) =>
-                                                    setCostPrice(
-                                                        e.target.value
-                                                    )
-                                                }
-                                                placeholder="0.00"
-                                                className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:border-brand"
-                                            />
-
-                                            <p className="text-xs text-gray-400 mt-1">
-                                                Used for profit margin calculation
-                                            </p>
                                         </div>
 
                                         <div>
@@ -793,28 +1034,6 @@ const AdminProducts = () => {
                                                     )
                                                 )}
                                             </select>
-                                        </div>
-
-                                        <div>
-                                            <label className="block text-sm font-semibold text-gray-700 mb-2">
-                                                Tags
-                                            </label>
-
-                                            <input
-                                                type="text"
-                                                value={tags}
-                                                onChange={(e) =>
-                                                    setTags(
-                                                        e.target.value
-                                                    )
-                                                }
-                                                placeholder="e.g. summer, casual, cotton"
-                                                className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:border-brand"
-                                            />
-
-                                            <p className="text-xs text-gray-400 mt-1">
-                                                Separate tags with commas
-                                            </p>
                                         </div>
 
                                         {/* IMAGES */}
@@ -1165,163 +1384,181 @@ const AdminProducts = () => {
                             ====================================================== */}
                             {activeTab === "variants" && (
                                 <div className="space-y-6">
-
                                     <div>
-                                        <h3 className="text-sm font-bold text-gray-700 mb-3">
-                                            Size Options
-                                        </h3>
+                                        <div className="flex items-center justify-between mb-3">
+                                            <h3 className="text-sm font-bold text-gray-700">
+                                                Size Options
+                                            </h3>
+                                            <span className="text-xs text-gray-400">Select or add custom sizes</span>
+                                        </div>
 
-                                        <div className="flex flex-wrap gap-2">
-                                            {[
-                                                "XS",
-                                                "S",
-                                                "M",
-                                                "L",
-                                                "XL",
-                                                "XXL",
-                                                "3XL",
-                                            ].map((size) => (
-                                                <label
-                                                    key={size}
-                                                    className="flex items-center gap-2 px-4 py-2 bg-gray-50 border border-gray-200 rounded-lg cursor-pointer hover:border-brand transition-colors"
-                                                >
-                                                    <input
-                                                        type="checkbox"
-                                                        checked={selectedSizes.includes(
-                                                            size
+                                        <div className="flex flex-wrap gap-2 mb-3">
+                                            {availableSizes.map((size) => {
+                                                const isCustom = !DEFAULT_SIZES.includes(size);
+                                                return (
+                                                    <label
+                                                        key={size}
+                                                        className={`flex items-center gap-2 px-3 py-1.5 rounded-lg cursor-pointer border transition-all ${
+                                                            selectedSizes.includes(size)
+                                                                ? "bg-brand/10 border-brand text-brand font-semibold shadow-sm"
+                                                                : "bg-gray-50 border-gray-200 text-gray-700 hover:border-gray-300"
+                                                        }`}
+                                                    >
+                                                        <input
+                                                            type="checkbox"
+                                                            checked={selectedSizes.includes(size)}
+                                                            onChange={(e) => {
+                                                                if (e.target.checked) {
+                                                                    setSelectedSizes((prev) => [...prev, size]);
+                                                                } else {
+                                                                    setSelectedSizes((prev) =>
+                                                                        prev.filter((s) => s !== size)
+                                                                    );
+                                                                }
+                                                            }}
+                                                            className="w-4 h-4 text-brand rounded border-gray-300 focus:ring-brand"
+                                                        />
+                                                        <span className="text-sm">
+                                                            {size}
+                                                        </span>
+                                                        {isCustom && (
+                                                            <button
+                                                                type="button"
+                                                                title="Remove custom size"
+                                                                onClick={(e) => handleRemoveCustomSize(size, e)}
+                                                                className="ml-1 text-gray-400 hover:text-red-500 rounded p-0.5 transition-colors"
+                                                            >
+                                                                <IoCloseOutline className="w-3.5 h-3.5" />
+                                                            </button>
                                                         )}
-                                                        onChange={(e) => {
-                                                            if (
-                                                                e.target
-                                                                    .checked
-                                                            ) {
-                                                                setSelectedSizes(
-                                                                    (
-                                                                        prev
-                                                                    ) => [
-                                                                        ...prev,
-                                                                        size,
-                                                                    ]
-                                                                );
-                                                            } else {
-                                                                setSelectedSizes(
-                                                                    (
-                                                                        prev
-                                                                    ) =>
-                                                                        prev.filter(
-                                                                            (
-                                                                                s
-                                                                            ) =>
-                                                                                s !==
-                                                                                size
-                                                                        )
-                                                                );
-                                                            }
-                                                        }}
-                                                        className="w-4 h-4 text-brand rounded border-gray-300 focus:ring-brand"
-                                                    />
+                                                    </label>
+                                                );
+                                            })}
+                                        </div>
 
-                                                    <span className="text-sm font-semibold text-gray-700">
-                                                        {size}
-                                                    </span>
-                                                </label>
-                                            ))}
+                                        {/* Add Custom Size */}
+                                        <div className="flex items-center gap-2 max-w-sm">
+                                            <input
+                                                type="text"
+                                                value={customSizeInput}
+                                                onChange={(e) => setCustomSizeInput(e.target.value)}
+                                                onKeyDown={(e) => {
+                                                    if (e.key === "Enter") {
+                                                        e.preventDefault();
+                                                        handleAddCustomSize();
+                                                    }
+                                                }}
+                                                placeholder="Add custom size (e.g. 4XL, 28, Free Size)..."
+                                                className="flex-1 px-3 py-1.5 text-sm bg-white border border-gray-200 rounded-lg focus:outline-none focus:border-brand"
+                                            />
+                                            <button
+                                                type="button"
+                                                onClick={() => handleAddCustomSize()}
+                                                disabled={!customSizeInput.trim()}
+                                                className="px-3 py-1.5 text-xs font-semibold bg-gray-900 text-white rounded-lg hover:bg-black disabled:opacity-40 disabled:cursor-not-allowed flex items-center gap-1 transition-all whitespace-nowrap"
+                                            >
+                                                <IoAddOutline className="w-4 h-4" />
+                                                Add Size
+                                            </button>
                                         </div>
                                     </div>
 
                                     <div>
-                                        <h3 className="text-sm font-bold text-gray-700 mb-3">
-                                            Color Options
-                                        </h3>
+                                        <div className="flex items-center justify-between mb-3">
+                                            <h3 className="text-sm font-bold text-gray-700">
+                                                Color Options
+                                            </h3>
+                                            <span className="text-xs text-gray-400">Select or add custom colors</span>
+                                        </div>
 
-                                        <div className="flex flex-wrap gap-2">
-                                            {[
-                                                {
-                                                    name: "White",
-                                                    color: "#FFFFFF",
-                                                },
-                                                {
-                                                    name: "Black",
-                                                    color: "#000000",
-                                                },
-                                                {
-                                                    name: "Navy",
-                                                    color: "#1B2A4A",
-                                                },
-                                                {
-                                                    name: "Red",
-                                                    color: "#DC2626",
-                                                },
-                                                {
-                                                    name: "Blue",
-                                                    color: "#3B82F6",
-                                                },
-                                                {
-                                                    name: "Green",
-                                                    color: "#22C55E",
-                                                },
-                                                {
-                                                    name: "Beige",
-                                                    color: "#D2B48C",
-                                                },
-                                                {
-                                                    name: "Grey",
-                                                    color: "#9CA3AF",
-                                                },
-                                            ].map((c) => (
-                                                <label
-                                                    key={c.name}
-                                                    className="flex items-center gap-2 px-4 py-2 bg-gray-50 border border-gray-200 rounded-lg cursor-pointer hover:border-brand transition-colors"
-                                                >
-                                                    <input
-                                                        type="checkbox"
-                                                        checked={selectedColors.includes(
-                                                            c.name
+                                        <div className="flex flex-wrap gap-2 mb-3">
+                                            {availableColors.map((c) => {
+                                                const isCustom = !DEFAULT_COLORS.some(
+                                                    (dc) => dc.name.toLowerCase() === c.name.toLowerCase()
+                                                );
+                                                return (
+                                                    <label
+                                                        key={c.name}
+                                                        className={`flex items-center gap-2 px-3 py-1.5 rounded-lg cursor-pointer border transition-all ${
+                                                            selectedColors.includes(c.name)
+                                                                ? "bg-brand/10 border-brand text-brand font-semibold shadow-sm"
+                                                                : "bg-gray-50 border-gray-200 text-gray-700 hover:border-gray-300"
+                                                        }`}
+                                                    >
+                                                        <input
+                                                            type="checkbox"
+                                                            checked={selectedColors.includes(c.name)}
+                                                            onChange={(e) => {
+                                                                if (e.target.checked) {
+                                                                    setSelectedColors((prev) => [...prev, c.name]);
+                                                                } else {
+                                                                    setSelectedColors((prev) =>
+                                                                        prev.filter((color) => color !== c.name)
+                                                                    );
+                                                                }
+                                                            }}
+                                                            className="w-4 h-4 text-brand rounded border-gray-300 focus:ring-brand"
+                                                        />
+
+                                                        <span
+                                                            className="w-4 h-4 rounded-full border border-gray-300 shadow-xs flex-shrink-0"
+                                                            style={{
+                                                                backgroundColor: c.color,
+                                                            }}
+                                                        />
+
+                                                        <span className="text-sm">
+                                                            {c.name}
+                                                        </span>
+
+                                                        {isCustom && (
+                                                            <button
+                                                                type="button"
+                                                                title="Remove custom color"
+                                                                onClick={(e) => handleRemoveCustomColor(c.name, e)}
+                                                                className="ml-1 text-gray-400 hover:text-red-500 rounded p-0.5 transition-colors"
+                                                            >
+                                                                <IoCloseOutline className="w-3.5 h-3.5" />
+                                                            </button>
                                                         )}
-                                                        onChange={(e) => {
-                                                            if (
-                                                                e.target
-                                                                    .checked
-                                                            ) {
-                                                                setSelectedColors(
-                                                                    (
-                                                                        prev
-                                                                    ) => [
-                                                                        ...prev,
-                                                                        c.name,
-                                                                    ]
-                                                                );
-                                                            } else {
-                                                                setSelectedColors(
-                                                                    (
-                                                                        prev
-                                                                    ) =>
-                                                                        prev.filter(
-                                                                            (
-                                                                                color
-                                                                            ) =>
-                                                                                color !==
-                                                                                c.name
-                                                                        )
-                                                                );
-                                                            }
-                                                        }}
-                                                        className="w-4 h-4 text-brand rounded border-gray-300 focus:ring-brand"
-                                                    />
+                                                    </label>
+                                                );
+                                            })}
+                                        </div>
 
-                                                    <span
-                                                        className="w-4 h-4 rounded-full border border-gray-300"
-                                                        style={{
-                                                            backgroundColor:
-                                                                c.color,
-                                                        }}
-                                                    />
-
-                                                    <span className="text-sm font-semibold text-gray-700">
-                                                        {c.name}
-                                                    </span>
-                                                </label>
-                                            ))}
+                                        {/* Add Custom Color */}
+                                        <div className="flex items-center gap-2 flex-wrap max-w-md">
+                                            <div className="relative flex items-center">
+                                                <input
+                                                    type="color"
+                                                    value={customColorCode}
+                                                    onChange={(e) => setCustomColorCode(e.target.value)}
+                                                    className="w-8 h-8 rounded-lg cursor-pointer border border-gray-200 p-0.5 bg-white shadow-xs"
+                                                    title="Pick color"
+                                                />
+                                            </div>
+                                            <input
+                                                type="text"
+                                                value={customColorName}
+                                                onChange={(e) => setCustomColorName(e.target.value)}
+                                                onKeyDown={(e) => {
+                                                    if (e.key === "Enter") {
+                                                        e.preventDefault();
+                                                        handleAddCustomColor();
+                                                    }
+                                                }}
+                                                placeholder="Add custom color (e.g. Maroon, Yellow, Gold)..."
+                                                className="flex-1 min-w-[180px] px-3 py-1.5 text-sm bg-white border border-gray-200 rounded-lg focus:outline-none focus:border-brand"
+                                            />
+                                            <button
+                                                type="button"
+                                                onClick={() => handleAddCustomColor()}
+                                                disabled={!customColorName.trim()}
+                                                className="px-3 py-1.5 text-xs font-semibold bg-gray-900 text-white rounded-lg hover:bg-black disabled:opacity-40 disabled:cursor-not-allowed flex items-center gap-1 transition-all whitespace-nowrap"
+                                            >
+                                                <IoAddOutline className="w-4 h-4" />
+                                                Add Color
+                                            </button>
                                         </div>
                                     </div>
 
@@ -1499,7 +1736,8 @@ const AdminProducts = () => {
                                                                         type="button"
                                                                         onClick={() =>
                                                                             handleDeleteVariant(
-                                                                                variant.name
+                                                                                variant.name,
+                                                                                variant._id
                                                                             )
                                                                         }
                                                                         className="p-2 text-red-500 hover:bg-red-50 rounded-lg transition-colors"
@@ -2163,20 +2401,12 @@ const AdminProducts = () => {
 
                                                         <button
                                                             onClick={() =>
-                                                                setProductList(
-                                                                    (
-                                                                        prev
-                                                                    ) =>
-                                                                        prev.filter(
-                                                                            (
-                                                                                p
-                                                                            ) =>
-                                                                                p._id !==
-                                                                                product._id
-                                                                        )
+                                                                handleDeleteProduct(
+                                                                    product._id
                                                                 )
                                                             }
                                                             className="p-2 text-red-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                                                            title="Delete Product"
                                                         >
                                                             <IoTrashOutline
                                                                 size={

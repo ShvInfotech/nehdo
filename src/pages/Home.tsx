@@ -23,9 +23,9 @@ export default function Home() {
             <ComboDeals />
             <PromotionalBanners />
             <NewArrivals />
-            <TopBrands />
-            <Testimonials />
-            <BlogSection />
+            {/* <TopBrands /> */}
+            {/* <Testimonials /> */}
+            {/* <BlogSection /> */}
             <NewsletterSection />
         </>
     );

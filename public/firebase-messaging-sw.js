@@ -7,12 +7,13 @@ importScripts(
 );
 
 firebase.initializeApp({
-  apiKey: "AIzaSyDeH8SssDLeu5Ggbj8toClBq2zGE-6Ku-c",
-  authDomain: "nehdo-23bd4.firebaseapp.com",
-  projectId: "nehdo-23bd4",
-  storageBucket: "nehdo-23bd4.firebasestorage.app",
-  messagingSenderId: "784435496062",
-  appId: "1:784435496062:web:c50536275ff566ea93442f",
+  apiKey: "AIzaSyALeiD_aBE1kJn_HJxLmwLnu-p0N1moA6k",
+  authDomain: "nehdo-74a10.firebaseapp.com",
+  projectId: "nehdo-74a10",
+  storageBucket: "nehdo-74a10.firebasestorage.app",
+  messagingSenderId: "262457932395",
+  appId: "1:262457932395:web:5c1538644b37f2aaeb4f2e",
+  measurementId: "G-XCG8XYR46D"
 });
 
 

@@ -1,4 +1,4 @@
-const { UserRegister, UserLogin, GoogelLogin, UpdateUserProfile, ForgotPassword, ResetPasswordpage, ResetPassword, LogOut } = require('../../../controller/user/v1/auth.controller')
+const { UserRegister, UserLogin, GoogelLogin, UpdateUserProfile, ForgotPassword, ResetPasswordpage, ResetPassword, LogOut, UpdateDeviceToken } = require('../../../controller/user/v1/auth.controller')
 const { verifyjwtAccessToken } = require('../../../middleware/jwtToken')
 const UploadImage = require('../../../middleware/imageUploading')
 const router = require('express').Router()
@@ -12,6 +12,7 @@ router.post('/forgot-password', ForgotPassword)
 router.get('/reset-password/:token', ResetPasswordpage)
 router.post('/reset-password/:token', ResetPassword)
 router.post('/logout', verifyjwtAccessToken, LogOut)
+router.post('/device-token', verifyjwtAccessToken, UpdateDeviceToken)
 
 
 module.exports = router

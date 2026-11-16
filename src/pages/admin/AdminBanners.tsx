@@ -142,6 +142,18 @@ const formatDateTimeLocal = (date?: string | null) => {
     return `${year}-${month}-${day}T${hours}:${minutes}`;
 };
 
+const resolveBannerImageUrl = (url?: string) => {
+    if (!url) return "";
+    let clean = url.trim();
+    clean = clean.replace(/^https?:\/\/(127\.0\.0\.1|localhost)(:\d+)?/i, "");
+    if (clean.startsWith("http://") || clean.startsWith("https://")) {
+        return clean;
+    }
+    const apiUrl = (import.meta.env.VITE_API_URL || "https://nehdowellness.com").replace(/\/+$/, "");
+    const slash = clean.startsWith("/") ? "" : "/";
+    return `${apiUrl}${slash}${clean}`;
+};
+
 /* =========================================================
    COMPONENT
 ========================================================= */
@@ -248,10 +260,10 @@ const AdminBanners = () => {
                     subtitle: item.subtitle || "",
 
                     desktopImage:
-                        item.desktopImage || "",
+                        resolveBannerImageUrl(item.desktopImage),
 
                     mobileImage:
-                        item.mobileImage || "",
+                        resolveBannerImageUrl(item.mobileImage),
 
                     desktopImageName: "",
 

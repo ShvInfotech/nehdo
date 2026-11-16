@@ -45,10 +45,9 @@ exports.AddProduct = async (req, res, next) => {
         }
         if (!req.body?.price) {
             return next(CustomeError(409, 'price is required'))
-
         }
 
-        if (req.body?.price < 100) {
+        if (Number(req.body?.price) < 100) {
             return next(CustomeError(409, 'minimum price 100'))
         }
 
@@ -56,8 +55,8 @@ exports.AddProduct = async (req, res, next) => {
             return next(CustomeError(409, 'salePrice is required'))
         }
 
-        if (req.body?.salePrice < req.body?.price) {
-            return next(CustomeError(409, 'sale price can not set morethane price'))
+        if (Number(req.body?.salePrice) > Number(req.body?.price)) {
+            return next(CustomeError(409, 'sale price cannot be greater than regular price'))
         }
 
         if (!req?.files || req.files.length === 0) {
@@ -304,6 +303,9 @@ exports.UpdateProduct = async (req, res, next) => {
         if (req.body?.name) {
             productData.name = req.body?.name
         }
+        if (req.body?.sku) {
+            productData.sku = req.body?.sku
+        }
         if (req.body?.brandId) {
             productData.brandId = req.body.brandId
         }
@@ -316,12 +318,16 @@ exports.UpdateProduct = async (req, res, next) => {
             productData.categoryId = req.body.categoryId
         }
 
-        if (req.body?.price) {
-            productData.price = req.body?.price
+        if (req.body?.price !== undefined && req.body?.price !== '') {
+            productData.price = Number(req.body.price);
         }
 
-        if (req.body?.salePrice && req.body?.salePrice < req.body?.price) {
-            productData.salePrice = req.body?.salePrice
+        if (req.body?.salePrice !== undefined && req.body?.salePrice !== '') {
+            const parsedSalePrice = Number(req.body.salePrice);
+            if (parsedSalePrice > Number(productData.price)) {
+                return next(CustomeError(409, 'sale price cannot be greater than regular price'));
+            }
+            productData.salePrice = parsedSalePrice;
         }
 
 
@@ -387,6 +393,15 @@ exports.UpdateProduct = async (req, res, next) => {
         }
 
         let variantData = await productVariantModel.findOne({ productId: product._id })
+        if (!variantData) {
+            variantData = new productVariantModel({
+                productId: product._id,
+                size: [],
+                colorOptions: [],
+                material: '',
+                variant: []
+            })
+        }
 
         if (req.body?.size) {
             variantData.size =
@@ -402,46 +417,87 @@ exports.UpdateProduct = async (req, res, next) => {
                     : req.body.colors;
         }
 
-        if (req.body.material) {
-            variantData.material = req.body.material || ''
+        if (req.body?.material !== undefined) {
+            variantData.material = typeof req.body.material === 'string' ? req.body.material : (req.body.material?.[0] || '');
         }
 
-        // Existing variants update
+        // Explicitly deleted variant IDs
+        let deletedVariantIds = [];
+        if (req.body?.deletedVariantIds) {
+            deletedVariantIds = typeof req.body.deletedVariantIds === "string" ? JSON.parse(req.body.deletedVariantIds) : req.body.deletedVariantIds;
+        }
+        if (Array.isArray(deletedVariantIds) && deletedVariantIds.length) {
+            variantData.variant = variantData.variant.filter(v => !deletedVariantIds.includes(String(v._id)));
+        }
+
+        // Existing variants update & delete if omitted
         let existingVariants = [];
-
         if (req.body?.variant) {
-
             existingVariants = typeof req.body.variant === "string" ? JSON.parse(req.body.variant) : req.body.variant;
         }
 
-        if (existingVariants.length) {
+        if (Array.isArray(existingVariants)) {
+            const sentExistingIds = new Set(existingVariants.filter(item => item._id).map(item => String(item._id)));
+            // Keep only existing variants that are still present
+            variantData.variant = variantData.variant.filter(v => sentExistingIds.has(String(v._id)));
+
             for (const item of existingVariants) {
-                variantData.variant.forEach((v) => {
-                    if (String(v._id) === String(item._id)) {
-                        v.stock = item.stock;
-                        v.price = item.price;
-                        v.sku = item.sku || v.sku;
-                    }
-                });
+                const v = variantData.variant.find(v => String(v._id) === String(item._id));
+                if (v) {
+                    if (item.name) v.name = item.name;
+                    v.stock = Number(item.stock) || 0;
+                    v.price = Number(item.price) || 0;
+                    v.sku = item.sku || v.sku;
+                }
             }
         }
 
         // New variants add
         let newVariants = [];
-
         if (req.body?.newvariant) {
             newVariants = typeof req.body.newvariant === "string" ? JSON.parse(req.body.newvariant) : req.body.newvariant;
         }
-        if (newVariants.length) {
+        if (Array.isArray(newVariants) && newVariants.length) {
             let length = variantData.variant.length + 1;
             for (const item of newVariants) {
-                item.sku = item.sku || `${product.sku}-${length}`;
+                const sku = item.sku || `${product.sku}-${length}`;
                 const exists = variantData.variant.some((v) => v.name === item.name);
                 if (!exists) {
-                    variantData.variant.push(item);
+                    variantData.variant.push({
+                        name: item.name,
+                        stock: Number(item.stock) || 0,
+                        price: Number(item.price) || 0,
+                        sku
+                    });
                     length++;
                 }
             }
+        }
+
+        // Sync size and colorOptions with remaining variants if variants exist
+        if (variantData.variant && variantData.variant.length > 0) {
+            const variantSizes = new Set();
+            const variantColors = new Set();
+            variantData.variant.forEach((v) => {
+                if (v.name && v.name.includes('/')) {
+                    const parts = v.name.split('/');
+                    if (parts[0]) variantColors.add(parts[0].trim());
+                    if (parts[1]) variantSizes.add(parts[1].trim());
+                } else if (v.name) {
+                    if (variantData.size && variantData.size.includes(v.name)) variantSizes.add(v.name);
+                    if (variantData.colorOptions && variantData.colorOptions.includes(v.name)) variantColors.add(v.name);
+                }
+            });
+
+            if (variantSizes.size > 0) {
+                variantData.size = Array.from(variantSizes);
+            }
+            if (variantColors.size > 0) {
+                variantData.colorOptions = Array.from(variantColors);
+            }
+        } else if (variantData.variant && variantData.variant.length === 0) {
+            variantData.size = [];
+            variantData.colorOptions = [];
         }
 
 
@@ -489,7 +545,16 @@ exports.UpdateProduct = async (req, res, next) => {
         }
 
         const updateproduct = await productModel.findByIdAndUpdate(id, productData, { returnDocument: 'after' })
-        const variant = await productVariantModel.findByIdAndUpdate(variantData._id, variantData, { returnDocument: 'after' })
+        const variant = await productVariantModel.findByIdAndUpdate(
+            variantData._id,
+            {
+                size: variantData.size,
+                colorOptions: variantData.colorOptions,
+                material: variantData.material,
+                variant: variantData.variant
+            },
+            { returnDocument: 'after', upsert: true }
+        )
         const inventory = await productInventoryModel.findByIdAndUpdate(inventoryData._id, inventoryData, { returnDocument: 'after' })
         const shhiping = await productShippingModel.findByIdAndUpdate(shippingData._id, shippingData, { returnDocument: 'after' })
         return res.status(200).json({ success: true, message: "product update successfully" })
@@ -614,6 +679,39 @@ exports.UpdateInventory = async (req, res, next) => {
 
         return res.json({ success: true, message: 'Update', newData })
 
+    } catch (error) {
+        return next(error)
+    }
+}
+
+exports.DeleteProduct = async (req, res, next) => {
+    try {
+        const id = req.params.id
+        if (!mongoose.isValidObjectId(id)) {
+            return next(CustomeError(409, "product id is invalid"))
+        }
+
+        const product = await productModel.findById(id)
+        if (!product) {
+            return next(CustomeError(404, "product not found"))
+        }
+
+        // Delete product images from disk
+        if (product.productImage && Array.isArray(product.productImage)) {
+            product.productImage.forEach((img) => {
+                DeleteImage(img)
+            })
+        }
+
+        await productModel.findByIdAndDelete(id)
+        await productVariantModel.deleteMany({ productId: id })
+        await productInventoryModel.deleteMany({ productId: id })
+        await productShippingModel.deleteMany({ productId: id })
+
+        return res.status(200).json({
+            success: true,
+            message: "product deleted successfully"
+        })
     } catch (error) {
         return next(error)
     }

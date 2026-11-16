@@ -3,9 +3,9 @@ import {
     IoSearchOutline,
     IoChevronBackOutline,
     IoPrintOutline,
-    IoMailOutline,
     IoCheckmarkCircleOutline,
-    IoCloseOutline
+    IoCloseOutline,
+    IoOpenOutline
 } from "react-icons/io5";
 import Barcode from "react-barcode";
 import QRCode from "react-qr-code";
@@ -75,6 +75,9 @@ interface Order {
     shiprocketShipmentId?: string | null;
     trackingNumber?: string | null;
     trackingUrl?: string | null;
+    pickupDate?: string | Date | null;
+    pickupScheduledDate?: string | null;
+    pickupTokenNumber?: string | null;
     updatedAt?: string;
     createdAt?: string;
 }
@@ -815,13 +818,6 @@ const AdminOrders = () => {
                             <IoPrintOutline size={18} />
                             Print Label
                         </button>
-
-                        <button
-                            className="flex items-center gap-2 px-4 py-2 bg-white border border-gray-200 text-sm font-semibold text-gray-700 rounded-lg hover:bg-gray-50"
-                        >
-                            <IoMailOutline size={18} />
-                            Send Email
-                        </button>
                     </div>
                 </div>
 
@@ -1185,16 +1181,52 @@ const AdminOrders = () => {
                                         awb Number
                                     </p>
 
-                                    <p className="text-sm font-medium text-gray-900">
+                                    {selectedOrder?.trackingNumber ? (
+                                        <a
+                                            href={
+                                                selectedOrder?.trackingUrl ||
+                                                `https://shiprocket.co/tracking/${selectedOrder.trackingNumber}`
+                                            }
+                                            target="_blank"
+                                            rel="noopener noreferrer"
+                                            className="inline-flex items-center gap-1.5 text-sm font-medium text-indigo-600 hover:text-indigo-800 hover:underline"
+                                        >
+                                            <span>{selectedOrder.trackingNumber}</span>
+                                            <IoOpenOutline size={14} />
+                                        </a>
+                                    ) : (
+                                        <p className="text-sm font-medium text-gray-900">
+                                            N/A
+                                        </p>
+                                    )}
+                                </div>
+
+                                <div>
+                                    <p className="text-xs font-semibold text-gray-400 uppercase">
+                                        Pickup Scheduled Date
+                                    </p>
+
+                                    <p className="text-sm font-medium text-indigo-700 font-mono">
                                         {
-                                            selectedOrder?.trackingNumber
+                                            selectedOrder?.pickupScheduledDate ||
+                                            (selectedOrder?.pickupDate
+                                                ? new Date(selectedOrder.pickupDate).toLocaleString("en-IN")
+                                                : "Not Scheduled")
                                         }
                                     </p>
                                 </div>
 
+                                <div>
+                                    <p className="text-xs font-semibold text-gray-400 uppercase">
+                                        Pickup Token Number
+                                    </p>
 
-
-
+                                    <p className="text-sm font-medium text-gray-900 break-all font-mono">
+                                        {
+                                            selectedOrder?.pickupTokenNumber || "N/A"
+                                        }
+                                    </p>
+                                </div>
                             </div>
                         </div>
 
@@ -1587,6 +1619,11 @@ const AdminOrders = () => {
                                                     }
                                                 )
                                                 : "-"}
+                                            {order.pickupScheduledDate && (
+                                                <p className="text-[11px] font-semibold text-indigo-600 mt-1">
+                                                    Pickup: {order.pickupScheduledDate}
+                                                </p>
+                                            )}
                                         </td>
 
                                         {/* ITEMS */}

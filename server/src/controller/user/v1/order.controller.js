@@ -8,22 +8,54 @@ const { OrderCancelledMail } = require("../../../helper/emailTemplate");
 const { ShiprocketCancel, getReturnshippingcharg, ShiproketReturnCreate, AssignCourierAndAWB } = require("../../../services/shiproketapis");
 
 
+const cleanAndFormatImageUrl = (img) => {
+    if (!img || typeof img !== "string") return "";
+    let clean = img.trim();
+    if (!clean) return "";
+
+    const domain = (process.env.BACKEND_DOMIN_URL || "").replace(/\/+$/, "");
+
+    // Strip duplicate domain if repeated (e.g., https://domain.comhttps://domain.com/...)
+    if (domain) {
+        const escapedDomain = domain.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+        const doubleDomainRegex = new RegExp(`^(?:${escapedDomain})+`, "i");
+        if (doubleDomainRegex.test(clean)) {
+            clean = clean.replace(doubleDomainRegex, "");
+        }
+    }
+
+    clean = clean.replace(/^(?:https?:\/\/[^/]+)+(?=\/)/i, (match) => {
+        const parts = match.match(/https?:\/\/[^/]+/gi);
+        return parts ? parts[parts.length - 1] : match;
+    });
+
+    if (clean.startsWith("http://") || clean.startsWith("https://")) {
+        return clean;
+    }
+
+    const path = clean.startsWith("/") ? clean : `/${clean}`;
+    return domain ? `${domain}${path}` : path;
+};
+
 exports.GetOrders = async (req, res, next) => {
     try {
         const orders = await orderModel.find({ userId: req.user._id }).sort({ createdAt: -1 });
 
-        const updatedOrders = orders.map(order => ({
-            ...order.toObject(),
-            items: order.items.map(item => ({
-                ...item.toObject(),
-                image: item.image ? `${process.env.BACKEND_DOMIN_URL}${item.image}` : ''
-            }))
-        }));
+        const updatedOrders = orders.map(order => {
+            const orderObj = order.toObject();
+            return {
+                ...orderObj,
+                trackingUrl: orderObj.trackingUrl || (orderObj.trackingNumber ? `https://shiprocket.co/tracking/${orderObj.trackingNumber}` : null),
+                items: order.items.map(item => ({
+                    ...item.toObject(),
+                    image: cleanAndFormatImageUrl(item.image)
+                }))
+            };
+        });
 
-
-        return res.status(200).json({ success: true, message: 'get orders', orders: updatedOrders })
+        return res.status(200).json({ success: true, message: 'get orders', orders: updatedOrders });
     } catch (error) {
-        return next(error)
+        return next(error);
     }
 }
 
@@ -88,7 +120,7 @@ exports.CancelledOrder = async (req, res, next) => {
             let data = await RazorpayRefundApi(order)
             paymentdata.paymentId = data.payment_id
             paymentdata.status = "pending"
-            // paymentdata.status = data.status == "pending" ? "processing" : data.status
+            
             paymentdata.refundId = data.id
 
             if (data.status == "processed") {
@@ -185,7 +217,7 @@ exports.ReturnOrder = async (req, res, next) => {
             units: Number(item.quantity),
             selling_price: Number(item.price),
             discount: 0,
-            qc_product_image: `https://dad-panda-rocklike.ngrok-free.dev${item.image}`,
+            qc_product_image: `${process.env.BACKEND_DOMIN_URL}${item.image}`,
         }))
 
         const data = {
@@ -202,15 +234,15 @@ exports.ReturnOrder = async (req, res, next) => {
             pickup_state: order.shippingAddress.state,
             pickup_country: "India",
 
-            shipping_customer_name: "Darshik Shekhada",
-            shipping_email: "darshikshekhada07@gmail.com",
-            shipping_phone: "9714920969",
-            shipping_address: "243, Gopinath Society",
-            shipping_address_2: "Ramnagar Rander",
-            shipping_city: "surat",
-            shipping_state: "gujarat",
-            shipping_country: "India",
-            shipping_pincode: "395005",
+            shipping_customer_name: process.env.SELLER_NAME,
+            shipping_email: process.env.SELLER_EMAIL,
+            shipping_phone: process.env.SELLER_PHON,
+            shipping_address: process.env.SELLER_ADDRES_1,
+            shipping_address_2: process.env.SELLER_ADDRES_2,
+            shipping_city: process.env.SELLER_CITY,
+            shipping_state: process.env.SELLER_STATE,
+            shipping_country: process.env.SELLER_COUNTRY,
+            shipping_pincode: process.env.SELLER_PINCODE,
 
             order_items,
             sub_total: order.totalAmount,
@@ -241,7 +273,7 @@ exports.ReturnOrder = async (req, res, next) => {
 
         const courierDetails = {
             courierCompanyId: bestCourier.courier_company_id,
-            courierId: bestCourier.id,
+            courierId: bestCourier.courier_company_id,
             courierName: bestCourier.courier_name,
             rate: bestCourier.rate,
             freightCharge: bestCourier.freight_charge,
@@ -258,8 +290,7 @@ exports.ReturnOrder = async (req, res, next) => {
             courier_id: courierDetails.courierId,
             is_return: 1
         }
-        // const awsNumber = await AssignCourierAndAWB(awsData)    // pending awb not provide by shiproket in test mode 
-        // console.log(awsNumber)
+        const awsNumber = await AssignCourierAndAWB(awsData)    
 
 
 
@@ -288,22 +319,13 @@ exports.ReturnOrder = async (req, res, next) => {
             status: confirmorderData.status || "RETURN PENDING",
             shiprocketOrderId: confirmorderData.order_id,
             shiprocketShipmentId: confirmorderData.shipment_id,
-            trackingNumber: '12345' //awsNumber.awb_code 
+            trackingNumber: awsNumber.awb_code
         }
 
 
 
         if (order.payment.method == "online") {
-
-            let data = await RazorpayRefundApi(order)
-            paymentdata.paymentId = data.payment_id
-            paymentdata.status = data.status == "pending" ? "processing" : data.status
-            paymentdata.refundId = data.id
-
-            if (data.status == "processed") {
-                paymentdata.status = "processed"
-                paymentdata.refundedAt = Date.now()
-            }
+            paymentdata.status = "pending"
         } else {
             paymentdata.status = "processing"
             paymentdata.bankDetails = req.body.bankDetails

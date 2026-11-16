@@ -5,6 +5,7 @@ const cors = require('cors')
 const morgan = require('morgan')
 const path = require('path')
 const app = express()
+app.set("trust proxy", true)
 const port = process.env.PORT || 8001
 const host = process.env.host
 const dbconnection = require('./config/dbconnection')

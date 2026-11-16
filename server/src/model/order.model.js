@@ -160,6 +160,18 @@ const orderSchema = mongoose.Schema(
             type: Date,
             default: null,
         },
+        pickupDate: {
+            type: Date,
+            default: null,
+        },
+        pickupScheduledDate: {
+            type: String,
+            default: null,
+        },
+        pickupTokenNumber: {
+            type: String,
+            default: null,
+        },
     },
     {
         versionKey: false,

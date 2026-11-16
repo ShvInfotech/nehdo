@@ -28,6 +28,10 @@ import { inputClasses } from "../primitives/Field";
 import { variantLabel } from "../checkout/Parts";
 import { cx, inr } from "../lib/format";
 
+/** Same rule as v1 Orders: use trackingUrl, else Shiprocket's public tracking page. */
+const trackingHref = (o: ApiOrder) =>
+  o.trackingUrl || (o.trackingNumber ? `https://shiprocket.co/tracking/${o.trackingNumber}` : null);
+
 const fmtDate = (d?: string) =>
   d ? new Date(d).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" }) : "";
 
@@ -175,9 +179,9 @@ const OrderCard: React.FC<{ order: ApiOrder; onUpdated: () => void }> = ({ order
               <span>
                 Tracking number <span className="font-semibold">{order.trackingNumber || "—"}</span>
               </span>
-              {order.trackingUrl && (
+              {trackingHref(order) && (
                 <a
-                  href={order.trackingUrl}
+                  href={trackingHref(order)!}
                   target="_blank"
                   rel="noopener noreferrer"
                   className="inline-flex items-center gap-1.5 font-semibold text-v2-plum hover:underline"
