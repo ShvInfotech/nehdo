@@ -7,6 +7,11 @@ import { loadProducts } from "./data/products";
 import { FaWhatsapp } from "react-icons/fa";
 import { ToastContainer } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
+import { isV2Enabled } from "./ui-v2/flag";
+import { v2StorefrontRoutes } from "./ui-v2/routes";
+
+// UI v2 opt-in: ?ui=v2 to enable, ?ui=v1 to disable (see ui-v2/flag.ts)
+const UI_V2 = isV2Enabled();
 
 const Shop = lazy(() => import("./pages/Shop"));
 const ProductDetail = lazy(() => import("./pages/Product"));
@@ -79,6 +84,7 @@ function App() {
     <BrowserRouter>
       <Suspense fallback={<PageLoader />}>
         <Routes>
+          {UI_V2 ? v2StorefrontRoutes : (
           <Route element={<Layout />}>
             <Route path="/" element={<Home />} />
             <Route path="/home" element={<Home />} />
@@ -101,6 +107,7 @@ function App() {
             <Route path="/shipping" element={<Shipping />} />
             <Route path="/contact" element={<Contact />} />
           </Route>
+          )}
 
           {/* Admin Login (No Layout, No Protection) */}
           <Route path="/admin/login" element={<AdminLogin />} />

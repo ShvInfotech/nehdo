@@ -1,3 +1,6 @@
+// UI v2 tokens (namespaced `v2`, additive — does not change any v1 class)
+const v2 = require("./src/ui-v2/theme/tailwind.v2.cjs");
+
 module.exports = {
 	content: [
 		"./index.html", 
@@ -6,10 +9,12 @@ module.exports = {
 	theme: {
 		extend: {
 			fontFamily: {
+				...v2.fontFamily,
 				sans: ['"Plus Jakarta Sans"', 'sans-serif'],
 				heading: ['Outfit', 'sans-serif'],
 			},
 			colors: {
+				...v2.colors,
 				brand: {
 					DEFAULT: '#7E420F',
 					dark: '#5E3819',
@@ -97,6 +102,7 @@ module.exports = {
 				},
 			},
 			boxShadow: {
+				...v2.boxShadow,
 				'card': '0 4px 20px rgba(0, 0, 0, 0.06)',
 				'card-hover': '0 12px 40px rgba(0, 0, 0, 0.12)',
 				'nav': '0 2px 20px rgba(0, 0, 0, 0.08)',
@@ -104,6 +110,7 @@ module.exports = {
 				'button-hover': '0 6px 20px rgba(126, 66, 15, 0.4)',
 			},
 			borderRadius: {
+				...v2.borderRadius,
 				'2xl': '16px',
 				'3xl': '24px',
 				'4xl': '32px',

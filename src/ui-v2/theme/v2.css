@@ -1,0 +1,125 @@
+@import url("https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400..700&family=DM+Sans:opsz,wght@9..40,400..700&display=swap");
+
+/* ─────────────────────────────────────────────────────────────
+   NEHDO UI v2 — design tokens
+   Values are RGB triplets so Tailwind can apply alpha (bg-v2-plum/10).
+   Change the palette here; components only reference the tokens.
+───────────────────────────────────────────────────────────── */
+:root {
+  --v2-bg: 251 248 245;        /* warm ivory page */
+  --v2-surface: 255 255 255;   /* cards */
+  --v2-sunken: 244 238 236;    /* wells, inputs, image placeholders */
+  --v2-ink: 34 24 38;          /* primary text */
+  --v2-muted: 112 99 116;      /* secondary text */
+  --v2-line: 234 225 228;      /* borders */
+  --v2-plum: 91 42 110;        /* brand primary */
+  --v2-plum-deep: 46 18 56;    /* dark sections, footer */
+  --v2-coral: 242 113 78;      /* accent, sale, highlights */
+  --v2-blush: 251 227 220;     /* soft tint */
+  --v2-lilac: 236 228 246;     /* soft tint */
+  --v2-sage: 62 138 104;       /* success, trust */
+  --v2-butter: 255 241 201;    /* soft tint */
+
+  --v2-header-h: 68px;
+}
+
+/* ── Scope: everything under .v2 opts out of v1 globals ───────── */
+body.v2-active {
+  background-color: rgb(var(--v2-bg));
+  font-family: "DM Sans", system-ui, sans-serif;
+}
+/* v1 paints a fixed paper-grain overlay on body; v2 is clean */
+body.v2-active::before {
+  display: none;
+}
+
+.v2 {
+  font-family: "DM Sans", system-ui, sans-serif;
+  font-size: 16px;
+  line-height: 1.55;
+  color: rgb(var(--v2-ink));
+  background-color: rgb(var(--v2-bg));
+}
+
+.v2 h1,
+.v2 h2,
+.v2 h3,
+.v2 h4,
+.v2 h5,
+.v2 h6 {
+  font-family: "Bricolage Grotesque", system-ui, sans-serif;
+  font-weight: 600;
+  line-height: 1.08;
+  letter-spacing: -0.025em;
+  color: inherit;
+}
+
+.v2 em,
+.v2 i {
+  font-family: inherit;
+}
+
+.v2 ::selection {
+  background: rgb(var(--v2-plum) / 0.16);
+  color: inherit;
+}
+
+.v2 *:focus-visible {
+  outline: 2px solid rgb(var(--v2-plum));
+  outline-offset: 2px;
+  border-radius: 8px;
+}
+
+/* The global WhatsApp button (App.tsx, z 9999) would sit on top of drawers;
+   hide it while any v2 overlay is open. Toasts (also z 9999) stay visible. */
+body.v2-overlay-open a[aria-label="Chat on WhatsApp"] {
+  display: none;
+}
+
+/* Sticky bottom bars (product buy bar, cart checkout bar): lift the WhatsApp
+   button above them. Pages set the class only while their bar is visible. */
+body.v2-sticky-bar a[aria-label="Chat on WhatsApp"] {
+  bottom: 88px !important;
+}
+
+/* ── Helpers ───────────────────────────────────────────────── */
+.v2-no-scrollbar {
+  scrollbar-width: none;
+}
+.v2-no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+
+.v2-skeleton {
+  background: linear-gradient(
+    90deg,
+    rgb(var(--v2-sunken)) 0%,
+    rgb(var(--v2-line)) 50%,
+    rgb(var(--v2-sunken)) 100%
+  );
+  background-size: 200% 100%;
+  animation: v2-shimmer 1.4s ease-in-out infinite;
+}
+
+@keyframes v2-shimmer {
+  0% { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
+
+.v2-marquee {
+  animation: v2-marquee 40s linear infinite;
+}
+.v2-marquee:hover {
+  animation-play-state: paused;
+}
+@keyframes v2-marquee {
+  from { transform: translateX(0); }
+  to { transform: translateX(-50%); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .v2-marquee,
+  .v2-skeleton {
+    animation: none;
+  }
+}
