@@ -38,7 +38,7 @@ export const SectionHeader: React.FC<{
     {action && (
       <Link
         to={action.to}
-        className="group inline-flex shrink-0 items-center gap-1.5 text-sm font-semibold text-v2-plum hover:text-v2-plum-deep"
+        className="group inline-flex shrink-0 items-center gap-1.5 py-3 text-sm font-semibold text-v2-plum hover:text-v2-plum-deep sm:py-0"
       >
         {action.label}
         <IoArrowForward className="transition-transform group-hover:translate-x-0.5" />
@@ -64,7 +64,7 @@ export const Breadcrumbs: React.FC<{ items: { label: string; to?: string }[]; cl
   <nav aria-label="Breadcrumb" className={cx("text-[13px] text-v2-muted", className)}>
     <ol className="flex flex-wrap items-center gap-1.5">
       <li>
-        <Link to="/" className="hover:text-v2-ink">
+        <Link to="/" className="-my-3 inline-block py-3 hover:text-v2-ink">
           Home
         </Link>
       </li>
@@ -72,7 +72,7 @@ export const Breadcrumbs: React.FC<{ items: { label: string; to?: string }[]; cl
         <li key={i} className="flex min-w-0 items-center gap-1.5">
           <span aria-hidden>/</span>
           {it.to && i < items.length - 1 ? (
-            <Link to={it.to} className="hover:text-v2-ink">
+            <Link to={it.to} className="-my-3 inline-block py-3 hover:text-v2-ink">
               {it.label}
             </Link>
           ) : (

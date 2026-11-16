@@ -74,7 +74,7 @@ export const Terms = () => (
     <LegalPage
         title="Terms & Conditions"
         subtitle="Please read these terms carefully before accessing or making purchases through Nehdo Wellness."
-        lastUpdated="October 2026"
+        lastUpdated="November 2026"
         badge="Legal Agreement"
     >
         <section className="space-y-3">
@@ -102,7 +102,7 @@ export const Terms = () => (
         <section className="space-y-3">
             <h2 className="text-xl font-bold text-gray-900">3. Products, Pricing & Accuracy</h2>
             <p>
-                We strive to display product colors, fabrics, and descriptions as accurately as possible. However, actual colors may vary slightly due to monitor calibration and photography lighting.
+                We strive to display product colors, materials, and descriptions as accurately as possible. However, actual colors may vary slightly due to monitor calibration and photography lighting.
             </p>
             <ul className="list-disc pl-5 space-y-1.5 text-gray-600">
                 <li>All prices listed on the website are in <strong>Indian Rupees (INR)</strong> and are inclusive of applicable taxes unless stated otherwise.</li>
@@ -257,7 +257,7 @@ export const Returns = () => (
     <LegalPage
         title="Return & Refund Policy"
         subtitle="Transparent, fair, and hassle-free returns for our valued customers."
-        lastUpdated="October 2026"
+        lastUpdated="November 2026"
         badge="Customer Protection"
     >
         <section className="space-y-3">
@@ -267,9 +267,9 @@ export const Returns = () => (
             </p>
             <p className="font-semibold text-gray-900">To be eligible for a return and full refund, items must fulfill the following criteria:</p>
             <ul className="list-disc pl-5 space-y-1.5 text-gray-600">
-                <li>The item must be completely <strong>unused, unwashed, unworn, and undamaged</strong>.</li>
-                <li>All original brand tags, price tags, barcodes, and authenticity labels must remain attached.</li>
-                <li>The item must be in its original brand packaging along with any accessories, dust bags, or freebies included.</li>
+                <li>The item must be completely <strong>unused, unopened, and undamaged</strong>.</li>
+                <li>All original seals, barcodes, and authenticity labels must remain intact.</li>
+                <li>The item must be in its original brand packaging along with any accessories or freebies included.</li>
             </ul>
         </section>
 
@@ -277,7 +277,7 @@ export const Returns = () => (
             <h2 className="text-xl font-bold text-gray-900">2. Non-Returnable & Non-Refundable Items</h2>
             <p>Due to hygiene, personal care, and safety standards, the following products cannot be returned or exchanged:</p>
             <ul className="list-disc pl-5 space-y-1.5 text-gray-600">
-                <li>Innerwear, lingerie, swimwear, bodysuits, and socks.</li>
+                <li>Intimate products (such as massagers, lubricants, and condoms) and lingerie or innerwear once the seal or packaging has been opened.</li>
                 <li>Fragrances, cosmetics, and personal grooming/wellness goods where the security seal is opened.</li>
                 <li>Items marked as "Final Sale", "Clearance", or customized/altered products.</li>
             </ul>
@@ -305,7 +305,7 @@ export const Returns = () => (
                 <li>Log in to your account at <a href="https://nehdowellness.com" className="text-brand hover:underline font-medium">nehdowellness.com</a>, navigate to <strong>My Orders</strong>, and select the item you wish to return.</li>
                 <li>Alternatively, send an email to <a href="mailto:nehdoshopping@gmail.com" className="text-brand font-semibold underline">nehdoshopping@gmail.com</a> with your <strong>Order Number</strong>, item name, and reason for return.</li>
                 <li>Our support team will validate the request and schedule a doorstep reverse pickup via our logistics partner within 2-3 business days.</li>
-                <li>Please securely pack the item in its original box with all tags intact. Hand the package to the pickup agent.</li>
+                <li>Please securely pack the item in its original box with all seals and labels intact. Hand the package to the pickup agent.</li>
             </ol>
         </section>
 
@@ -316,7 +316,7 @@ export const Returns = () => (
             </p>
             <ul className="list-disc pl-5 space-y-1.5 text-gray-600">
                 <li><strong>Prepaid Orders (Cards / Net Banking / UPI / Wallets):</strong> The refund will be credited directly back to the original source account within <strong>5 to 7 business days</strong>.</li>
-                <li><strong>Cash on Delivery (COD) Orders:</strong> Our customer support will contact you to collect your preferred bank account details (Account Name, Account Number, IFSC code) or UPI ID. The refund will be credited via NEFT/UPI within 3 to 5 business days.</li>
+                <li><strong>Cash on Delivery (COD) Orders:</strong> You will be asked for your bank account details (Account Holder Name, Account Number, IFSC code) in the return request form under My Orders. The refund will be credited via NEFT within 3 to 5 business days.</li>
             </ul>
         </section>
 
@@ -336,7 +336,7 @@ export const Shipping = () => (
     <LegalPage
         title="Shipping & Delivery Policy"
         subtitle="Prompt, secure, and reliable nationwide deliveries directly to your doorstep."
-        lastUpdated="October 2026"
+        lastUpdated="November 2026"
         badge="Logistics & Delivery"
     >
         <section className="space-y-3">
@@ -385,18 +385,18 @@ export const Shipping = () => (
         <section className="space-y-3">
             <h2 className="text-xl font-bold text-gray-900">3. Shipping Charges</h2>
             <ul className="list-disc pl-5 space-y-1.5 text-gray-600">
-                <li><strong>Prepaid Orders:</strong> Free standard shipping across India on orders above ₹999. A nominal shipping fee of ₹49 applies on orders below ₹999.</li>
-                <li><strong>Cash on Delivery (COD):</strong> An additional handling charge of ₹50 to ₹90 may apply on COD orders to cover courier cash collection fees.</li>
+                <li><strong>Free Shipping:</strong> Free standard shipping across India on orders of ₹250 or more, to serviceable pin codes.</li>
+                <li><strong>Orders below ₹250:</strong> The delivery charge for your pin code is calculated and shown at checkout before you pay.</li>
+                <li><strong>Cash on Delivery (COD):</strong> Available on serviceable pin codes. No additional COD handling fee is currently charged.</li>
             </ul>
         </section>
 
         <section className="space-y-3">
             <h2 className="text-xl font-bold text-gray-900">4. Real-Time Order Tracking</h2>
             <p>
-                As soon as your package is dispatched from our fulfillment facility, you will receive an automated notification via <strong>SMS, WhatsApp, and Email</strong> containing:
+                As soon as your package is dispatched from our fulfillment facility, the following details become available under <strong>My Orders</strong> in your account:
             </p>
             <ul className="list-disc pl-5 space-y-1.5 text-gray-600">
-                <li>Courier partner name (e.g. Delhivery, Bluedart, etc.)</li>
                 <li>Air Waybill (AWB) / Tracking Number</li>
                 <li>Direct live tracking link to monitor your parcel in real-time</li>
             </ul>

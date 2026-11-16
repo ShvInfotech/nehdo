@@ -151,7 +151,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const res = await userapiRequest(`/user/api/v1/auth/updateprofile/${user?._id}`, "POST", data)
 
     setUser({ ...res.user });
-  }, []);
+    // depends on user id: with [] it kept the id from first render, so anyone who
+    // signed in during the visit sent the update to /updateprofile/undefined
+  }, [user?._id]);
 
   const openAuthModal = useCallback((mode: 'login' | 'signup' = 'login') => {
     setAuthModalMode(mode);

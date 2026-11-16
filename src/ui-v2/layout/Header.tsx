@@ -17,9 +17,10 @@ import { cx } from "../lib/format";
 import { NAV, type NavItem } from "../config";
 import SearchSheet from "./SearchSheet";
 import MobileMenu from "./MobileMenu";
+import { OPEN_SEARCH_EVENT } from "./MobileTabBar";
 
 export const Logo: React.FC<{ className?: string }> = ({ className }) => (
-  <Link to="/" aria-label="Nehdo home" className={cx("inline-flex shrink-0 items-center", className)}>
+  <Link to="/" aria-label="Nehdo home" className={cx("inline-flex h-11 shrink-0 items-center", className)}>
     <img src={`${import.meta.env.BASE_URL}images/nehdo-logo.png`} alt="Nehdo Wellness" className="h-7 w-auto md:h-8" />
   </Link>
 );
@@ -124,7 +125,13 @@ const Header: React.FC = () => {
       }
     };
     window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
+    // the mobile tab bar's Search button opens the same panel
+    const onOpen = () => setSearchOpen(true);
+    window.addEventListener(OPEN_SEARCH_EVENT, onOpen);
+    return () => {
+      window.removeEventListener("keydown", onKey);
+      window.removeEventListener(OPEN_SEARCH_EVENT, onOpen);
+    };
   }, []);
 
   return (
@@ -163,7 +170,7 @@ const Header: React.FC = () => {
             </IconButton>
 
             {isLoggedIn ? (
-              <Link to="/account" aria-label="Your account" className="hidden h-10 w-10 items-center justify-center rounded-full hover:bg-v2-sunken sm:inline-flex">
+              <Link to="/account" aria-label="Your account" className="hidden h-11 w-11 items-center justify-center rounded-full hover:bg-v2-sunken sm:inline-flex md:h-10 md:w-10">
                 <IoPersonOutline size={21} />
               </Link>
             ) : (
@@ -175,7 +182,7 @@ const Header: React.FC = () => {
             <Link
               to="/wishlist"
               aria-label={`Wishlist${wishlistCount ? ` (${wishlistCount})` : ""}`}
-              className="relative hidden h-10 w-10 items-center justify-center rounded-full hover:bg-v2-sunken sm:inline-flex"
+              className="relative hidden h-11 w-11 items-center justify-center rounded-full hover:bg-v2-sunken sm:inline-flex md:h-10 md:w-10"
             >
               <IoHeartOutline size={21} />
               {wishlistCount > 0 && <CountDot n={wishlistCount} />}
@@ -184,7 +191,7 @@ const Header: React.FC = () => {
             <Link
               to="/cart"
               aria-label={`Cart${itemCount ? ` (${itemCount} items)` : ""}`}
-              className="relative inline-flex h-10 w-10 items-center justify-center rounded-full hover:bg-v2-sunken"
+              className="relative inline-flex h-11 w-11 items-center justify-center rounded-full hover:bg-v2-sunken md:h-10 md:w-10"
             >
               <IoBagHandleOutline size={22} />
               {itemCount > 0 && <CountDot n={itemCount} />}

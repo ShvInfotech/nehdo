@@ -19,7 +19,7 @@ const variants: Record<Variant, string> = {
 };
 
 const sizes: Record<Size, string> = {
-  sm: "h-9 px-4 text-[13px]",
+  sm: "h-11 px-4 text-[13px] md:h-9",
   md: "h-11 px-6 text-sm",
   lg: "h-14 px-8 text-[15px]",
 };
@@ -87,7 +87,7 @@ export const IconButton: React.FC<
     type={type}
     aria-label={count ? `${label} (${count})` : label}
     className={cx(
-      "relative inline-flex h-10 w-10 items-center justify-center rounded-full transition-colors",
+      "relative inline-flex h-11 w-11 items-center justify-center rounded-full transition-colors md:h-10 md:w-10",
       tone === "default" ? "text-v2-ink hover:bg-v2-sunken" : "text-white hover:bg-white/10",
       className,
     )}

@@ -3,8 +3,7 @@ import { Route } from "react-router-dom";
 
 /*
  * v2 storefront route tree — same paths as v1.
- * Pages not rebuilt yet render their v1 component inside the v2 shell,
- * so the site stays fully usable while pages are migrated one by one.
+ * Every storefront page is now a v2 page; admin routes are unaffected.
  * Lazy so v2 code + fonts only load when v2 is switched on.
  */
 const AppShell = lazy(() => import("./layout/AppShell"));
@@ -22,14 +21,16 @@ const Wishlist = lazy(() => import("./pages/Wishlist"));
 const Account = lazy(() => import("./pages/Account"));
 const Orders = lazy(() => import("./pages/Orders"));
 
-// ── v1 pages, pending redesign ──────────────────────────────
-const About = lazy(() => import("../pages/About"));
-const FAQ = lazy(() => import("../pages/FAQ"));
-const Terms = lazy(() => import("../pages/Terms"));
-const Privacy = lazy(() => import("../pages/Privacy"));
-const Returns = lazy(() => import("../pages/Returns"));
-const Shipping = lazy(() => import("../pages/Shipping"));
-const Contact = lazy(() => import("../pages/Contact"));
+const About = lazy(() => import("./pages/About"));
+const FAQ = lazy(() => import("./pages/Faq"));
+const Contact = lazy(() => import("./pages/Contact"));
+const legal = (name: "TermsPage" | "PrivacyPage" | "ReturnsPage" | "ShippingPage") =>
+  lazy(() => import("./pages/Legal").then((m) => ({ default: m[name] })));
+const Terms = legal("TermsPage");
+const Privacy = legal("PrivacyPage");
+const Returns = legal("ReturnsPage");
+const Shipping = legal("ShippingPage");
+const NotFound = lazy(() => import("./pages/NotFound"));
 
 /** A <Route> element (not a component) so it can sit directly inside <Routes>. */
 export const v2StorefrontRoutes = (
@@ -46,7 +47,7 @@ export const v2StorefrontRoutes = (
     <Route path="/orders" element={<Orders />} />
     <Route path="/search" element={<Search />} />
     <Route path="/collection/:slug" element={<Collection />} />
-    <Route path="/brands" element={<Collection />} />
+    <Route path="/brands" element={<Shop />} />
     <Route path="/about" element={<About />} />
     <Route path="/faq" element={<FAQ />} />
     <Route path="/terms" element={<Terms />} />
@@ -54,5 +55,6 @@ export const v2StorefrontRoutes = (
     <Route path="/returns" element={<Returns />} />
     <Route path="/shipping" element={<Shipping />} />
     <Route path="/contact" element={<Contact />} />
+    <Route path="*" element={<NotFound />} />
   </Route>
 );

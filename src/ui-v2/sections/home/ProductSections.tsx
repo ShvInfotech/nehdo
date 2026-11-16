@@ -39,7 +39,7 @@ export const NewArrivals: React.FC = () => {
                 aria-selected={t === activeTab}
                 onClick={() => setActiveTab(t)}
                 className={cx(
-                  "shrink-0 rounded-full px-4 py-2 text-[13.5px] font-semibold transition-colors",
+                  "shrink-0 inline-flex min-h-11 items-center rounded-full md:min-h-0 px-4 py-2 text-[13.5px] font-semibold transition-colors",
                   t === activeTab ? "bg-v2-ink text-white" : "border border-v2-line bg-v2-surface text-v2-ink hover:border-v2-ink/30",
                 )}
               >

@@ -2,7 +2,7 @@ import React, { useId } from "react";
 import { cx } from "../lib/format";
 
 export const inputClasses =
-  "h-12 w-full rounded-v2 border border-v2-line bg-v2-surface px-4 text-[15px] text-v2-ink " +
+  "h-12 w-full rounded-v2 border border-v2-line bg-v2-surface px-4 text-[16px] text-v2-ink md:text-[15px] " +
   "placeholder:text-v2-muted/70 transition-colors focus:border-v2-plum focus:outline-none focus:ring-4 focus:ring-v2-plum/10 " +
   "disabled:cursor-default disabled:border-transparent disabled:bg-v2-sunken/70 disabled:text-v2-ink/80";
 

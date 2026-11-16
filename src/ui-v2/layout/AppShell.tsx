@@ -6,6 +6,7 @@ import Header from "./Header";
 import Footer from "./Footer";
 import AuthSheet from "./AuthSheet";
 import AgeGate from "./AgeGate";
+import MobileTabBar from "./MobileTabBar";
 
 /** v2 storefront layout. Replaces components/Layout.tsx when v2 is on. */
 const AppShell: React.FC = () => {
@@ -35,6 +36,7 @@ const AppShell: React.FC = () => {
         <Outlet />
       </main>
       <Footer />
+      <MobileTabBar />
       <AuthSheet />
       <AgeGate />
     </div>

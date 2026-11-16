@@ -65,7 +65,7 @@ const CatalogPage: React.FC<{ scope: CatalogScope; header: CatalogHeader }> = ({
               <button
                 type="button"
                 onClick={() => setFiltersOpen(true)}
-                className="inline-flex h-10 items-center gap-2 rounded-full border border-v2-line bg-v2-surface px-4 text-[13.5px] font-semibold lg:hidden"
+                className="inline-flex h-11 items-center gap-2 rounded-full border border-v2-line bg-v2-surface px-4 text-[13.5px] font-semibold lg:hidden"
               >
                 <IoOptionsOutline size={17} />
                 Filters
@@ -84,7 +84,7 @@ const CatalogPage: React.FC<{ scope: CatalogScope; header: CatalogHeader }> = ({
                 <select
                   value={cat.selected.sort}
                   onChange={(e) => cat.set("sort", e.target.value)}
-                  className="h-10 cursor-pointer appearance-none rounded-full border border-v2-line bg-v2-surface pl-4 pr-10 text-[13.5px] font-semibold focus:border-v2-plum focus:outline-none"
+                  className="h-11 cursor-pointer appearance-none rounded-full border border-v2-line bg-v2-surface pl-4 pr-10 text-[16px] font-semibold md:h-10 md:text-[13.5px] focus:border-v2-plum focus:outline-none"
                 >
                   {SORTS.map((s) => (
                     <option key={s.id} value={s.id}>
@@ -102,13 +102,13 @@ const CatalogPage: React.FC<{ scope: CatalogScope; header: CatalogHeader }> = ({
                   <button
                     key={c.key}
                     onClick={() => cat.set(c.key, null)}
-                    className="inline-flex items-center gap-1.5 rounded-full bg-v2-lilac px-3 py-1.5 text-[13px] font-semibold text-v2-plum hover:bg-v2-plum hover:text-white"
+                    className="inline-flex min-h-11 items-center gap-1.5 rounded-full bg-v2-lilac px-3 py-1.5 text-[13px] md:min-h-0 font-semibold text-v2-plum hover:bg-v2-plum hover:text-white"
                     aria-label={`Remove filter ${c.label}`}
                   >
                     {c.label} <IoClose />
                   </button>
                 ))}
-                <button onClick={cat.clear} className="px-2 text-[13px] font-semibold text-v2-muted underline-offset-2 hover:underline">
+                <button onClick={cat.clear} className="min-h-11 px-2 text-[13px] md:min-h-0 font-semibold text-v2-muted underline-offset-2 hover:underline">
                   Clear all
                 </button>
               </div>
@@ -147,7 +147,7 @@ const CatalogPage: React.FC<{ scope: CatalogScope; header: CatalogHeader }> = ({
         <div className="px-5 pb-28 pt-4">
           <FilterPanel cat={cat} />
         </div>
-        <div className="absolute inset-x-0 bottom-0 flex gap-2 border-t border-v2-line bg-v2-bg p-4">
+        <div className="absolute inset-x-0 bottom-0 flex gap-2 border-t border-v2-line bg-v2-bg p-4 pb-[calc(1rem+env(safe-area-inset-bottom))]">
           <Button variant="secondary" onClick={cat.clear} className="flex-1">
             Clear
           </Button>
@@ -221,7 +221,7 @@ const Pill: React.FC<{ active: boolean; onClick: () => void; children: React.Rea
     aria-pressed={active}
     onClick={onClick}
     className={cx(
-      "rounded-full px-3.5 py-2 text-[13px] font-semibold transition-colors",
+      "inline-flex min-h-11 items-center rounded-full md:min-h-0 px-3.5 py-2 text-[13px] font-semibold transition-colors",
       active ? "bg-v2-ink text-white" : "border border-v2-line bg-v2-surface hover:border-v2-ink/30",
     )}
   >
@@ -251,7 +251,7 @@ const OptionList: React.FC<{
                 aria-checked={active}
                 onClick={() => onChange(active ? null : o.id)}
                 className={cx(
-                  "flex w-full items-center gap-3 rounded-v2-sm px-2 py-2 text-left text-[14px] transition-colors hover:bg-v2-sunken",
+                  "flex min-h-11 w-full items-center gap-3 rounded-v2-sm px-2 py-2 text-left text-[14px] md:min-h-0 transition-colors hover:bg-v2-sunken",
                   active && "font-semibold",
                 )}
               >
@@ -304,7 +304,7 @@ const SearchRefine: React.FC<{ initial: string }> = ({ initial }) => {
         onChange={(e) => setQ(e.target.value)}
         placeholder="Search again"
         aria-label="Search products"
-        className="h-full flex-1 bg-transparent text-[15px] outline-none focus-visible:outline-none"
+        className="h-full flex-1 bg-transparent text-[16px] outline-none focus-visible:outline-none md:text-[15px]"
       />
     </form>
   );

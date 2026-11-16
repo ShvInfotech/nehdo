@@ -10,6 +10,7 @@ import Guide from "../sections/home/Guide";
 import Brands from "../sections/home/Brands";
 import Reviews from "../sections/home/Reviews";
 import Newsletter from "../sections/home/Newsletter";
+import { NEWSLETTER_ENABLED } from "../config";
 
 /**
  * Order is deliberate: reassure (hero + trust) → orient (needs, categories)
@@ -30,7 +31,7 @@ export default function Home() {
       <Guide />
       <Brands />
       <Reviews />
-      <Newsletter />
+      {NEWSLETTER_ENABLED && <Newsletter />}
     </>
   );
 }

@@ -349,8 +349,6 @@ const OrderCard = ({
                 }
             );
 
-            console.log("CANCEL RESPONSE:", response);
-
             if (response?.success === false) {
                 throw new Error(
                     response?.message ||
@@ -469,20 +467,11 @@ const OrderCard = ({
                 };
             }
 
-            console.log(
-                "RETURN PAYLOAD:",
-                payload
-            );
-
+            // (payload contains refund bank details — never log it)
             const response = await userapiRequest(
                 "/user/api/v1/orders/return",
                 "POST",
                 payload
-            );
-
-            console.log(
-                "RETURN RESPONSE:",
-                response
             );
 
             if (response?.success === false) {

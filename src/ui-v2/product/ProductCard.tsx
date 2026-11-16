@@ -47,7 +47,7 @@ const ProductCard: React.FC<{ product: Product; className?: string }> = ({ produ
           aria-pressed={inWishlist}
           aria-label={inWishlist ? "Remove from wishlist" : "Save to wishlist"}
           className={cx(
-            "absolute right-3 top-3 flex h-9 w-9 items-center justify-center rounded-full bg-white/90 shadow-v2-sm backdrop-blur transition-colors",
+            "absolute right-3 top-3 flex h-9 w-9 items-center justify-center rounded-full bg-white/90 shadow-v2-sm backdrop-blur transition-colors before:absolute before:-inset-1.5 before:content-['']",
             inWishlist ? "text-v2-coral" : "text-v2-ink hover:text-v2-coral",
           )}
         >
@@ -60,7 +60,7 @@ const ProductCard: React.FC<{ product: Product; className?: string }> = ({ produ
           disabled={adding}
           aria-label={`Add ${product.name} to cart`}
           className={cx(
-            "absolute bottom-3 right-3 flex h-10 min-w-10 items-center justify-center gap-1.5 rounded-full px-3 text-[13px] font-semibold text-white shadow-v2 transition-all duration-300",
+            "absolute bottom-3 right-3 flex h-10 min-w-10 items-center before:absolute before:-inset-1 before:content-[''] justify-center gap-1.5 rounded-full px-3 text-[13px] font-semibold text-white shadow-v2 transition-all duration-300",
             added ? "bg-v2-sage" : "bg-v2-plum hover:bg-v2-plum-deep",
             // desktop: reveal on hover/focus; touch: always visible
             "md:translate-y-2 md:opacity-0 md:group-hover:translate-y-0 md:group-hover:opacity-100 md:focus-visible:translate-y-0 md:focus-visible:opacity-100",

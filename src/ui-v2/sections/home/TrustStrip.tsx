@@ -12,7 +12,7 @@ const ITEMS = [
 
 /** v2 replacement for FeaturesSection. */
 const TrustStrip: React.FC = () => (
-  <section aria-label="Why shop with us" className="pb-4">
+  <section aria-label="Why shop with us" className="pb-4 pt-6 md:pt-8">
     <Container>
       <ul className="grid grid-cols-2 gap-3 md:grid-cols-4">
         {ITEMS.map(({ icon: Icon, title, desc }) => (

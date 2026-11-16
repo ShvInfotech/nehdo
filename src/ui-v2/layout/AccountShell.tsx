@@ -72,7 +72,7 @@ const AccountShell: React.FC<{ title: string; crumb: string; children: React.Rea
                   end
                   className={({ isActive }) =>
                     cx(
-                      "flex items-center gap-2.5 rounded-full px-4 py-2.5 text-[14px] font-semibold transition-colors lg:rounded-v2",
+                      "flex min-h-11 items-center gap-2.5 rounded-full px-4 py-2.5 text-[14px] font-semibold transition-colors lg:rounded-v2",
                       isActive ? "bg-v2-ink text-white" : "border border-v2-line bg-v2-surface hover:border-v2-ink/30 lg:border-transparent lg:bg-transparent lg:hover:bg-v2-sunken",
                     )
                   }
@@ -85,7 +85,7 @@ const AccountShell: React.FC<{ title: string; crumb: string; children: React.Rea
               <button
                 type="button"
                 onClick={signOut}
-                className="flex items-center gap-2.5 rounded-full border border-v2-line bg-v2-surface px-4 py-2.5 text-[14px] font-semibold text-v2-muted hover:text-v2-coral lg:w-full lg:rounded-v2 lg:border-transparent lg:bg-transparent lg:hover:bg-v2-sunken"
+                className="flex min-h-11 items-center gap-2.5 rounded-full border border-v2-line bg-v2-surface px-4 py-2.5 text-[14px] font-semibold text-v2-muted hover:text-v2-coral lg:w-full lg:rounded-v2 lg:border-transparent lg:bg-transparent lg:hover:bg-v2-sunken"
               >
                 <IoLogOutOutline size={17} /> Sign out
               </button>

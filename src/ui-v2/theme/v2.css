@@ -79,8 +79,38 @@ body.v2-overlay-open a[aria-label="Chat on WhatsApp"] {
 /* Sticky bottom bars (product buy bar, cart checkout bar): lift the WhatsApp
    button above them. Pages set the class only while their bar is visible. */
 body.v2-sticky-bar a[aria-label="Chat on WhatsApp"] {
-  bottom: 88px !important;
+  bottom: calc(88px + env(safe-area-inset-bottom)) !important;
 }
+
+/* Mobile bottom tab bar (<1024px): keep page end + WhatsApp button clear of it */
+@media (max-width: 1023px) {
+  body.v2-tabbar .v2 {
+    padding-bottom: calc(64px + env(safe-area-inset-bottom));
+  }
+  body.v2-tabbar a[aria-label="Chat on WhatsApp"] {
+    bottom: calc(80px + env(safe-area-inset-bottom)) !important;
+  }
+}
+
+/* ── Legal / long-form text (policy pages) ─────────────────── */
+.v2-legal { font-size: 15.5px; line-height: 1.75; color: rgb(var(--v2-ink) / 0.85); }
+.v2-legal > section + section { margin-top: 2.5rem; }
+.v2-legal section > * + * { margin-top: 0.85rem; }
+.v2-legal h2 { font-size: 21px; color: rgb(var(--v2-ink)); scroll-margin-top: calc(var(--v2-header-h) + 24px); }
+.v2-legal strong { color: rgb(var(--v2-ink)); font-weight: 600; }
+.v2-legal a { color: rgb(var(--v2-plum)); font-weight: 600; text-decoration: underline; text-underline-offset: 2px; }
+.v2-legal ul { list-style: disc; padding-left: 1.25rem; }
+.v2-legal ol { list-style: decimal; padding-left: 1.25rem; }
+.v2-legal li + li { margin-top: 0.4rem; }
+.v2-legal section > div { border-radius: 16px; background: rgb(var(--v2-sunken) / 0.7); padding: 1rem 1.15rem; font-size: 14.5px; }
+.v2-legal section > div > div { border-radius: 12px; background: rgb(var(--v2-surface)); padding: 0.85rem 1rem; }
+.v2-legal section > div:has(> div) { display: grid; gap: 0.6rem; background: none; padding: 0; }
+@media (min-width: 768px) { .v2-legal section > div:has(> div) { grid-template-columns: 1fr 1fr; } }
+.v2-legal section > div > div strong { display: block; margin-bottom: 0.2rem; }
+.v2-legal section > div:has(table) { background: none; padding: 0; overflow-x: auto; }
+.v2-legal table { width: 100%; border-collapse: collapse; font-size: 14px; }
+.v2-legal th, .v2-legal td { text-align: left; padding: 0.7rem 0.85rem; border-bottom: 1px solid rgb(var(--v2-line)); vertical-align: top; }
+.v2-legal th { background: rgb(var(--v2-sunken)); color: rgb(var(--v2-ink)); font-weight: 600; }
 
 /* ── Helpers ───────────────────────────────────────────────── */
 .v2-no-scrollbar {

@@ -48,7 +48,7 @@ const CartPage: React.FC = () => {
                 ))}
               </AnimatePresence>
             </ul>
-            <Link to="/shop" className="mt-4 inline-flex items-center gap-1.5 text-[14px] font-semibold text-v2-plum hover:underline">
+            <Link to="/shop" className="mt-1 inline-flex min-h-11 items-center gap-1.5 text-[14px] font-semibold text-v2-plum hover:underline">
               Continue shopping <IoArrowForward />
             </Link>
           </div>
@@ -88,7 +88,7 @@ const CartPage: React.FC = () => {
       </Container>
 
       {/* mobile checkout bar */}
-      <div className="fixed inset-x-0 bottom-0 z-[90] border-t border-v2-line bg-v2-bg/95 px-4 py-3 backdrop-blur lg:hidden">
+      <div className="fixed inset-x-0 bottom-0 z-[90] border-t border-v2-line bg-v2-bg/95 px-4 pt-3 pb-[calc(0.75rem+env(safe-area-inset-bottom))] backdrop-blur lg:hidden">
         <div className="flex items-center gap-3">
           <div className="flex-1">
             <p className="text-[12px] text-v2-muted">Estimated total</p>
@@ -135,14 +135,14 @@ const Line: React.FC<{
           </div>
           <p className="shrink-0 text-right font-v2-display text-[16px] font-semibold">{inr(item.price * item.quantity)}</p>
         </div>
-        <div className="mt-auto flex items-center justify-between gap-3 pt-3">
-          <div className="flex h-10 items-center rounded-full border border-v2-line">
+        <div className="mt-auto flex flex-wrap items-center justify-between gap-x-3 gap-y-1 pt-3">
+          <div className="flex h-11 items-center rounded-full border border-v2-line md:h-10">
             <button
               type="button"
               onClick={() => onQty(item.quantity - 1)}
               disabled={pending}
               aria-label={item.quantity === 1 ? `Remove ${item.name}` : "Decrease quantity"}
-              className="flex h-full w-10 items-center justify-center rounded-l-full hover:bg-v2-sunken"
+              className="flex h-full w-11 items-center justify-center rounded-l-full hover:bg-v2-sunken md:w-10"
             >
               {item.quantity === 1 ? <IoTrashOutline size={15} /> : <IoRemove />}
             </button>
@@ -154,18 +154,18 @@ const Line: React.FC<{
               onClick={() => onQty(item.quantity + 1)}
               disabled={pending}
               aria-label="Increase quantity"
-              className="flex h-full w-10 items-center justify-center rounded-r-full hover:bg-v2-sunken"
+              className="flex h-full w-11 items-center justify-center rounded-r-full hover:bg-v2-sunken md:w-10"
             >
               <IoAdd />
             </button>
           </div>
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-1 sm:gap-3">
             {item.quantity > 1 && <span className="hidden text-[12.5px] text-v2-muted sm:inline">{inr(item.price)} each</span>}
             <button
               type="button"
               onClick={onRemove}
               disabled={pending}
-              className="text-[13px] font-semibold text-v2-muted underline-offset-2 hover:text-v2-coral hover:underline"
+              className="-my-2 px-1 py-3 text-[13px] font-semibold text-v2-muted underline-offset-2 hover:text-v2-coral hover:underline"
             >
               Remove
             </button>

@@ -2,7 +2,7 @@ import React, { useState } from "react";
 import { Link } from "react-router-dom";
 import { IoAdd, IoLockClosedOutline, IoLogoInstagram, IoLogoWhatsapp } from "react-icons/io5";
 import { cx } from "../lib/format";
-import { FOOTER_COLUMNS, PAYMENT_METHODS, SUPPORT_WHATSAPP } from "../config";
+import { FOOTER_COLUMNS, INSTAGRAM_URL, PAYMENT_METHODS, SUPPORT_WHATSAPP } from "../config";
 
 const Column: React.FC<{ heading: string; links: { label: string; href: string }[] }> = ({ heading, links }) => {
   const [open, setOpen] = useState(false);
@@ -50,10 +50,18 @@ const Footer: React.FC = () => (
             >
               <IoLogoWhatsapp size={18} />
             </a>
-            {/* TODO: set real Instagram handle */}
-            <a href="#" aria-label="Instagram" className="flex h-10 w-10 items-center justify-center rounded-full bg-white/10 hover:bg-white/20">
-              <IoLogoInstagram size={18} />
-            </a>
+            {/* shown once INSTAGRAM_URL is set in config.ts */}
+            {INSTAGRAM_URL && (
+              <a
+                href={INSTAGRAM_URL}
+                target="_blank"
+                rel="noopener noreferrer"
+                aria-label="Instagram"
+                className="flex h-10 w-10 items-center justify-center rounded-full bg-white/10 hover:bg-white/20"
+              >
+                <IoLogoInstagram size={18} />
+              </a>
+            )}
           </div>
         </div>
         <div className="grid md:col-span-8 md:grid-cols-4 md:gap-8">

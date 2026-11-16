@@ -65,7 +65,7 @@ const ProductView: React.FC<{ id: string }> = ({ id }) => {
             {p.brand && (
               <Link
                 to={`/shop?brand=${encodeURIComponent(p.brand.toLowerCase())}`}
-                className="text-[12px] font-semibold uppercase tracking-[0.12em] text-v2-muted hover:text-v2-plum"
+                className="-my-3 inline-block py-3 text-[12px] font-semibold uppercase tracking-[0.12em] text-v2-muted hover:text-v2-plum"
               >
                 {p.brand}
               </Link>
@@ -73,7 +73,7 @@ const ProductView: React.FC<{ id: string }> = ({ id }) => {
             <h1 className="mt-2 text-[28px] leading-[1.1] md:text-[36px]">{p.name}</h1>
 
             {d.avgRating > 0 && (
-              <a href="#reviews" className="mt-3 inline-flex items-center gap-2 text-[13.5px] text-v2-muted hover:text-v2-ink">
+              <a href="#reviews" className="mt-1 inline-flex min-h-11 items-center gap-2 text-[13.5px] text-v2-muted hover:text-v2-ink">
                 <Stars value={d.avgRating} />
                 <span className="font-semibold text-v2-ink">{d.avgRating.toFixed(1)}</span>
                 <span>· {d.reviews.length || p.reviews} reviews</span>
@@ -102,7 +102,7 @@ const ProductView: React.FC<{ id: string }> = ({ id }) => {
                         aria-label={c.name}
                         title={c.name}
                         className={cx(
-                          "h-9 w-9 rounded-full border border-black/10 ring-offset-2 ring-offset-v2-bg transition",
+                          "h-11 w-11 rounded-full border border-black/10 ring-offset-2 md:h-9 md:w-9 ring-offset-v2-bg transition",
                           d.color === c.name ? "ring-2 ring-v2-plum" : "hover:ring-2 hover:ring-v2-line",
                         )}
                         style={{ backgroundColor: c.hex }}
@@ -122,7 +122,7 @@ const ProductView: React.FC<{ id: string }> = ({ id }) => {
                         onClick={() => d.setSize(s)}
                         aria-pressed={d.size === s}
                         className={cx(
-                          "h-10 min-w-12 rounded-full border px-4 text-[13.5px] font-semibold transition-colors",
+                          "h-11 min-w-12 rounded-full border px-4 text-[13.5px] font-semibold transition-colors md:h-10",
                           d.size === s ? "border-v2-ink bg-v2-ink text-white" : "border-v2-line bg-v2-surface hover:border-v2-ink/40",
                         )}
                       >
@@ -233,7 +233,7 @@ const ProductView: React.FC<{ id: string }> = ({ id }) => {
       {/* mobile sticky buy bar */}
       <div
         className={cx(
-          "fixed inset-x-0 bottom-0 z-[90] border-t border-v2-line bg-v2-bg/95 px-4 py-3 backdrop-blur transition-transform duration-300 md:hidden",
+          "fixed inset-x-0 bottom-0 z-[90] border-t border-v2-line bg-v2-bg/95 px-4 pt-3 pb-[calc(0.75rem+env(safe-area-inset-bottom))] backdrop-blur transition-transform duration-300 md:hidden",
           showBar ? "translate-y-0" : "translate-y-full",
         )}
         aria-hidden={!showBar}

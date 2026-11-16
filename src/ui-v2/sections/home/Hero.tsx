@@ -1,185 +1,209 @@
-import React, { useEffect, useState } from "react";
+import React, { useCallback, useEffect, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import { AnimatePresence, motion } from "framer-motion";
-import { IoArrowForward, IoCashOutline, IoLockClosedOutline, IoShieldCheckmarkOutline, IoStar } from "react-icons/io5";
+import { IoArrowForward, IoChevronBack, IoChevronForward } from "react-icons/io5";
 import { useBanners, type Banner } from "../../hooks/useHomeData";
-import { ButtonLink, Container, Skeleton } from "../../primitives";
-import { cx, inr } from "../../lib/format";
+import { cx } from "../../lib/format";
+import { HERO_DEFAULT_SLIDES, type HeroSlide } from "../../config";
 
-const PROMISES = [
-  { icon: <IoLockClosedOutline />, label: "Discreet delivery" },
-  { icon: <IoShieldCheckmarkOutline />, label: "100% genuine" },
-  { icon: <IoCashOutline />, label: "Cash on delivery" },
-];
+const AUTOPLAY_MS = 5500;
 
-/** Admin-managed "Hero Slider" banners, with a typographic fallback when none are live. */
+/** Admin banner → slide. Links to the attached product, otherwise the shop. */
+const fromBanner = (b: Banner): HeroSlide => ({
+  id: b._id,
+  desktopImage: b.desktopImage,
+  mobileImage: b.mobileImage,
+  title: b.title,
+  subtitle: b.subtitle,
+  ctaText: b.ctaButtonText,
+  href: b.product ? `/product/${b.product._id}` : "/shop",
+});
+
+/**
+ * Full-screen-width image banner slider. Uses admin "Hero Slider" banners;
+ * falls back to HERO_DEFAULT_SLIDES (config.ts) when none are available.
+ * Desktop image on ≥768px, mobile image below (falls back to desktop).
+ * Autoplay pauses on hover/focus, when the tab is hidden, and for reduced motion.
+ */
 const Hero: React.FC = () => {
   const { banners, loading } = useBanners("Hero Slider");
-  const [i, setI] = useState(0);
+  const [index, setIndex] = useState(0);
+  const [dir, setDir] = useState(1);
+  const [paused, setPaused] = useState(false);
+  const touchX = useRef<number | null>(null);
+  const slides: HeroSlide[] = banners.length ? banners.map(fromBanner) : HERO_DEFAULT_SLIDES;
+  const count = slides.length;
+
+  const go = useCallback(
+    (next: number, direction = next > index ? 1 : -1) => {
+      if (!count) return;
+      setDir(direction);
+      setIndex((next + count) % count);
+    },
+    [count, index],
+  );
+  const next = useCallback(() => go(index + 1, 1), [go, index]);
+  const prev = useCallback(() => go(index - 1, -1), [go, index]);
+
+  // autoplay
+  useEffect(() => {
+    if (count < 2 || paused) return;
+    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+    const t = setInterval(() => {
+      if (!document.hidden) next();
+    }, AUTOPLAY_MS);
+    return () => clearInterval(t);
+  }, [count, paused, next]);
 
   useEffect(() => {
-    if (banners.length < 2) return;
-    const t = setInterval(() => setI((n) => (n + 1) % banners.length), 6000);
-    return () => clearInterval(t);
-  }, [banners.length]);
+    if (index >= count && count) setIndex(0);
+  }, [count, index]);
 
-  const banner: Banner | undefined = banners[i];
+  if (loading) {
+    return <section aria-label="Featured" className="v2-skeleton aspect-[4/5] w-full rounded-none sm:aspect-[16/9] md:aspect-auto md:h-[min(72vh,680px)]" />;
+  }
+  if (!count) return null;
+
+  const slide = slides[Math.min(index, count - 1)];
 
   return (
-    <section className="pb-6 pt-4 md:pb-10 md:pt-6">
-      <Container>
-        <div className="relative overflow-hidden rounded-v2-xl bg-v2-blush">
-          <Blobs />
-          <div className="relative grid min-h-[560px] items-center gap-8 p-6 sm:p-10 md:min-h-[540px] md:grid-cols-[1.05fr_1fr] lg:p-14">
-            {/* copy */}
-            <div className="relative z-10 max-w-xl">
-              <AnimatePresence mode="wait">
-                <motion.div
-                  key={banner?._id || "fallback"}
-                  initial={{ opacity: 0, y: 14 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0, y: -10 }}
-                  transition={{ duration: 0.35 }}
-                >
-                  <span className="inline-flex items-center gap-2 rounded-full bg-white/70 px-3 py-1.5 text-[12px] font-semibold text-v2-plum backdrop-blur">
-                    <span className="h-1.5 w-1.5 rounded-full bg-v2-coral" />
-                    Sexual wellness for adults, delivered discreetly
-                  </span>
-                  <h1 className="mt-5 text-[40px] leading-[1.02] sm:text-[52px] lg:text-[64px]">
-                    {banner?.title || (
-                      <>
-                        Feel good,
-                        <br />
-                        <span className="text-v2-plum">no awkwardness.</span>
-                      </>
-                    )}
-                  </h1>
-                  <p className="mt-5 max-w-md text-[16px] leading-relaxed text-v2-ink/75 md:text-[17px]">
-                    {banner?.subtitle ||
-                      "Genuine products from trusted brands, honest guidance, and a plain box at your door. Nobody needs to know but you."}
-                  </p>
-                </motion.div>
-              </AnimatePresence>
+    <section
+      aria-roledescription="carousel"
+      aria-label="Featured offers"
+      className="relative w-full overflow-hidden bg-v2-plum-deep"
+      onMouseEnter={() => setPaused(true)}
+      onMouseLeave={() => setPaused(false)}
+      onFocusCapture={() => setPaused(true)}
+      onBlurCapture={() => setPaused(false)}
+      onKeyDown={(e) => {
+        if (e.key === "ArrowRight") next();
+        if (e.key === "ArrowLeft") prev();
+      }}
+      onTouchStart={(e) => (touchX.current = e.touches[0].clientX)}
+      onTouchEnd={(e) => {
+        if (touchX.current === null) return;
+        const dx = e.changedTouches[0].clientX - touchX.current;
+        if (Math.abs(dx) > 40) (dx < 0 ? next : prev)();
+        touchX.current = null;
+      }}
+    >
+      <div className="relative aspect-[4/5] w-full sm:aspect-[16/9] md:aspect-auto md:h-[min(72vh,680px)]">
+        <AnimatePresence initial={false} custom={dir} mode="popLayout">
+          <motion.div
+            key={slide.id}
+            custom={dir}
+            variants={{
+              enter: (d: number) => ({ x: `${d * 100}%` }),
+              center: { x: 0 },
+              exit: (d: number) => ({ x: `${d * -100}%` }),
+            }}
+            initial="enter"
+            animate="center"
+            exit="exit"
+            transition={{ type: "tween", ease: [0.32, 0.72, 0, 1], duration: 0.6 }}
+            className="absolute inset-0"
+            role="group"
+            aria-roledescription="slide"
+            aria-label={`${index + 1} of ${count}`}
+          >
+            <Slide slide={slide} eager={index === 0} />
+          </motion.div>
+        </AnimatePresence>
 
-              <div className="mt-8 flex flex-wrap gap-3">
-                <ButtonLink to={banner?.product ? `/product/${banner.product._id}` : "/shop"} size="lg">
-                  {banner?.ctaButtonText || "Shop now"} <IoArrowForward />
-                </ButtonLink>
-                <ButtonLink to="/shop?filter=trending" size="lg" variant="secondary">
-                  Bestsellers
-                </ButtonLink>
-              </div>
-
-              <ul className="mt-8 flex flex-wrap gap-x-5 gap-y-2">
-                {PROMISES.map((p) => (
-                  <li key={p.label} className="flex items-center gap-1.5 text-[13.5px] font-medium text-v2-ink/80">
-                    <span className="text-v2-sage">{p.icon}</span>
-                    {p.label}
-                  </li>
-                ))}
-              </ul>
-            </div>
-
-            {/* visual */}
-            <div className={cx("relative sm:h-[380px] md:h-[440px]", banner || loading ? "h-[300px]" : "h-[220px]")}>
-              {loading ? (
-                <Skeleton className="h-full w-full rounded-v2-xl bg-white/50" />
-              ) : banner ? (
-                <AnimatePresence mode="wait">
-                  <motion.div
-                    key={banner._id}
-                    initial={{ opacity: 0, scale: 0.98 }}
-                    animate={{ opacity: 1, scale: 1 }}
-                    exit={{ opacity: 0 }}
-                    transition={{ duration: 0.4 }}
-                    className="absolute inset-0"
-                  >
-                    <picture>
-                      {banner.mobileImage && <source media="(max-width: 767px)" srcSet={banner.mobileImage} />}
-                      <img
-                        src={banner.desktopImage}
-                        alt=""
-                        className="h-full w-full rounded-v2-xl object-cover shadow-v2-lg"
-                      />
-                    </picture>
-                    {banner.product && <ProductChip banner={banner} />}
-                  </motion.div>
-                </AnimatePresence>
-              ) : (
-                <FallbackArt />
-              )}
-            </div>
-          </div>
-
-          {banners.length > 1 && (
-            <div className="absolute bottom-5 left-6 flex gap-1.5 sm:left-10 lg:left-14">
-              {banners.map((b, n) => (
+        {count > 1 && (
+          <>
+            <ArrowButton side="left" onClick={prev} />
+            <ArrowButton side="right" onClick={next} />
+            <div className="absolute inset-x-0 bottom-1 z-10 flex justify-center md:bottom-3">
+              {slides.map((b, i) => (
                 <button
-                  key={b._id}
-                  onClick={() => setI(n)}
-                  aria-label={`Show banner ${n + 1}`}
-                  aria-current={n === i}
-                  className={cx("h-1.5 rounded-full transition-all", n === i ? "w-8 bg-v2-plum" : "w-3 bg-v2-plum/25")}
-                />
+                  key={b.id}
+                  type="button"
+                  onClick={() => go(i)}
+                  aria-label={`Go to slide ${i + 1}`}
+                  aria-current={i === index}
+                  className="flex h-11 min-w-8 items-center justify-center px-1.5"
+                >
+                  <span
+                    className="relative block h-1.5 overflow-hidden rounded-full bg-white/40 transition-all"
+                    style={{ width: i === index ? 32 : 10 }}
+                  >
+                  {i === index && !paused && (
+                    <motion.span
+                      key={`${b.id}-${index}`}
+                      className="absolute inset-y-0 left-0 bg-white"
+                      initial={{ width: "0%" }}
+                      animate={{ width: "100%" }}
+                      transition={{ duration: AUTOPLAY_MS / 1000, ease: "linear" }}
+                    />
+                  )}
+                  {i === index && paused && <span className="absolute inset-0 bg-white" />}
+                  </span>
+                </button>
               ))}
             </div>
-          )}
-        </div>
-      </Container>
+          </>
+        )}
+      </div>
     </section>
   );
 };
 
-const ProductChip: React.FC<{ banner: Banner }> = ({ banner }) => {
-  const p = banner.product!;
+/** One banner: full-bleed responsive image, optional text overlay, whole slide clickable. */
+const Slide: React.FC<{ slide: HeroSlide; eager: boolean }> = ({ slide, eager }) => {
+  const hasText = !!(slide.title || slide.subtitle);
+  const label = slide.title ? slide.title.split("\n").join(" ") : "View offer";
   return (
-    <Link
-      to={`/product/${p._id}`}
-      className="absolute bottom-4 left-4 flex max-w-[260px] items-center gap-3 rounded-v2-lg bg-white/95 p-2.5 pr-4 shadow-v2-lg backdrop-blur transition-transform hover:-translate-y-0.5"
-    >
-      {p.image && <img src={p.image} alt="" className="h-12 w-12 rounded-v2-sm object-cover" />}
-      <span className="min-w-0">
-        <span className="block truncate text-[13px] font-semibold">{p.name}</span>
-        <span className="flex items-center gap-2 text-[12.5px] text-v2-muted">
-          <span className="font-semibold text-v2-ink">{inr(p.salePrice)}</span>
-          {p.avgRating > 0 && (
-            <span className="inline-flex items-center gap-0.5">
-              <IoStar className="text-[#F5A524]" /> {p.avgRating.toFixed(1)}
-            </span>
-          )}
-        </span>
-      </span>
+    <Link to={slide.href} className="group block h-full w-full" aria-label={label}>
+      <picture>
+        {slide.mobileImage && <source media="(max-width: 767px)" srcSet={slide.mobileImage} />}
+        <img
+          src={slide.desktopImage}
+          alt=""
+          loading={eager ? "eager" : "lazy"}
+          fetchPriority={eager ? "high" : "auto"}
+          draggable={false}
+          className="h-full w-full select-none object-cover"
+        />
+      </picture>
+      {hasText && (
+        <>
+          <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/15 to-transparent md:bg-gradient-to-r md:from-black/55 md:via-black/20" />
+          <div className="absolute inset-x-0 bottom-0 pb-12 md:inset-y-0 md:flex md:items-center md:pb-0">
+            {/* md:px-24 keeps text clear of the arrow buttons */}
+            <div className="mx-auto w-full max-w-[1320px] px-5 sm:px-6 md:px-24">
+              <div className="max-w-xl text-white">
+                {slide.title && (
+                  <h2 className="whitespace-pre-line text-[30px] leading-[1.05] drop-shadow-sm sm:text-[42px] md:text-[56px]">
+                    {slide.title}
+                  </h2>
+                )}
+                {slide.subtitle && <p className="mt-3 max-w-md text-[15px] text-white/85 md:text-[17px]">{slide.subtitle}</p>}
+                <span className="mt-6 inline-flex h-12 items-center gap-2 rounded-full bg-white px-6 text-[14px] font-semibold text-v2-plum-deep transition-colors group-hover:bg-v2-blush">
+                  {slide.ctaText || "Shop now"}
+                  <IoArrowForward className="transition-transform group-hover:translate-x-0.5" />
+                </span>
+              </div>
+            </div>
+          </div>
+        </>
+      )}
     </Link>
   );
 };
 
-/** Soft abstract composition — no product photography needed. */
-const FallbackArt: React.FC = () => (
-  <div className="relative h-full w-full">
-    <motion.div
-      className="absolute right-[8%] top-[6%] h-[62%] w-[52%] rounded-[45%_55%_60%_40%/50%_45%_55%_50%] bg-v2-plum"
-      animate={{ rotate: [0, 6, 0] }}
-      transition={{ duration: 14, repeat: Infinity, ease: "easeInOut" }}
-    />
-    <motion.div
-      className="absolute bottom-[6%] left-[6%] h-[48%] w-[44%] rounded-[60%_40%_45%_55%/55%_60%_40%_45%] bg-v2-coral"
-      animate={{ rotate: [0, -8, 0] }}
-      transition={{ duration: 16, repeat: Infinity, ease: "easeInOut" }}
-    />
-    <div className="absolute bottom-[18%] right-[14%] h-[30%] w-[30%] rounded-full bg-v2-butter" />
-    <div className="absolute left-[24%] top-[14%] h-16 w-16 rounded-full border-[10px] border-white/80" />
-    <div className="absolute bottom-6 right-6 rounded-v2-lg bg-white/90 px-4 py-3 shadow-v2 backdrop-blur">
-      <p className="text-[12px] font-semibold uppercase tracking-[0.12em] text-v2-muted">What arrives</p>
-      <p className="mt-0.5 text-[14px] font-semibold">A plain brown box. That’s it.</p>
-    </div>
-  </div>
-);
-
-const Blobs: React.FC = () => (
-  <div aria-hidden className="pointer-events-none absolute inset-0">
-    <div className="absolute -left-24 -top-24 h-72 w-72 rounded-full bg-v2-lilac blur-3xl" />
-    <div className="absolute -bottom-32 right-1/3 h-80 w-80 rounded-full bg-v2-butter/70 blur-3xl" />
-  </div>
+const ArrowButton: React.FC<{ side: "left" | "right"; onClick: () => void }> = ({ side, onClick }) => (
+  <button
+    type="button"
+    onClick={onClick}
+    aria-label={side === "left" ? "Previous slide" : "Next slide"}
+    className={cx(
+      "absolute top-1/2 z-10 hidden h-12 w-12 -translate-y-1/2 items-center justify-center rounded-full bg-white/85 text-v2-ink shadow-v2 backdrop-blur transition hover:bg-white md:flex",
+      side === "left" ? "left-5 lg:left-8" : "right-5 lg:right-8",
+    )}
+  >
+    {side === "left" ? <IoChevronBack size={20} /> : <IoChevronForward size={20} />}
+  </button>
 );
 
 export default Hero;

@@ -73,7 +73,7 @@ const CheckoutPage: React.FC = () => {
             {c.isProcessing ? "Opening secure checkout…" : `Continue to payment · ${inr(c.finalTotal)}`}
           </Button>
           <PaymentMarks className="mt-5" />
-          <Link to="/cart" className="mt-6 inline-flex items-center gap-1.5 text-[14px] font-semibold text-v2-muted hover:text-v2-ink">
+          <Link to="/cart" className="mt-4 inline-flex min-h-11 items-center gap-1.5 text-[14px] font-semibold text-v2-muted hover:text-v2-ink">
             <IoArrowBack /> Back to cart
           </Link>
         </section>
