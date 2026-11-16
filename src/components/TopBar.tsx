@@ -1,95 +1,100 @@
-
 import React, { useState, useEffect } from "react";
-import { motion, AnimatePresence } from "framer-motion";
-import { IoCloseOutline } from "react-icons/io5";
-import {  userapiRequest } from "../services/apiService"; // tamara project pramane path check karjo
+import { userapiRequest } from "../services/apiService";
 
-const TopBar = () => {
-    const [visible, setVisible] = useState(true);
-    const [currentPromo, setCurrentPromo] = useState(0);
-    const [promos, setPromos] = useState<string[]>([]);
+// Default rotating messages — editorial, non-sleazy tone
+const DEFAULT_MESSAGES = [
+    "Discreet Packaging — nobody knows but you",
+    "Secret Billing — shows as a generic name",
+    "Free Shipping above ₹999",
+    "Cash on Delivery available",
+    "Genuine products, always",
+    "Easy 7-day returns",
+];
 
-    // =====================================================
-    // FETCH PROMOS
-    // =====================================================
+const AnnouncementBar: React.FC = () => {
+    const [messages, setMessages] = useState<string[]>(DEFAULT_MESSAGES);
+    const [dismissed, setDismissed] = useState(false);
+
+    // Optionally fetch from API — same pattern as before, don't change API calls
     useEffect(() => {
-        const fetchPromos = async () => {
-            try {
-                const response = await userapiRequest("/user/api/v1/common/promo","GET",);
-                  
-                if (response?.success && Array.isArray(response.promos)) {
-                    setPromos(response.promos);
-                } else {
-                    setPromos([]);
+        userapiRequest("/user/api/v1/common/promo", "GET")
+            .then((res: any) => {
+                if (res?.success && Array.isArray(res.promos) && res.promos.length > 0) {
+                    setMessages(res.promos);
                 }
-            } catch (error) {
-                console.error("Failed to fetch promos:", error);
-                setPromos([]);
-            }
-        };
-
-        fetchPromos();
+            })
+            .catch(() => {}); // silent fail — defaults show
     }, []);
 
-    // =====================================================
-    // AUTO CHANGE PROMO
-    // =====================================================
-    useEffect(() => {
-        if (promos.length <= 1) return;
+    if (dismissed) return null;
 
-        const interval = setInterval(() => {
-            setCurrentPromo((prev) => (prev + 1) % promos.length);
-        }, 4000);
-
-        return () => clearInterval(interval);
-    }, [promos.length]);
-
-    // =====================================================
-    // NO PROMOS
-    // =====================================================
-    if (!visible || promos.length === 0) return null;
+    // Duplicate messages for seamless marquee loop
+    const marqueeItems = [...messages, ...messages];
 
     return (
-        <div className="relative bg-gradient-to-r from-brand-dark via-brand to-brand-light py-3 px-4 md:px-16 overflow-hidden">
-            {/* Decorative shimmer */}
-            <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/5 to-transparent animate-shimmer pointer-events-none" />
-
-            <div className="flex items-center justify-center relative z-10">
-                <AnimatePresence mode="wait">
-                    <motion.span
-                        key={currentPromo}
-                        initial={{
-                            opacity: 0,
-                            y: 10,
-                        }}
-                        animate={{
-                            opacity: 1,
-                            y: 0,
-                        }}
-                        exit={{
-                            opacity: 0,
-                            y: -10,
-                        }}
-                        transition={{
-                            duration: 0.4,
-                        }}
-                        className="text-white text-xs md:text-sm font-medium tracking-wide text-center"
-                    >
-                        {promos[currentPromo]}
-                    </motion.span>
-                </AnimatePresence>
-
-                <button
-                    onClick={() => setVisible(false)}
-                    className="absolute right-0 text-white/70 hover:text-white transition-colors p-1"
-                    aria-label="Dismiss announcement"
-                >
-                    <IoCloseOutline size={18} />
-                </button>
+        <div
+            className="relative overflow-hidden"
+            style={{
+                backgroundColor: "var(--ink)",
+                borderBottom: "1px solid rgba(244,238,230,0.1)",
+            }}
+            role="banner"
+            aria-label="Announcements"
+        >
+            {/* Marquee track */}
+            <div
+                className="flex py-3 select-none"
+                style={{ width: "max-content" }}
+                aria-hidden="true"
+            >
+                <div className="animate-marquee">
+                    {marqueeItems.map((msg, i) => (
+                        <span
+                            key={i}
+                            className="inline-flex items-center gap-6 px-8"
+                            style={{
+                                fontFamily: "'DM Mono', monospace",
+                                fontSize: "11px",
+                                letterSpacing: "0.08em",
+                                textTransform: "uppercase",
+                                color: "var(--paper)",
+                                whiteSpace: "nowrap",
+                            }}
+                        >
+                            {msg}
+                            <span style={{ color: "var(--clay)", opacity: 0.7 }}>—</span>
+                        </span>
+                    ))}
+                </div>
             </div>
+
+            {/* Dismiss button — far right, screen-reader accessible */}
+            <button
+                onClick={() => setDismissed(true)}
+                aria-label="Dismiss announcement"
+                style={{
+                    position: "absolute",
+                    right: "16px",
+                    top: "50%",
+                    transform: "translateY(-50%)",
+                    background: "transparent",
+                    border: "none",
+                    color: "var(--paper)",
+                    opacity: 0.5,
+                    fontFamily: "'DM Mono', monospace",
+                    fontSize: "14px",
+                    lineHeight: 1,
+                    padding: "4px",
+                    cursor: "pointer",
+                    transition: "opacity 150ms ease",
+                }}
+                onMouseEnter={(e) => ((e.currentTarget as HTMLButtonElement).style.opacity = "1")}
+                onMouseLeave={(e) => ((e.currentTarget as HTMLButtonElement).style.opacity = "0.5")}
+            >
+                ×
+            </button>
         </div>
     );
 };
 
-export default TopBar;
-
+export default AnnouncementBar;

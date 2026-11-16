@@ -6,6 +6,7 @@ import ShopByCategory from "../components/ShopByCategory";
 import TrendingProducts from "../components/TrendingProducts";
 import PromotionalBanners from "../components/PromotionalBanners";
 import NewArrivals from "../components/NewArrivals";
+import ComboDeals from "../components/ComboDeals";
 import TopBrands from "../components/TopBrands";
 import Testimonials from "../components/Testimonials";
 import BlogSection from "../components/BlogSection";
@@ -19,6 +20,7 @@ export default function Home() {
             <ShopByCategory />
             <TrendingProducts />
             <MarqueeSection />
+            <ComboDeals />
             <PromotionalBanners />
             <NewArrivals />
             <TopBrands />

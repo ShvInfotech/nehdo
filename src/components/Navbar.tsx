@@ -1,6 +1,6 @@
-import React, { useState, useEffect } from "react";
-import { Link, useNavigate } from "react-router-dom";
-import { motion, AnimatePresence } from "framer-motion";
+import React, { useState, useEffect, useRef } from "react";
+import { useNavigate } from "react-router-dom";
+import { AnimatePresence, motion } from "framer-motion";
 import {
     IoSearchOutline,
     IoHeartOutline,
@@ -8,172 +8,328 @@ import {
     IoPersonOutline,
     IoMenuOutline,
     IoCloseOutline,
+    IoChevronDownOutline,
+    IoHomeOutline,
+    IoGridOutline,
 } from "react-icons/io5";
 import { useCart } from "../context/CartContext";
 import { useWishlist } from "../context/WishlistContext";
 import { useAuth } from "../context/AuthContext";
 
-const navLinks = [
-    { label: "Home", href: "/" },
-    { label: "Shop", href: "/shop" },
-    { label: "Categories", href: "/shop" },
-    { label: "New Arrivals", href: "/shop?filter=new" },
+// ─── NAV STRUCTURE ───────────────────────────────────────────
+interface NavChild { label: string; href: string; }
+interface NavLink  { label: string; href: string; children?: NavChild[]; }
+
+const NAV_LINKS: NavLink[] = [
+    {
+        label: "Shop",
+        href: "/shop",
+        children: [
+            { label: "All products",  href: "/shop" },
+            { label: "New arrivals",  href: "/shop?filter=new" },
+            { label: "Bestsellers",   href: "/shop?filter=trending" },
+            { label: "On sale",       href: "/shop?filter=sale" },
+        ],
+    },
+    {
+        label: "By need",
+        href: "/shop",
+        children: [
+            { label: "For her",       href: "/collection/women" },
+            { label: "For him",       href: "/collection/men" },
+            { label: "For couples",   href: "/collection/couples" },
+            { label: "Wellness",      href: "/collection/wellness" },
+        ],
+    },
     { label: "About", href: "/about" },
-    { label: "Contact", href: "/faq" },
+    { label: "Help",  href: "/faq" },
 ];
 
-const Navbar = () => {
-    const [scrolled, setScrolled] = useState(false);
-    const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-    const [searchOpen, setSearchOpen] = useState(false);
-    const [searchQuery, setSearchQuery] = useState("");
+// ─── DESKTOP DROPDOWN ────────────────────────────────────────
+const NavDropdown: React.FC<{
+    link: NavLink;
+    onNav: (href: string) => void;
+}> = ({ link, onNav }) => {
+    const [open, setOpen] = useState(false);
+    const ref = useRef<HTMLDivElement>(null);
+
+    useEffect(() => {
+        const handler = (e: MouseEvent) => {
+            if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
+        };
+        document.addEventListener("mousedown", handler);
+        return () => document.removeEventListener("mousedown", handler);
+    }, []);
+
+    return (
+        <div ref={ref} className="relative">
+            <button
+                type="button"
+                onClick={() => setOpen(o => !o)}
+                style={{
+                    display: "flex",
+                    alignItems: "center",
+                    gap: "4px",
+                    fontFamily: "'Hanken Grotesk', system-ui, sans-serif",
+                    fontSize: "14px",
+                    fontWeight: 500,
+                    color: "var(--ink)",
+                    background: "transparent",
+                    border: "none",
+                    padding: "6px 0",
+                    cursor: "pointer",
+                    transition: "color 150ms ease",
+                    letterSpacing: "0",
+                }}
+                onMouseEnter={(e) => ((e.currentTarget as HTMLButtonElement).style.color = "var(--oxblood)")}
+                onMouseLeave={(e) => ((e.currentTarget as HTMLButtonElement).style.color = "var(--ink)")}
+            >
+                {link.label}
+                <IoChevronDownOutline
+                    size={12}
+                    style={{
+                        transition: "transform 200ms ease",
+                        transform: open ? "rotate(180deg)" : "rotate(0deg)",
+                    }}
+                />
+            </button>
+
+            <AnimatePresence>
+                {open && (
+                    <motion.div
+                        initial={{ opacity: 0, y: 6 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        exit={{ opacity: 0, y: 6 }}
+                        transition={{ duration: 0.15 }}
+                        style={{
+                            position: "absolute",
+                            top: "calc(100% + 12px)",
+                            left: "0",
+                            width: "200px",
+                            backgroundColor: "var(--paper)",
+                            border: "1px solid var(--hairline)",
+                            borderRadius: "2px",
+                            overflow: "hidden",
+                            zIndex: 100,
+                        }}
+                    >
+                        {link.children!.map((child, i) => (
+                            <button
+                                key={child.label}
+                                type="button"
+                                onClick={() => { onNav(child.href); setOpen(false); }}
+                                style={{
+                                    display: "block",
+                                    width: "100%",
+                                    textAlign: "left",
+                                    padding: "12px 20px",
+                                    fontFamily: "'Hanken Grotesk', system-ui, sans-serif",
+                                    fontSize: "13px",
+                                    fontWeight: 400,
+                                    color: "var(--ink)",
+                                    background: "transparent",
+                                    border: "none",
+                                    borderTop: i > 0 ? "1px solid var(--hairline)" : "none",
+                                    cursor: "pointer",
+                                    transition: "background-color 150ms ease",
+                                }}
+                                onMouseEnter={(e) => ((e.currentTarget as HTMLButtonElement).style.backgroundColor = "var(--sand)")}
+                                onMouseLeave={(e) => ((e.currentTarget as HTMLButtonElement).style.backgroundColor = "transparent")}
+                            >
+                                {child.label}
+                            </button>
+                        ))}
+                    </motion.div>
+                )}
+            </AnimatePresence>
+        </div>
+    );
+};
+
+// ─── MAIN NAVBAR ─────────────────────────────────────────────
+const Navbar: React.FC = () => {
+    const [scrolled, setScrolled]         = useState(false);
+    const [mobileOpen, setMobileOpen]     = useState(false);
+    const [searchOpen, setSearchOpen]     = useState(false);
+    const [searchQuery, setSearchQuery]   = useState("");
+    const [mobileExpanded, setMobileExpanded] = useState<string | null>(null);
 
     const { itemCount, cartCount } = useCart();
     const { count: wishlistCount } = useWishlist();
-
-    const {
-        isLoggedIn,
-        user,
-        openAuthModal,
-    } = useAuth();
-
+    const { isLoggedIn, openAuthModal }   = useAuth();
     const navigate = useNavigate();
 
+    // Scroll shadow — just a hairline, no drop shadow
     useEffect(() => {
-        const handleScroll = () => {
-            setScrolled(window.scrollY > 40);
-        };
-
-        window.addEventListener("scroll", handleScroll);
-
-        return () => {
-            window.removeEventListener(
-                "scroll",
-                handleScroll
-            );
-        };
+        const h = () => setScrolled(window.scrollY > 20);
+        window.addEventListener("scroll", h);
+        return () => window.removeEventListener("scroll", h);
     }, []);
 
+    // Lock body scroll on mobile menu
     useEffect(() => {
-        document.body.style.overflow =
-            mobileMenuOpen ? "hidden" : "";
+        document.body.style.overflow = mobileOpen ? "hidden" : "";
+        return () => { document.body.style.overflow = ""; };
+    }, [mobileOpen]);
 
-        return () => {
-            document.body.style.overflow = "";
-        };
-    }, [mobileMenuOpen]);
-
-    const handleProtectedNavigation = (path: string) => {
-        setMobileMenuOpen(false);
+    const handleNav = (path: string) => {
+        setMobileOpen(false);
+        setSearchOpen(false);
         navigate(path);
     };
 
-    // ================================
-    // SEARCH
-    // ================================
-
-    const handleSearch = (
-        e: React.FormEvent
-    ) => {
+    const handleSearch = (e: React.FormEvent) => {
         e.preventDefault();
-
         if (searchQuery.trim()) {
-            navigate(
-                `/search?q=${encodeURIComponent(
-                    searchQuery.trim()
-                )}`
-            );
-
+            navigate(`/search?q=${encodeURIComponent(searchQuery.trim())}`);
             setSearchQuery("");
             setSearchOpen(false);
         }
     };
 
+    // ── Shared icon button style ───────────────────────────
+    const iconBtn: React.CSSProperties = {
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        width: "36px",
+        height: "36px",
+        background: "transparent",
+        border: "none",
+        color: "var(--ink)",
+        cursor: "pointer",
+        transition: "color 150ms ease",
+        position: "relative",
+        borderRadius: "2px",
+        flexShrink: 0,
+    };
+
     return (
         <>
-            <nav
-                className={`sticky top-0 z-50 transition-all duration-500 ${
-                    scrolled
-                        ? "glass shadow-nav py-3"
-                        : "bg-surface py-4"
-                }`}
+            {/* ── NAVBAR ─────────────────────────────────────────── */}
+            <header
+                style={{
+                    position: "sticky",
+                    top: 0,
+                    zIndex: 50,
+                    backgroundColor: "var(--paper)",
+                    borderBottom: scrolled ? "1px solid var(--hairline)" : "1px solid transparent",
+                    transition: "border-color 200ms ease",
+                }}
             >
-                <div className="max-w-[1440px] mx-auto px-4 md:px-8 lg:px-16 flex items-center justify-between gap-4">
-
-                    {/* LOGO */}
-
+                {/* Inner: 3-col layout — wordmark / nav / actions */}
+                <div
+                    style={{
+                        maxWidth: "1440px",
+                        margin: "0 auto",
+                        padding: "0 40px",
+                        height: "64px",
+                        display: "grid",
+                        gridTemplateColumns: "1fr auto 1fr",
+                        alignItems: "center",
+                        gap: "24px",
+                    }}
+                >
+                    {/* LEFT — Wordmark */}
                     <button
-                        onClick={() =>
-                            handleProtectedNavigation("/")
-                        }
-                        className="flex-shrink-0 group"
+                        type="button"
+                        onClick={() => handleNav("/")}
+                        style={{
+                            background: "transparent",
+                            border: "none",
+                            cursor: "pointer",
+                            textAlign: "left",
+                            padding: 0,
+                            justifySelf: "start",
+                        }}
+                        aria-label="Go to homepage"
                     >
-                        <img
-                            src={`${import.meta.env.BASE_URL}images/nehdo-logo.png`}
-                            alt="NEHDO"
-                            className="h-6 md:h-8 object-contain transition-transform group-hover:scale-105"
-                        />
+                        <span
+                            style={{
+                                fontFamily: "'Instrument Serif', Georgia, serif",
+                                fontSize: "22px",
+                                fontWeight: 400,
+                                color: "var(--oxblood)",
+                                letterSpacing: "-0.02em",
+                                lineHeight: 1,
+                            }}
+                        >
+                            Nehdo
+                        </span>
                     </button>
 
-                    {/* DESKTOP NAVIGATION */}
+                    {/* CENTER — Desktop nav */}
+                    <nav
+                        className="hidden lg:flex"
+                        style={{ alignItems: "center", gap: "32px" }}
+                        aria-label="Main navigation"
+                    >
+                        {NAV_LINKS.map((link) =>
+                            link.children ? (
+                                <NavDropdown key={link.label} link={link} onNav={handleNav} />
+                            ) : (
+                                <button
+                                    key={link.label}
+                                    type="button"
+                                    onClick={() => handleNav(link.href)}
+                                    style={{
+                                        fontFamily: "'Hanken Grotesk', system-ui, sans-serif",
+                                        fontSize: "14px",
+                                        fontWeight: 500,
+                                        color: "var(--ink)",
+                                        background: "transparent",
+                                        border: "none",
+                                        padding: "6px 0",
+                                        cursor: "pointer",
+                                        transition: "color 150ms ease",
+                                    }}
+                                    onMouseEnter={(e) => ((e.currentTarget as HTMLButtonElement).style.color = "var(--oxblood)")}
+                                    onMouseLeave={(e) => ((e.currentTarget as HTMLButtonElement).style.color = "var(--ink)")}
+                                >
+                                    {link.label}
+                                </button>
+                            )
+                        )}
+                    </nav>
 
-                    <div className="hidden lg:flex items-center gap-1">
-                        {navLinks.map((link) => (
-                            <button
-                                key={link.label}
-                                type="button"
-                                onClick={() =>
-                                    handleProtectedNavigation(
-                                        link.href
-                                    )
-                                }
-                                className="relative px-4 py-2 text-sm font-medium text-gray-700 hover:text-brand transition-colors group"
-                            >
-                                {link.label}
-
-                                <span className="absolute bottom-0 left-1/2 -translate-x-1/2 w-0 h-0.5 bg-brand rounded-full transition-all duration-300 group-hover:w-3/4" />
-                            </button>
-                        ))}
-                    </div>
-
-                    {/* ACTIONS */}
-
-                    <div className="flex items-center gap-2 md:gap-3">
-
-                        {/* SEARCH */}
-
+                    {/* RIGHT — Actions */}
+                    <div
+                        style={{
+                            display: "flex",
+                            alignItems: "center",
+                            gap: "4px",
+                            justifySelf: "end",
+                        }}
+                    >
+                        {/* Search — expands inline on desktop */}
                         <AnimatePresence>
                             {searchOpen && (
                                 <motion.form
                                     onSubmit={handleSearch}
-                                    initial={{
-                                        width: 0,
-                                        opacity: 0,
-                                    }}
-                                    animate={{
-                                        width: 220,
-                                        opacity: 1,
-                                    }}
-                                    exit={{
-                                        width: 0,
-                                        opacity: 0,
-                                    }}
-                                    transition={{
-                                        duration: 0.3,
-                                    }}
+                                    initial={{ width: 0, opacity: 0 }}
+                                    animate={{ width: 200, opacity: 1 }}
+                                    exit={{ width: 0, opacity: 0 }}
+                                    transition={{ duration: 0.25 }}
                                     className="hidden md:block overflow-hidden"
+                                    style={{ flexShrink: 0 }}
                                 >
                                     <input
                                         type="text"
                                         value={searchQuery}
-                                        onChange={(e) =>
-                                            setSearchQuery(
-                                                e.target.value
-                                            )
-                                        }
-                                        placeholder="Search products..."
+                                        onChange={(e) => setSearchQuery(e.target.value)}
+                                        placeholder="Search…"
                                         autoFocus
-                                        className="w-full px-4 py-2 text-sm bg-white border border-muted-border rounded-full focus:outline-none focus:border-brand focus:ring-2 focus:ring-brand/20"
+                                        style={{
+                                            width: "100%",
+                                            padding: "8px 12px",
+                                            fontFamily: "'Hanken Grotesk', system-ui, sans-serif",
+                                            fontSize: "13px",
+                                            backgroundColor: "var(--sand)",
+                                            border: "1px solid var(--hairline)",
+                                            borderRadius: "2px",
+                                            outline: "none",
+                                            color: "var(--ink)",
+                                        }}
                                     />
                                 </motion.form>
                             )}
@@ -181,276 +337,361 @@ const Navbar = () => {
 
                         <button
                             type="button"
-                            onClick={() =>
-                                setSearchOpen(!searchOpen)
-                            }
-                            className="p-2.5 rounded-full hover:bg-brand/5 transition-colors"
-                            aria-label="Toggle search"
+                            onClick={() => setSearchOpen(!searchOpen)}
+                            style={iconBtn}
+                            aria-label="Search"
+                            onMouseEnter={(e) => ((e.currentTarget as HTMLButtonElement).style.color = "var(--oxblood)")}
+                            onMouseLeave={(e) => ((e.currentTarget as HTMLButtonElement).style.color = "var(--ink)")}
                         >
-                            <IoSearchOutline
-                                size={20}
-                                className="text-gray-700"
-                            />
+                            <IoSearchOutline size={18} />
                         </button>
 
-                        {/* ACCOUNT */}
-
-                        {isLoggedIn ? (
-                            <button
-                                type="button"
-                                onClick={() =>
-                                    navigate("/account")
-                                }
-                                className="hidden md:flex p-2.5 rounded-full hover:bg-brand/5 transition-colors"
-                                aria-label="Account"
-                            >
-                                <IoPersonOutline
-                                    size={20}
-                                    className="text-gray-700"
-                                />
-                            </button>
-                        ) : (
-                            <button
-                                type="button"
-                                onClick={() =>
-                                    openAuthModal("login")
-                                }
-                                className="hidden md:flex p-2.5 rounded-full hover:bg-brand/5 transition-colors"
-                                aria-label="Login"
-                            >
-                                <IoPersonOutline
-                                    size={20}
-                                    className="text-gray-700"
-                                />
-                            </button>
-                        )}
-
-                        {/* WISHLIST */}
-
+                        {/* Account — hidden on mobile */}
                         <button
                             type="button"
-                            onClick={() =>
-                                handleProtectedNavigation(
-                                    "/wishlist"
-                                )
-                            }
-                            className="hidden md:flex p-2.5 rounded-full hover:bg-brand/5 transition-colors relative"
-                            aria-label="Wishlist"
+                            onClick={() => isLoggedIn ? handleNav("/account") : openAuthModal("login")}
+                            style={{ ...iconBtn }}
+                            className="hidden md:flex"
+                            aria-label="Account"
+                            onMouseEnter={(e) => ((e.currentTarget as HTMLButtonElement).style.color = "var(--oxblood)")}
+                            onMouseLeave={(e) => ((e.currentTarget as HTMLButtonElement).style.color = "var(--ink)")}
                         >
-                            <IoHeartOutline
-                                size={20}
-                                className="text-gray-700"
-                            />
+                            <IoPersonOutline size={18} />
+                        </button>
 
+                        {/* Wishlist — hidden on mobile */}
+                        <button
+                            type="button"
+                            onClick={() => handleNav("/wishlist")}
+                            style={{ ...iconBtn }}
+                            className="hidden md:flex"
+                            aria-label="Wishlist"
+                            onMouseEnter={(e) => ((e.currentTarget as HTMLButtonElement).style.color = "var(--oxblood)")}
+                            onMouseLeave={(e) => ((e.currentTarget as HTMLButtonElement).style.color = "var(--ink)")}
+                        >
+                            <IoHeartOutline size={18} />
                             {wishlistCount > 0 && (
-                                <span className="absolute -top-0.5 -right-0.5 w-5 h-5 bg-red-500 text-white text-[10px] font-bold rounded-full flex items-center justify-center">
+                                <span
+                                    style={{
+                                        position: "absolute",
+                                        top: "2px",
+                                        right: "2px",
+                                        width: "14px",
+                                        height: "14px",
+                                        backgroundColor: "var(--clay)",
+                                        color: "var(--paper)",
+                                        fontFamily: "'DM Mono', monospace",
+                                        fontSize: "9px",
+                                        fontWeight: 500,
+                                        borderRadius: "2px",
+                                        display: "flex",
+                                        alignItems: "center",
+                                        justifyContent: "center",
+                                    }}
+                                >
                                     {wishlistCount}
                                 </span>
                             )}
                         </button>
 
-                        {/* CART */}
-
+                        {/* Cart */}
                         <button
                             type="button"
-                            onClick={() =>
-                                handleProtectedNavigation("/cart")
-                            }
-                            className="relative p-2.5 rounded-full hover:bg-brand/5 transition-colors"
+                            onClick={() => handleNav("/cart")}
+                            style={{ ...iconBtn }}
                             aria-label="Cart"
+                            onMouseEnter={(e) => ((e.currentTarget as HTMLButtonElement).style.color = "var(--oxblood)")}
+                            onMouseLeave={(e) => ((e.currentTarget as HTMLButtonElement).style.color = "var(--ink)")}
                         >
-                            <IoBagHandleOutline
-                                size={20}
-                                className="text-gray-700"
-                            />
-
+                            <IoBagHandleOutline size={18} />
                             {itemCount > 0 && (
-                                <motion.span
-                                    initial={{ scale: 0 }}
-                                    animate={{ scale: 1 }}
-                                    className="absolute -top-0.5 -right-0.5 w-5 h-5 bg-brand text-white text-[10px] font-bold rounded-full flex items-center justify-center"
+                                <span
+                                    style={{
+                                        position: "absolute",
+                                        top: "2px",
+                                        right: "2px",
+                                        width: "14px",
+                                        height: "14px",
+                                        backgroundColor: "var(--oxblood)",
+                                        color: "var(--paper)",
+                                        fontFamily: "'DM Mono', monospace",
+                                        fontSize: "9px",
+                                        fontWeight: 500,
+                                        borderRadius: "2px",
+                                        display: "flex",
+                                        alignItems: "center",
+                                        justifyContent: "center",
+                                    }}
                                 >
                                     {cartCount}
-                                </motion.span>
+                                </span>
                             )}
                         </button>
 
-                        {/* MOBILE MENU */}
-
+                        {/* Mobile hamburger */}
                         <button
                             type="button"
-                            onClick={() =>
-                                setMobileMenuOpen(true)
-                            }
-                            className="lg:hidden p-2.5 rounded-full hover:bg-brand/5 transition-colors"
+                            onClick={() => setMobileOpen(true)}
+                            style={iconBtn}
+                            className="lg:hidden"
                             aria-label="Open menu"
+                            onMouseEnter={(e) => ((e.currentTarget as HTMLButtonElement).style.color = "var(--oxblood)")}
+                            onMouseLeave={(e) => ((e.currentTarget as HTMLButtonElement).style.color = "var(--ink)")}
                         >
-                            <IoMenuOutline
-                                size={22}
-                                className="text-gray-700"
-                            />
+                            <IoMenuOutline size={22} />
                         </button>
                     </div>
                 </div>
 
-                {/* MOBILE SEARCH */}
-
+                {/* Mobile search bar */}
                 <AnimatePresence>
                     {searchOpen && (
                         <motion.form
                             onSubmit={handleSearch}
-                            initial={{
-                                height: 0,
-                                opacity: 0,
-                            }}
-                            animate={{
-                                height: "auto",
-                                opacity: 1,
-                            }}
-                            exit={{
-                                height: 0,
-                                opacity: 0,
-                            }}
-                            className="md:hidden overflow-hidden px-4 pb-3"
+                            initial={{ height: 0, opacity: 0 }}
+                            animate={{ height: "auto", opacity: 1 }}
+                            exit={{ height: 0, opacity: 0 }}
+                            transition={{ duration: 0.2 }}
+                            className="md:hidden overflow-hidden"
+                            style={{ borderTop: "1px solid var(--hairline)" }}
                         >
                             <input
                                 type="text"
                                 value={searchQuery}
-                                onChange={(e) =>
-                                    setSearchQuery(e.target.value)
-                                }
-                                placeholder="Search products..."
+                                onChange={(e) => setSearchQuery(e.target.value)}
+                                placeholder="Search products…"
                                 autoFocus
-                                className="w-full px-4 py-2.5 text-sm bg-white border border-muted-border rounded-full focus:outline-none focus:border-brand focus:ring-2 focus:ring-brand/20"
+                                style={{
+                                    display: "block",
+                                    width: "100%",
+                                    padding: "14px 20px",
+                                    fontFamily: "'Hanken Grotesk', system-ui, sans-serif",
+                                    fontSize: "15px",
+                                    backgroundColor: "var(--sand)",
+                                    border: "none",
+                                    outline: "none",
+                                    color: "var(--ink)",
+                                }}
                             />
                         </motion.form>
                     )}
                 </AnimatePresence>
-            </nav>
+            </header>
 
-            {/* MOBILE MENU */}
-
+            {/* ── MOBILE SIDE DRAWER ───────────────────────────────── */}
             <AnimatePresence>
-                {mobileMenuOpen && (
+                {mobileOpen && (
                     <>
+                        {/* Overlay */}
                         <motion.div
                             initial={{ opacity: 0 }}
                             animate={{ opacity: 1 }}
                             exit={{ opacity: 0 }}
-                            className="fixed inset-0 bg-black/40 z-50 lg:hidden"
-                            onClick={() =>
-                                setMobileMenuOpen(false)
-                            }
+                            transition={{ duration: 0.2 }}
+                            onClick={() => setMobileOpen(false)}
+                            style={{
+                                position: "fixed",
+                                inset: 0,
+                                backgroundColor: "rgba(27,20,18,0.5)",
+                                zIndex: 200,
+                            }}
                         />
 
+                        {/* Drawer panel */}
                         <motion.div
                             initial={{ x: "100%" }}
                             animate={{ x: 0 }}
                             exit={{ x: "100%" }}
-                            transition={{
-                                type: "spring",
-                                damping: 30,
-                                stiffness: 300,
+                            transition={{ type: "tween", duration: 0.3, ease: "easeOut" }}
+                            style={{
+                                position: "fixed",
+                                top: 0,
+                                right: 0,
+                                bottom: 0,
+                                width: "min(320px, 85vw)",
+                                backgroundColor: "var(--paper)",
+                                borderLeft: "1px solid var(--hairline)",
+                                zIndex: 201,
+                                display: "flex",
+                                flexDirection: "column",
+                                overflow: "hidden auto",
                             }}
-                            className="fixed top-0 right-0 bottom-0 w-[300px] bg-white z-50 shadow-2xl lg:hidden"
                         >
-                            {/* MOBILE HEADER */}
-
-                            <div className="flex items-center justify-between p-6 border-b border-gray-100">
-                                <img
-                                    src={`${import.meta.env.BASE_URL}images/nehdo-logo.png`}
-                                    alt="NEHDO"
-                                    className="h-6 object-contain"
-                                />
-
+                            {/* Drawer header */}
+                            <div
+                                style={{
+                                    display: "flex",
+                                    alignItems: "center",
+                                    justifyContent: "space-between",
+                                    padding: "20px 24px",
+                                    borderBottom: "1px solid var(--hairline)",
+                                }}
+                            >
+                                <span
+                                    style={{
+                                        fontFamily: "'Instrument Serif', Georgia, serif",
+                                        fontSize: "20px",
+                                        color: "var(--oxblood)",
+                                    }}
+                                >
+                                    Nehdo
+                                </span>
                                 <button
                                     type="button"
-                                    onClick={() =>
-                                        setMobileMenuOpen(false)
-                                    }
-                                    className="p-2 rounded-full hover:bg-gray-100"
+                                    onClick={() => setMobileOpen(false)}
+                                    style={{
+                                        background: "transparent",
+                                        border: "none",
+                                        color: "var(--ink)",
+                                        cursor: "pointer",
+                                        padding: "4px",
+                                    }}
+                                    aria-label="Close menu"
                                 >
-                                    <IoCloseOutline size={24} />
+                                    <IoCloseOutline size={22} />
                                 </button>
                             </div>
 
-                            {/* MOBILE LINKS */}
-
-                            <div className="flex flex-col py-4">
-                                {navLinks.map((link, i) => (
-                                    <motion.div
-                                        key={link.label}
-                                        initial={{
-                                            opacity: 0,
-                                            x: 20,
-                                        }}
-                                        animate={{
-                                            opacity: 1,
-                                            x: 0,
-                                        }}
-                                        transition={{
-                                            delay: i * 0.05,
-                                        }}
-                                    >
-                                        <button
-                                            type="button"
-                                            onClick={() =>
-                                                handleProtectedNavigation(
-                                                    link.href
-                                                )
-                                            }
-                                            className="block w-full text-left px-6 py-4 text-base font-medium text-gray-700 hover:text-brand hover:bg-brand/5 transition-colors border-b border-gray-50"
-                                        >
-                                            {link.label}
-                                        </button>
-                                    </motion.div>
+                            {/* Links */}
+                            <div style={{ flex: 1 }}>
+                                {NAV_LINKS.map((link, i) => (
+                                    <div key={link.label} style={{ borderBottom: "1px solid var(--hairline)" }}>
+                                        {link.children ? (
+                                            <>
+                                                <button
+                                                    type="button"
+                                                    onClick={() => setMobileExpanded(mobileExpanded === link.label ? null : link.label)}
+                                                    style={{
+                                                        display: "flex",
+                                                        alignItems: "center",
+                                                        justifyContent: "space-between",
+                                                        width: "100%",
+                                                        padding: "16px 24px",
+                                                        background: "transparent",
+                                                        border: "none",
+                                                        fontFamily: "'Hanken Grotesk', system-ui, sans-serif",
+                                                        fontSize: "15px",
+                                                        fontWeight: 500,
+                                                        color: "var(--ink)",
+                                                        cursor: "pointer",
+                                                        textAlign: "left",
+                                                    }}
+                                                >
+                                                    {link.label}
+                                                    <IoChevronDownOutline
+                                                        size={14}
+                                                        style={{
+                                                            transition: "transform 200ms ease",
+                                                            transform: mobileExpanded === link.label ? "rotate(180deg)" : "rotate(0deg)",
+                                                        }}
+                                                    />
+                                                </button>
+                                                <AnimatePresence>
+                                                    {mobileExpanded === link.label && (
+                                                        <motion.div
+                                                            initial={{ height: 0 }}
+                                                            animate={{ height: "auto" }}
+                                                            exit={{ height: 0 }}
+                                                            style={{ overflow: "hidden", backgroundColor: "var(--sand)" }}
+                                                        >
+                                                            {link.children.map((child) => (
+                                                                <button
+                                                                    key={child.label}
+                                                                    type="button"
+                                                                    onClick={() => handleNav(child.href)}
+                                                                    style={{
+                                                                        display: "block",
+                                                                        width: "100%",
+                                                                        padding: "12px 32px",
+                                                                        background: "transparent",
+                                                                        border: "none",
+                                                                        fontFamily: "'Hanken Grotesk', system-ui, sans-serif",
+                                                                        fontSize: "14px",
+                                                                        color: "var(--ink)",
+                                                                        cursor: "pointer",
+                                                                        textAlign: "left",
+                                                                        borderBottom: "1px solid var(--hairline)",
+                                                                    }}
+                                                                >
+                                                                    {child.label}
+                                                                </button>
+                                                            ))}
+                                                        </motion.div>
+                                                    )}
+                                                </AnimatePresence>
+                                            </>
+                                        ) : (
+                                            <button
+                                                type="button"
+                                                onClick={() => handleNav(link.href)}
+                                                style={{
+                                                    display: "block",
+                                                    width: "100%",
+                                                    padding: "16px 24px",
+                                                    background: "transparent",
+                                                    border: "none",
+                                                    fontFamily: "'Hanken Grotesk', system-ui, sans-serif",
+                                                    fontSize: "15px",
+                                                    fontWeight: 500,
+                                                    color: "var(--ink)",
+                                                    cursor: "pointer",
+                                                    textAlign: "left",
+                                                }}
+                                            >
+                                                {link.label}
+                                            </button>
+                                        )}
+                                    </div>
                                 ))}
                             </div>
 
-                            {/* MOBILE BOTTOM */}
-
-                            <div className="absolute bottom-0 left-0 right-0 p-6 border-t border-gray-100 flex items-center gap-4">
-
-                                {/* ACCOUNT */}
-
-                                {isLoggedIn ? (
-                                    <button
-                                        type="button"
-                                        onClick={() => {
-                                            setMobileMenuOpen(false);
-                                            navigate("/account");
-                                        }}
-                                        className="flex items-center gap-2 text-sm text-gray-600 hover:text-brand"
-                                    >
-                                        <IoPersonOutline size={18} />
-                                        Account
-                                    </button>
-                                ) : (
-                                    <button
-                                        type="button"
-                                        onClick={() => {
-                                            setMobileMenuOpen(false);
-                                            openAuthModal("login");
-                                        }}
-                                        className="flex items-center gap-2 text-sm text-gray-600 hover:text-brand"
-                                    >
-                                        <IoPersonOutline size={18} />
-                                        Login
-                                    </button>
-                                )}
-
-                                {/* WISHLIST */}
-
+                            {/* Drawer footer — account + wishlist */}
+                            <div
+                                style={{
+                                    padding: "20px 24px",
+                                    borderTop: "1px solid var(--hairline)",
+                                    display: "flex",
+                                    gap: "16px",
+                                }}
+                            >
                                 <button
                                     type="button"
-                                    onClick={() =>
-                                        handleProtectedNavigation(
-                                            "/wishlist"
-                                        )
-                                    }
-                                    className="flex items-center gap-2 text-sm text-gray-600 hover:text-brand"
+                                    onClick={() => isLoggedIn ? handleNav("/account") : (setMobileOpen(false), openAuthModal("login"))}
+                                    style={{
+                                        display: "flex",
+                                        alignItems: "center",
+                                        gap: "8px",
+                                        background: "transparent",
+                                        border: "none",
+                                        fontFamily: "'DM Mono', monospace",
+                                        fontSize: "11px",
+                                        letterSpacing: "0.08em",
+                                        textTransform: "uppercase",
+                                        color: "var(--ink)",
+                                        cursor: "pointer",
+                                    }}
                                 >
-                                    <IoHeartOutline size={18} />
+                                    <IoPersonOutline size={16} />
+                                    {isLoggedIn ? "Account" : "Login"}
+                                </button>
+                                <button
+                                    type="button"
+                                    onClick={() => handleNav("/wishlist")}
+                                    style={{
+                                        display: "flex",
+                                        alignItems: "center",
+                                        gap: "8px",
+                                        background: "transparent",
+                                        border: "none",
+                                        fontFamily: "'DM Mono', monospace",
+                                        fontSize: "11px",
+                                        letterSpacing: "0.08em",
+                                        textTransform: "uppercase",
+                                        color: "var(--ink)",
+                                        cursor: "pointer",
+                                    }}
+                                >
+                                    <IoHeartOutline size={16} />
                                     Wishlist
                                 </button>
                             </div>
@@ -458,6 +699,83 @@ const Navbar = () => {
                     </>
                 )}
             </AnimatePresence>
+
+            {/* ── MOBILE STICKY BOTTOM BAR ─────────────────────────── */}
+            <nav
+                className="lg:hidden"
+                style={{
+                    position: "fixed",
+                    bottom: 0,
+                    left: 0,
+                    right: 0,
+                    zIndex: 90,
+                    backgroundColor: "var(--paper)",
+                    borderTop: "1px solid var(--hairline)",
+                    display: "grid",
+                    gridTemplateColumns: "repeat(4, 1fr)",
+                    padding: "8px 0 calc(8px + env(safe-area-inset-bottom))",
+                }}
+                aria-label="Mobile navigation"
+            >
+                {[
+                    { icon: IoHomeOutline,       label: "Home",    action: () => handleNav("/") },
+                    { icon: IoGridOutline,        label: "Shop",    action: () => handleNav("/shop") },
+                    { icon: IoBagHandleOutline,   label: "Cart",    action: () => handleNav("/cart"), count: itemCount > 0 ? cartCount : undefined },
+                    { icon: IoPersonOutline,      label: "Account", action: () => isLoggedIn ? handleNav("/account") : openAuthModal("login") },
+                ].map(({ icon: Icon, label, action, count }) => (
+                    <button
+                        key={label}
+                        type="button"
+                        onClick={action}
+                        style={{
+                            display: "flex",
+                            flexDirection: "column",
+                            alignItems: "center",
+                            gap: "3px",
+                            background: "transparent",
+                            border: "none",
+                            color: "var(--ink)",
+                            cursor: "pointer",
+                            position: "relative",
+                            padding: "4px",
+                        }}
+                        aria-label={label}
+                    >
+                        <Icon size={20} />
+                        <span
+                            style={{
+                                fontFamily: "'DM Mono', monospace",
+                                fontSize: "9px",
+                                letterSpacing: "0.06em",
+                                textTransform: "uppercase",
+                            }}
+                        >
+                            {label}
+                        </span>
+                        {count !== undefined && (
+                            <span
+                                style={{
+                                    position: "absolute",
+                                    top: "2px",
+                                    right: "calc(50% - 14px)",
+                                    width: "14px",
+                                    height: "14px",
+                                    backgroundColor: "var(--oxblood)",
+                                    color: "var(--paper)",
+                                    fontFamily: "'DM Mono', monospace",
+                                    fontSize: "9px",
+                                    borderRadius: "2px",
+                                    display: "flex",
+                                    alignItems: "center",
+                                    justifyContent: "center",
+                                }}
+                            >
+                                {count}
+                            </span>
+                        )}
+                    </button>
+                ))}
+            </nav>
         </>
     );
 };

@@ -1,148 +1,320 @@
 import React, { useState } from "react";
-import { motion } from "framer-motion";
 import { Link } from "react-router-dom";
-import {
-    IoLogoFacebook,
-    IoLogoTwitter,
-    IoLogoInstagram,
-    IoLogoLinkedin,
-    IoChevronDown,
-    IoArrowForward,
-} from "react-icons/io5";
+import { IoAddOutline, IoRemoveOutline } from "react-icons/io5";
 
-const footerSections = [
+// ─── DATA ────────────────────────────────────────────────────
+const FOOTER_COLS = [
     {
-        title: "Company",
+        heading: "Shop",
         links: [
-            { label: "About Us", href: "/about" },
-            { label: "Shop", href: "/shop" },
-            { label: "Contact Us", href: "/contact" }
+            { label: "All products",   href: "/shop" },
+            { label: "New arrivals",   href: "/shop?filter=new" },
+            { label: "Bestsellers",    href: "/shop?filter=trending" },
+            { label: "On sale",        href: "/shop?filter=sale" },
         ],
     },
     {
-        title: "Help",
+        heading: "By need",
         links: [
-            { label: "Customer Support", href: "/contact" },
-            { label: "Terms & Conditions", href: "/terms" },
-            { label: "Privacy Policy", href: "/privacy" },
-            { label: "Returns", href: "/returns" },
-            { label: "Shipping", href: "/shipping" }
+            { label: "For her",        href: "/collection/women" },
+            { label: "For him",        href: "/collection/men" },
+            { label: "For couples",    href: "/collection/couples" },
+            { label: "Wellness",       href: "/collection/wellness" },
         ],
     },
     {
-        title: "FAQ",
+        heading: "Help",
         links: [
-            { label: "Account", href: "/account" },
-            { label: "Orders", href: "/orders" },
-            { label: "Payments", href: "/faq" }
+            { label: "FAQ",            href: "/faq" },
+            { label: "Contact us",     href: "/contact" },
+            { label: "Shipping info",  href: "/shipping" },
+            { label: "Returns",        href: "/returns" },
+            { label: "Track order",    href: "/orders" },
+        ],
+    },
+    {
+        heading: "Company",
+        links: [
+            { label: "About",          href: "/about" },
+            { label: "Privacy policy", href: "/privacy" },
+            { label: "Terms of use",   href: "/terms" },
         ],
     },
 ];
 
-const socials = [
-    { icon: IoLogoFacebook, label: "Facebook", color: "hover:bg-blue-600" },
-    { icon: IoLogoTwitter, label: "Twitter", color: "hover:bg-sky-500" },
-    { icon: IoLogoInstagram, label: "Instagram", color: "hover:bg-pink-600" },
-    { icon: IoLogoLinkedin, label: "LinkedIn", color: "hover:bg-blue-700" },
-];
+// Payment marks — just text, no icons
+const PAYMENT_MARKS = ["UPI", "Visa", "Mastercard", "RuPay", "GPay", "PhonePe", "COD"];
 
-const Footer = () => {
-    const [openSection, setOpenSection] = useState<string | null>(null);
-
-    const toggleSection = (title: string) => {
-        setOpenSection((prev) => (prev === title ? null : title));
-    };
+// ─── MOBILE ACCORDION COL ─────────────────────────────────────
+const FooterCol: React.FC<{
+    heading: string;
+    links: { label: string; href: string }[];
+}> = ({ heading, links }) => {
+    const [open, setOpen] = useState(false);
 
     return (
-        <footer className="bg-surface-warm">
-            <div className="max-w-[1440px] mx-auto px-4 md:px-8 lg:px-16 pt-14 md:pt-20 pb-8">
-                {/* Main Footer Grid */}
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8 md:gap-10 mb-12">
-                    {/* Brand Column */}
-                    <div>
-                        <Link to="/" className="inline-block mb-5">
-                            <img src={`${import.meta.env.BASE_URL}images/nehdo-logo.png`} alt="NEHDO" className="h-8 md:h-10 object-contain" />
+        <div style={{ borderBottom: "1px solid rgba(244,238,230,0.12)" }}>
+            {/* Mobile toggle */}
+            <button
+                type="button"
+                onClick={() => setOpen(o => !o)}
+                className="lg:hidden"
+                style={{
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "space-between",
+                    width: "100%",
+                    padding: "16px 0",
+                    background: "transparent",
+                    border: "none",
+                    color: "var(--paper)",
+                    cursor: "pointer",
+                }}
+            >
+                <span
+                    style={{
+                        fontFamily: "'DM Mono', monospace",
+                        fontSize: "11px",
+                        letterSpacing: "0.1em",
+                        textTransform: "uppercase",
+                    }}
+                >
+                    {heading}
+                </span>
+                {open ? <IoRemoveOutline size={14} /> : <IoAddOutline size={14} />}
+            </button>
+
+            {/* Desktop heading */}
+            <p
+                className="hidden lg:block"
+                style={{
+                    fontFamily: "'DM Mono', monospace",
+                    fontSize: "11px",
+                    letterSpacing: "0.1em",
+                    textTransform: "uppercase",
+                    color: "rgba(244,238,230,0.5)",
+                    marginBottom: "20px",
+                }}
+            >
+                {heading}
+            </p>
+
+            {/* Links */}
+            <ul
+                className={`lg:block ${open ? "block" : "hidden"}`}
+                style={{ listStyle: "none", padding: 0, margin: 0, paddingBottom: open ? "16px" : 0 }}
+            >
+                {links.map((link) => (
+                    <li key={link.label} style={{ marginBottom: "10px" }}>
+                        <Link
+                            to={link.href}
+                            style={{
+                                fontFamily: "'Hanken Grotesk', system-ui, sans-serif",
+                                fontSize: "14px",
+                                fontWeight: 400,
+                                color: "rgba(244,238,230,0.7)",
+                                textDecoration: "none",
+                                transition: "color 150ms ease",
+                            }}
+                            onMouseEnter={(e) => ((e.currentTarget as HTMLAnchorElement).style.color = "var(--paper)")}
+                            onMouseLeave={(e) => ((e.currentTarget as HTMLAnchorElement).style.color = "rgba(244,238,230,0.7)")}
+                        >
+                            {link.label}
                         </Link>
-                        <p className="text-muted text-sm leading-relaxed max-w-xs mb-6">
-                            We have clothes that suit your style and which you're proud to wear. From women to men, designed for everyone.
-                        </p>
-
-                        {/* Social Icons */}
-                        <div className="flex items-center gap-3">
-                            {socials.map((s) => (
-                                <a
-                                    key={s.label}
-                                    href="#"
-                                    className={`w-10 h-10 rounded-full bg-white border border-gray-200 flex items-center justify-center text-gray-500 hover:text-white ${s.color} hover:border-transparent transition-all shadow-sm hover:shadow-md`}
-                                    aria-label={s.label}
-                                >
-                                    <s.icon size={18} />
-                                </a>
-                            ))}
-                        </div>
-                    </div>
-
-                    {/* Link Columns */}
-                    {footerSections.map((section) => (
-                        <div key={section.title}>
-                            {/* Desktop heading */}
-                            <h3 className="hidden md:block font-heading font-bold text-sm text-gray-900 uppercase tracking-wider mb-5">
-                                {section.title}
-                            </h3>
-
-                            {/* Mobile accordion */}
-                            <button
-                                onClick={() => toggleSection(section.title)}
-                                className="md:hidden flex items-center justify-between w-full py-3 border-b border-gray-200"
-                            >
-                                <span className="font-heading font-bold text-sm text-gray-900 uppercase tracking-wider">
-                                    {section.title}
-                                </span>
-                                <IoChevronDown
-                                    className={`text-gray-500 transition-transform ${openSection === section.title ? "rotate-180" : ""}`}
-                                    size={16}
-                                />
-                            </button>
-
-                            {/* Links */}
-                            <ul className={`space-y-3 md:block ${openSection === section.title ? "block mt-3" : "hidden"}`}>
-                                {section.links.map((link) => (
-                                    <li key={link.label}>
-                                        <Link
-                                            to={link.href}
-                                            className="text-sm text-muted hover:text-brand transition-colors relative group inline-block"
-                                        >
-                                            {link.label}
-                                            <span className="absolute -bottom-0.5 left-0 w-0 h-px bg-brand transition-all group-hover:w-full" />
-                                        </Link>
-                                    </li>
-                                ))}
-                            </ul>
-                        </div>
-                    ))}
-                </div>
-
-                {/* Divider */}
-                <div className="h-px bg-gray-200 mb-6" />
-
-                {/* Bottom bar */}
-                <div className="flex flex-col md:flex-row justify-between items-center gap-4 text-sm text-muted">
-                    <p>Nehdo © 2024–2026. All Rights Reserved.</p>
-                    <div className="flex items-center gap-3">
-                        {/* Payment icons as styled badges */}
-                        {["Visa", "MC", "PayPal", "GPay", "Apple"].map((p) => (
-                            <div
-                                key={p}
-                                className="px-3 py-1.5 bg-white border border-gray-200 rounded-lg text-[10px] font-bold text-gray-500 tracking-wider"
-                            >
-                                {p}
-                            </div>
-                        ))}
-                    </div>
-                </div>
-            </div>
-        </footer>
+                    </li>
+                ))}
+            </ul>
+        </div>
     );
 };
+
+// ─── FOOTER ──────────────────────────────────────────────────
+const Footer: React.FC = () => (
+    <footer
+        style={{
+            backgroundColor: "var(--oxblood)",
+            borderTop: "1px solid rgba(244,238,230,0.12)",
+            position: "relative",
+            overflow: "hidden",
+        }}
+    >
+        {/* ── Main grid ───────────────────────────────────── */}
+        <div
+            style={{
+                maxWidth: "1440px",
+                margin: "0 auto",
+                padding: "80px 40px 60px",
+            }}
+        >
+            {/* Top row: brand pitch + columns */}
+            <div
+                style={{
+                    display: "grid",
+                    gridTemplateColumns: "repeat(auto-fit, minmax(160px, 1fr))",
+                    gap: "48px 40px",
+                    marginBottom: "72px",
+                }}
+            >
+                {/* Brand column */}
+                <div style={{ gridColumn: "span 2", maxWidth: "340px" }}>
+                    <p
+                        style={{
+                            fontFamily: "'Instrument Serif', Georgia, serif",
+                            fontSize: "36px",
+                            fontWeight: 400,
+                            color: "var(--paper)",
+                            letterSpacing: "-0.02em",
+                            lineHeight: 1,
+                            marginBottom: "16px",
+                        }}
+                    >
+                        Nehdo
+                    </p>
+                    <p
+                        style={{
+                            fontFamily: "'Hanken Grotesk', system-ui, sans-serif",
+                            fontSize: "14px",
+                            lineHeight: 1.65,
+                            color: "rgba(244,238,230,0.65)",
+                            marginBottom: "24px",
+                            maxWidth: "280px",
+                        }}
+                    >
+                        Pleasure is wellness. Nobody has to know.
+                        <br />
+                        Every order ships in a plain box.
+                    </p>
+
+                    {/* Discreet badge */}
+                    <div
+                        style={{
+                            display: "inline-flex",
+                            alignItems: "center",
+                            gap: "8px",
+                            padding: "8px 14px",
+                            border: "1px solid rgba(244,238,230,0.2)",
+                            borderRadius: "2px",
+                        }}
+                    >
+                        <span
+                            style={{
+                                fontFamily: "'DM Mono', monospace",
+                                fontSize: "10px",
+                                letterSpacing: "0.08em",
+                                textTransform: "uppercase",
+                                color: "rgba(244,238,230,0.6)",
+                            }}
+                        >
+                            Plain box · Secret billing · COD available
+                        </span>
+                    </div>
+                </div>
+
+                {/* Nav columns */}
+                {FOOTER_COLS.map((col) => (
+                    <FooterCol key={col.heading} heading={col.heading} links={col.links} />
+                ))}
+            </div>
+
+            {/* ── Hairline ────────────────────────────────── */}
+            <div style={{ borderTop: "1px solid rgba(244,238,230,0.12)", marginBottom: "32px" }} />
+
+            {/* ── Bottom row ──────────────────────────────── */}
+            <div
+                style={{
+                    display: "flex",
+                    flexWrap: "wrap",
+                    alignItems: "flex-start",
+                    justifyContent: "space-between",
+                    gap: "24px",
+                }}
+            >
+                {/* Copyright + 18+ disclaimer */}
+                <div>
+                    <p
+                        style={{
+                            fontFamily: "'DM Mono', monospace",
+                            fontSize: "10px",
+                            letterSpacing: "0.08em",
+                            textTransform: "uppercase",
+                            color: "rgba(244,238,230,0.4)",
+                            marginBottom: "6px",
+                        }}
+                    >
+                        © {new Date().getFullYear()} Nehdo Wellness. All rights reserved.
+                    </p>
+                    <p
+                        style={{
+                            fontFamily: "'DM Mono', monospace",
+                            fontSize: "10px",
+                            letterSpacing: "0.08em",
+                            textTransform: "uppercase",
+                            color: "rgba(244,238,230,0.3)",
+                        }}
+                    >
+                        18+ only · For adults in India · Content is for educational/wellness purposes
+                    </p>
+                </div>
+
+                {/* Payment marks — plain text */}
+                <div
+                    style={{
+                        display: "flex",
+                        flexWrap: "wrap",
+                        gap: "8px",
+                        alignItems: "center",
+                    }}
+                >
+                    {PAYMENT_MARKS.map((mark) => (
+                        <span
+                            key={mark}
+                            style={{
+                                fontFamily: "'DM Mono', monospace",
+                                fontSize: "10px",
+                                letterSpacing: "0.06em",
+                                textTransform: "uppercase",
+                                color: "rgba(244,238,230,0.35)",
+                                padding: "4px 8px",
+                                border: "1px solid rgba(244,238,230,0.12)",
+                                borderRadius: "2px",
+                            }}
+                        >
+                            {mark}
+                        </span>
+                    ))}
+                </div>
+            </div>
+        </div>
+
+        {/* ── Giant cropped wordmark at bottom ───────────── */}
+        <div
+            aria-hidden="true"
+            style={{
+                position: "relative",
+                overflow: "hidden",
+                height: "clamp(60px, 10vw, 120px)",
+                lineHeight: 1,
+                borderTop: "1px solid rgba(244,238,230,0.08)",
+            }}
+        >
+            <span
+                style={{
+                    display: "block",
+                    fontFamily: "'Instrument Serif', Georgia, serif",
+                    fontSize: "clamp(100px, 20vw, 240px)",
+                    fontWeight: 400,
+                    color: "rgba(244,238,230,0.06)",
+                    letterSpacing: "-0.04em",
+                    lineHeight: 0.75,
+                    paddingLeft: "32px",
+                    userSelect: "none",
+                    whiteSpace: "nowrap",
+                }}
+            >
+                Nehdo Wellness
+            </span>
+        </div>
+    </footer>
+);
 
 export default Footer;

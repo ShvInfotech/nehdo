@@ -2,90 +2,310 @@
 @tailwind components;
 @tailwind utilities;
 
+/* ─────────────────────────────────────────────────────────────
+   NEHDO WELLNESS — GLOBAL STYLES
+   Design: Warm editorial wellness (print-magazine meets Indian D2C)
+   Rules: No gradients, no shadows, no border-radius > 4px.
+          60% paper / 25% ink+oxblood / 10% sand / 5% clay.
+───────────────────────────────────────────────────────────────*/
+
+/* ── 1. CSS CUSTOM PROPERTIES ─────────────────────────────── */
 :root {
-  --brand: #7E420F;
-  --brand-light: #9A5A1F;
-  --brand-dark: #5E3819;
-  --accent: #EA8A54;
-  --gold: #C9A96E;
-  --surface: #FAF6F2;
-  --surface-warm: #F2ECE7;
-  --text-primary: #1E1E1E;
-  --text-muted: #6E6E6E;
-  --border: #D0CECC;
+  --paper:   #F4EEE6;
+  --ink:     #1B1412;
+  --oxblood: #6B1F2A;
+  --clay:    #C4553A;
+  --sand:    #E3D6C6;
+  --sage:    #8A9A86;
+  --hairline: rgba(27, 20, 18, 0.14);
 }
 
+/* ── 2. BASE RESET ────────────────────────────────────────── */
 html {
   scroll-behavior: smooth;
+  background-color: var(--paper);
 }
 
 body {
-  font-family: 'Inter', sans-serif;
+  font-family: 'Hanken Grotesk', system-ui, sans-serif;
+  font-size: 17px;
+  line-height: 1.6;
+  color: var(--ink);
+  background-color: var(--paper);
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   overflow-x: hidden;
 }
 
-/* Custom Scrollbar */
-::-webkit-scrollbar {
-  width: 8px;
-}
-::-webkit-scrollbar-track {
-  background: var(--surface);
-}
-::-webkit-scrollbar-thumb {
-  background: var(--brand);
-  border-radius: 4px;
-}
-::-webkit-scrollbar-thumb:hover {
-  background: var(--brand-light);
+/* ── 3. PAPER GRAIN OVERLAY ──────────────────────────────── */
+/* Fixed SVG noise at 4% opacity — the editorial texture */
+body::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+  pointer-events: none;
+  opacity: 0.04;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)'/%3E%3C/svg%3E");
+  background-repeat: repeat;
+  background-size: 256px 256px;
 }
 
-/* Glassmorphism */
+/* ── 4. TYPOGRAPHY BASE ──────────────────────────────────── */
+h1, h2, h3, h4, h5, h6 {
+  font-family: 'Instrument Serif', Georgia, serif;
+  line-height: 0.95;
+  letter-spacing: -0.02em;
+  color: var(--ink);
+  font-weight: 400; /* Instrument Serif uses regular weight, style does the work */
+}
+
+/* Italic emphasis in headings — the editorial flourish */
+em, i {
+  font-style: italic;
+  font-family: 'Instrument Serif', Georgia, serif;
+}
+
+/* Mono labels — prices, section numbers, tags */
+.mono {
+  font-family: 'DM Mono', monospace;
+  font-size: 12px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+/* ── 5. TYPOGRAPHY SCALE ─────────────────────────────────── */
+.text-hero {
+  font-size: clamp(48px, 8vw, 120px);
+  line-height: 0.95;
+  letter-spacing: -0.02em;
+}
+.text-h2 {
+  font-size: clamp(36px, 5vw, 72px);
+  line-height: 1.05;
+  letter-spacing: -0.015em;
+}
+.text-h3 {
+  font-size: clamp(24px, 3vw, 42px);
+  line-height: 1.15;
+  letter-spacing: -0.01em;
+}
+
+/* ── 6. BUTTON SYSTEM ────────────────────────────────────── */
+/* Primary: oxblood fill, paper text, rectangular, mono label */
+.btn-primary {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 14px 28px;
+  background-color: var(--oxblood);
+  color: var(--paper);
+  font-family: 'DM Mono', monospace;
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  border: none;
+  border-radius: 2px;
+  cursor: pointer;
+  transition: background-color 150ms ease, transform 150ms ease;
+  text-decoration: none;
+  white-space: nowrap;
+}
+.btn-primary:hover {
+  background-color: var(--ink);
+}
+.btn-primary:hover .btn-arrow {
+  transform: translateX(4px);
+}
+.btn-arrow {
+  transition: transform 150ms ease;
+  display: inline-block;
+}
+
+/* Secondary: outline variant */
+.btn-secondary {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 13px 28px;
+  background-color: transparent;
+  color: var(--ink);
+  font-family: 'DM Mono', monospace;
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  border: 1px solid var(--hairline);
+  border-radius: 2px;
+  cursor: pointer;
+  transition: background-color 150ms ease, border-color 150ms ease;
+  text-decoration: none;
+  white-space: nowrap;
+}
+.btn-secondary:hover {
+  background-color: var(--sand);
+  border-color: var(--ink);
+}
+.btn-secondary:hover .btn-arrow {
+  transform: translateX(4px);
+}
+
+/* ── 7. HAIRLINE DIVIDERS ────────────────────────────────── */
+.hairline {
+  border: none;
+  border-top: 1px solid var(--hairline);
+}
+.hairline-b {
+  border-bottom: 1px solid var(--hairline);
+}
+.hairline-t {
+  border-top: 1px solid var(--hairline);
+}
+
+/* ── 8. SECTION LABEL (mono section numbering) ───────────── */
+.section-label {
+  font-family: 'DM Mono', monospace;
+  font-size: 11px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--clay);
+}
+
+/* ── 9. CARDS (editorial style — no shadows) ─────────────── */
+.card-editorial {
+  background-color: var(--sand);
+  border: 1px solid var(--hairline);
+  border-radius: 2px;
+  overflow: hidden;
+}
+
+/* ── 10. BADGES / STICKERS ───────────────────────────────── */
+.badge-sticker {
+  display: inline-block;
+  padding: 4px 10px;
+  background-color: var(--clay);
+  color: var(--paper);
+  font-family: 'DM Mono', monospace;
+  font-size: 10px;
+  font-weight: 500;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  transform: rotate(-4deg);
+  border-radius: 2px;
+}
+
+/* ── 11. FOCUS STATES (WCAG AA) ──────────────────────────── */
+*:focus-visible {
+  outline: 2px solid var(--clay);
+  outline-offset: 2px;
+}
+
+/* ── 12. SCROLL BEHAVIOR ─────────────────────────────────── */
+::-webkit-scrollbar { width: 6px; }
+::-webkit-scrollbar-track { background: var(--sand); }
+::-webkit-scrollbar-thumb { background: var(--ink); border-radius: 0; }
+::-webkit-scrollbar-thumb:hover { background: var(--oxblood); }
+
+/* ── 13. SELECTION ───────────────────────────────────────── */
+::selection {
+  background: var(--oxblood);
+  color: var(--paper);
+}
+
+/* ── 14. SKELETON / LOADING ──────────────────────────────── */
+.skeleton {
+  background-color: var(--sand);
+  animation: skeleton-pulse 1.5s ease-in-out infinite;
+}
+@keyframes skeleton-pulse {
+  0%, 100% { opacity: 1; }
+  50%       { opacity: 0.5; }
+}
+
+/* ── 15. MOTION — respect prefers-reduced-motion ─────────── */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+  .animate-marquee { animation: none; }
+}
+
+/* ── 16. FADE-UP SCROLL ANIMATION ───────────────────────── */
+.fade-up {
+  opacity: 0;
+  transform: translateY(12px);
+  transition: opacity 400ms ease, transform 400ms ease;
+}
+.fade-up.in-view {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+/* ── 17. MARQUEE UTILITY ─────────────────────────────────── */
+@keyframes marquee {
+  0%   { transform: translateX(0%); }
+  100% { transform: translateX(-50%); }
+}
+.animate-marquee {
+  animation: marquee 32s linear infinite;
+  display: flex;
+  width: max-content;
+}
+
+/* ── 18. QUICK-EXIT BUTTON ───────────────────────────────── */
+.quick-exit {
+  position: fixed;
+  bottom: 24px;
+  left: 24px;
+  z-index: 9000;
+  font-family: 'DM Mono', monospace;
+  font-size: 10px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  padding: 8px 12px;
+  background-color: var(--ink);
+  color: var(--paper);
+  border: none;
+  border-radius: 2px;
+  cursor: pointer;
+  opacity: 0.5;
+  transition: opacity 150ms ease;
+}
+.quick-exit:hover { opacity: 1; }
+
+/* ── 19. WHATSAPP FLOAT ──────────────────────────────────── */
+.whatsapp-float {
+  position: fixed;
+  bottom: 24px;
+  right: 24px;
+  z-index: 8000;
+  width: 44px;
+  height: 44px;
+  background-color: var(--ink);
+  color: var(--paper);
+  border: 1px solid var(--hairline);
+  border-radius: 2px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: background-color 150ms ease;
+  text-decoration: none;
+}
+.whatsapp-float:hover { background-color: var(--oxblood); }
+
+/* ── 20. GLASSMORPHISM LEGACY (kept for auth modal) ──────── */
 @layer utilities {
   .glass {
-    background: rgba(255, 255, 255, 0.85);
+    background: rgba(244, 238, 230, 0.92);
     backdrop-filter: blur(16px);
-    -webkit-backdrop-filter: blur(16px);
-  }
-  .glass-dark {
-    background: rgba(126, 66, 15, 0.9);
-    backdrop-filter: blur(12px);
-    -webkit-backdrop-filter: blur(12px);
   }
 }
 
-/* Skeleton Loading */
-.skeleton {
-  background: linear-gradient(
-    90deg,
-    #f0ece8 25%,
-    #e8e2db 50%,
-    #f0ece8 75%
-  );
-  background-size: 200% 100%;
-  animation: shimmer 2s infinite linear;
-}
-
-/* Selection Color */
-::selection {
-  background: rgba(126, 66, 15, 0.2);
-  color: var(--text-primary);
-}
-
-/* Focus Styles */
-*:focus-visible {
-  outline: 2px solid var(--brand);
-  outline-offset: 2px;
-  border-radius: 4px;
-}
-
-/* Image loading */
-img {
-  transition: opacity 0.3s ease;
-}
-
-/* Smooth transitions for interactive elements */
-a, button {
-  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-}
+/* ── 21. TRANSITIONS for links/buttons ───────────────────── */
+a { color: var(--ink); text-decoration: none; }
+a:hover { color: var(--oxblood); }
+button { cursor: pointer; }
