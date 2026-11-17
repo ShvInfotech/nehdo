@@ -1,5 +1,5 @@
-// UI v2 tokens (namespaced `v2`, additive — does not change any v1 class)
-const v2 = require("./src/ui-v2/theme/tailwind.v2.cjs");
+// Storefront design tokens (namespaced `v2`). The older tokens below are still used by the admin panel.
+const v2 = require("./src/styles/tailwind.theme.cjs");
 
 module.exports = {
 	content: [

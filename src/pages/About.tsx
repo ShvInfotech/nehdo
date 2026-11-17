@@ -1,61 +1,88 @@
 import React from "react";
-import { motion } from "framer-motion";
-import { IoLeafOutline, IoShirtOutline, IoEarthOutline } from "react-icons/io5";
-import Breadcrumb from "../components/Breadcrumb";
+import { IoChatbubblesOutline, IoCubeOutline, IoShieldCheckmarkOutline } from "react-icons/io5";
+import { Breadcrumbs, ButtonLink, Container, Section } from "../components/ui";
 
-const About = () => {
-    return (
-        <div className="pb-20">
-            {/* Hero */}
-            <div className="bg-brand-50/50 py-16 md:py-24">
-                <div className="max-w-[1440px] mx-auto px-4 md:px-8 lg:px-16 text-center">
-                    <motion.h1 initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="font-heading text-4xl md:text-5xl lg:text-6xl font-bold text-gray-900 mb-6">Redefining Everyday Style</motion.h1>
-                    <motion.p initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }} className="text-lg md:text-xl text-muted max-w-2xl mx-auto">We believe that premium fashion should be accessible, sustainable, and designed to make you feel confident every single day.</motion.p>
-                </div>
-            </div>
+/*
+ * DRAFT COPY — old About was a fashion template ("Redefining Everyday Style",
+ * sustainable fabrics, "10k+ customers", founded 2026). This version makes no
+ * factual claims beyond what the rest of the site already states. Add your
+ * real story, founders, location and any figures you can stand behind.
+ */
+const VALUES = [
+  {
+    icon: IoShieldCheckmarkOutline,
+    title: "Genuine, sealed products",
+    desc: "Products from brands we trust, delivered sealed.",
+  },
+  {
+    icon: IoCubeOutline,
+    title: "Privacy by default",
+    desc: "Plain packaging with no product names on the label, and a neutral name on your statement.",
+  },
+  {
+    icon: IoChatbubblesOutline,
+    title: "Honest, simple guidance",
+    desc: "Plain-language answers, no judgement, and real people to talk to when you need help.",
+  },
+];
 
-            <div className="max-w-[1440px] mx-auto px-4 md:px-8 lg:px-16 py-12">
-                <div className="mb-12"><Breadcrumb items={[{ label: "About Us" }]} /></div>
-
-                {/* Values */}
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-8 mb-24">
-                    {[
-                        { icon: IoShirtOutline, title: "Premium Quality", desc: "Every garment is crafted with meticulous attention to detail using high-quality materials built to last." },
-                        { icon: IoLeafOutline, title: "Sustainable Practices", desc: "We are committed to reducing our environmental footprint through eco-friendly fabrics and ethical manufacturing." },
-                        { icon: IoEarthOutline, title: "Global Inspiration", desc: "Our designs are inspired by global trends, bringing you a curated collection of modern, versatile pieces." }
-                    ].map((v, i) => (
-                        <motion.div key={v.title} initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ delay: i * 0.1 }} className="text-center p-8 bg-white rounded-3xl shadow-card border border-gray-100">
-                            <div className="w-16 h-16 bg-brand/10 text-brand rounded-2xl flex items-center justify-center mx-auto mb-6"><v.icon size={32} /></div>
-                            <h3 className="font-heading font-bold text-xl mb-3">{v.title}</h3>
-                            <p className="text-muted leading-relaxed">{v.desc}</p>
-                        </motion.div>
-                    ))}
-                </div>
-
-                {/* Story */}
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-center mb-24">
-                    <motion.div initial={{ opacity: 0, x: -20 }} whileInView={{ opacity: 1, x: 0 }} viewport={{ once: true }} className="rounded-[2.5rem] overflow-hidden aspect-[4/3] bg-gray-100">
-                        <img src="https://storage.googleapis.com/tagjs-prod.appspot.com/v1/hurs0BoZOo/64ofuakc_expires_30_days.png" alt="Our story" className="w-full h-full object-cover" />
-                    </motion.div>
-                    <motion.div initial={{ opacity: 0, x: 20 }} whileInView={{ opacity: 1, x: 0 }} viewport={{ once: true }}>
-                        <h2 className="font-heading text-3xl md:text-4xl font-bold mb-6">Our Story</h2>
-                        <p className="text-muted leading-relaxed mb-4">Founded in 2026, Nehdo started with a simple vision: to create a fashion destination where quality meets accessibility. We noticed a gap between high-end luxury and fast fashion, and we set out to fill it.</p>
-                        <p className="text-muted leading-relaxed mb-6">Today, Nehdo is a global community of style enthusiasts. Our team of designers works tirelessly to bring you collections that blend timeless elegance with contemporary trends.</p>
-                        <div className="grid grid-cols-2 gap-6 pt-6 border-t border-gray-100">
-                            <div>
-                                <h4 className="font-heading text-3xl font-bold text-brand mb-1">10k+</h4>
-                                <p className="text-sm text-gray-600 font-semibold uppercase tracking-wider">Happy Customers</p>
-                            </div>
-                            <div>
-                                <h4 className="font-heading text-3xl font-bold text-brand mb-1">500+</h4>
-                                <p className="text-sm text-gray-600 font-semibold uppercase tracking-wider">Unique Styles</p>
-                            </div>
-                        </div>
-                    </motion.div>
-                </div>
-            </div>
+const AboutPage: React.FC = () => (
+  <>
+    <Container className="pt-5 md:pt-8">
+      <Breadcrumbs items={[{ label: "About" }]} />
+      <div className="relative mt-6 overflow-hidden rounded-v2-xl bg-v2-blush px-6 py-14 md:px-14 md:py-20">
+        <div aria-hidden className="absolute -right-16 -top-16 h-72 w-72 rounded-full bg-v2-plum/90" />
+        <div aria-hidden className="absolute -bottom-20 right-40 h-56 w-56 rounded-full bg-v2-coral/80" />
+        <div className="relative max-w-2xl">
+          <p className="text-[12px] font-semibold uppercase tracking-[0.14em] text-v2-plum">About Nehdo</p>
+          <h1 className="mt-3 text-[36px] leading-[1.05] md:text-[56px]">Sexual wellness, without the awkwardness.</h1>
+          <p className="mt-5 max-w-xl text-[16.5px] leading-relaxed text-v2-ink/75">
+            Nehdo is an online store for adults in India who want good products, clear information and complete privacy —
+            without having to ask anyone across a counter.
+          </p>
         </div>
-    );
-};
+      </div>
+    </Container>
 
-export default About;
+    <Section>
+      <Container>
+        <div className="grid gap-4 md:grid-cols-3">
+          {VALUES.map(({ icon: Icon, title, desc }) => (
+            <div key={title} className="rounded-v2-xl border border-v2-line bg-v2-surface p-6">
+              <span className="flex h-12 w-12 items-center justify-center rounded-v2 bg-v2-lilac text-v2-plum">
+                <Icon size={22} />
+              </span>
+              <h2 className="mt-5 text-[20px]">{title}</h2>
+              <p className="mt-2 text-[14.5px] leading-relaxed text-v2-muted">{desc}</p>
+            </div>
+          ))}
+        </div>
+      </Container>
+    </Section>
+
+    <Section tight>
+      <Container>
+        <div className="grid items-center gap-8 rounded-v2-xl bg-v2-surface p-7 shadow-v2-sm md:grid-cols-[1.4fr_1fr] md:p-12">
+          <div>
+            <h2 className="text-[28px] md:text-[34px]">Why we exist</h2>
+            <p className="mt-4 text-[15.5px] leading-relaxed text-v2-ink/80">
+              Pleasure and intimate health are a normal part of life, but shopping for them often isn’t comfortable. We built
+              Nehdo so you can browse at your own pace, understand what you’re buying, and receive it in a box that gives
+              nothing away.
+            </p>
+          </div>
+          <div className="flex flex-col gap-2.5 md:items-end">
+            <ButtonLink to="/shop" size="lg">
+              Browse the shop
+            </ButtonLink>
+            <ButtonLink to="/faq" size="lg" variant="secondary">
+              Read common questions
+            </ButtonLink>
+          </div>
+        </div>
+      </Container>
+    </Section>
+  </>
+);
+
+export default AboutPage;

@@ -1,36 +1,12 @@
 import React, { lazy, Suspense, useState } from "react";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
-import Layout from "./components/Layout";
-import Home from "./pages/Home";
 import { useEffect } from "react";
 import { loadProducts } from "./data/products";
 import { FaWhatsapp } from "react-icons/fa";
 import { ToastContainer } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
-import { isV2Enabled } from "./ui-v2/flag";
-import { v2StorefrontRoutes } from "./ui-v2/routes";
+import { storefrontRoutes } from "./routes";
 
-// UI v2 opt-in: ?ui=v2 to enable, ?ui=v1 to disable (see ui-v2/flag.ts)
-const UI_V2 = isV2Enabled();
-
-const Shop = lazy(() => import("./pages/Shop"));
-const ProductDetail = lazy(() => import("./pages/Product"));
-const Cart = lazy(() => import("./pages/Cart"));
-const Wishlist = lazy(() => import("./pages/Wishlist"));
-const Checkout = lazy(() => import("./pages/Checkout"));
-const OrderConfirmation = lazy(() => import("./pages/OrderConfirmation"));
-const Account = lazy(() => import("./pages/Account"));
-const Orders = lazy(() => import("./pages/Orders"));
-const Search = lazy(() => import("./pages/Search"));
-const Collection = lazy(() => import("./pages/Collection"));
-const About = lazy(() => import("./pages/About"));
-const FAQ = lazy(() => import("./pages/FAQ"));
-const Terms = lazy(() => import("./pages/Terms"));
-const Privacy = lazy(() => import("./pages/Privacy"));
-const Returns = lazy(() => import("./pages/Returns"));
-const Shipping = lazy(() => import("./pages/Shipping"));
-const Brands = lazy(() => import("./pages/Brands"));
-const Contact = lazy(() => import("./pages/Contact"));
 const AdminLayout = lazy(() => import("./components/AdminLayout"));
 const AdminProtectedRoute = lazy(
   () => import("./components/AdminProtectedRoute"),
@@ -84,30 +60,8 @@ function App() {
     <BrowserRouter>
       <Suspense fallback={<PageLoader />}>
         <Routes>
-          {UI_V2 ? v2StorefrontRoutes : (
-          <Route element={<Layout />}>
-            <Route path="/" element={<Home />} />
-            <Route path="/home" element={<Home />} />
-            <Route path="/shop" element={<Shop />} />
-            <Route path="/product/:id" element={<ProductDetail />} />
-            <Route path="/cart" element={<Cart />} />
-            <Route path="/wishlist" element={<Wishlist />} />
-            <Route path="/checkout" element={<Checkout />} />
-            <Route path="/order-confirmation" element={<OrderConfirmation />} />
-            <Route path="/account" element={<Account />} />
-            <Route path="/orders" element={<Orders />} />
-            <Route path="/search" element={<Search />} />
-            <Route path="/collection/:slug" element={<Collection />} />
-            <Route path="/brands" element={<Collection />} />
-            <Route path="/about" element={<About />} />
-            <Route path="/faq" element={<FAQ />} />
-            <Route path="/terms" element={<Terms />} />
-            <Route path="/privacy" element={<Privacy />} />
-            <Route path="/returns" element={<Returns />} />
-            <Route path="/shipping" element={<Shipping />} />
-            <Route path="/contact" element={<Contact />} />
-          </Route>
-          )}
+          {/* Storefront (shop, product, cart, account, info pages) */}
+          {storefrontRoutes}
 
           {/* Admin Login (No Layout, No Protection) */}
           <Route path="/admin/login" element={<AdminLogin />} />

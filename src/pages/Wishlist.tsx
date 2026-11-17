@@ -1,73 +1,98 @@
-import React from "react";
+import React, { useState } from "react";
 import { Link } from "react-router-dom";
-import { motion } from "framer-motion";
-import { IoHeartOutline, IoTrashOutline, IoBagAddOutline } from "react-icons/io5";
-import { useWishlist } from "../context/WishlistContext";
-import { useCart } from "../context/CartContext";
-import { products } from "../data/products";
-import Breadcrumb from "../components/Breadcrumb";
-import { IoStar } from "react-icons/io5";
+import { IoBagAddOutline, IoHeartOutline } from "react-icons/io5";
+import { useAuth } from "../context/AuthContext";
+import { useWishlistPage } from "../hooks/useAccount";
+import type { Product } from "../data/products";
+import AccountShell, { SignInGate } from "../components/layout/AccountShell";
+import { Button, ButtonLink, Img, Price, Rating } from "../components/ui";
 
-const Wishlist = () => {
-   const { items, toggle, count } = useWishlist();
+const WishlistPage: React.FC = () => {
+  const { isLoggedIn } = useAuth();
+  const w = useWishlistPage();
 
-const wishlistIds = items.map(item => item.productId);
-    const { addItem } = useCart();
-    const wishlistProducts = products.filter(p =>
-  wishlistIds.includes(String(p.id))
-);
+  // old wishlist is server-side only, so guests have nothing to show
+  if (!isLoggedIn) {
+    return <SignInGate title="Your private wishlist" body="Sign in to save products for later. Only you can see your wishlist." />;
+  }
 
-
-
-    const handleMoveToCart = (p: typeof products[0]) => {
-        addItem({ shipping: false,productId: p.id, name: p.name, brand: p.brand, image: p.image, price: p.price, originalPrice: p.originalPrice, size: p.sizes[0], color: p.colors[0]?.name || "" });
-        toggle(p.id);
-    };
-
-    if (wishlistProducts.length === 0) return (
-        <div className="max-w-[1440px] mx-auto px-4 md:px-8 lg:px-16 py-20 text-center">
-            <motion.div initial={{ scale: 0 }} animate={{ scale: 1 }} transition={{ type: "spring" }}>
-                <div className="w-24 h-24 bg-red-50 rounded-full flex items-center justify-center mx-auto mb-6"><IoHeartOutline size={40} className="text-red-300" /></div>
-                <h2 className="font-heading text-2xl font-bold text-gray-900 mb-3">Your wishlist is empty</h2>
-                <p className="text-muted mb-6">Save items you love for later</p>
-                <Link to="/shop" className="inline-flex items-center gap-2 bg-brand text-white px-8 py-4 rounded-2xl font-semibold hover:bg-brand-light transition-colors shadow-button">Explore Products</Link>
-            </motion.div>
+  return (
+    <AccountShell title="Wishlist" crumb="Wishlist">
+      {w.products.length === 0 ? (
+        <div className="rounded-v2-xl border border-dashed border-v2-line px-6 py-16 text-center">
+          <span className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-v2-blush text-v2-coral">
+            <IoHeartOutline size={28} />
+          </span>
+          <p className="mt-5 font-v2-display text-[22px] font-semibold">Nothing saved yet</p>
+          <p className="mx-auto mt-2 max-w-sm text-[14.5px] text-v2-muted">
+            Tap the heart on any product to keep it here for later.
+          </p>
+          <ButtonLink to="/shop" className="mt-6">
+            Browse products
+          </ButtonLink>
         </div>
-    );
-
-    return (
-        <div className="max-w-[1440px] mx-auto px-4 md:px-8 lg:px-16 py-8">
-            <div className="mb-6"><Breadcrumb items={[{ label: "Wishlist" }]} /></div>
-            <h1 className="font-heading text-3xl md:text-4xl font-bold text-gray-900 mb-8">My Wishlist <span className="text-muted text-xl font-normal">({count} items)</span></h1>
-            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 md:gap-6">
-                {wishlistProducts.map((p, i) => (
-                    <motion.div key={p.id} initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.05 }} className="group">
-                        <Link to={`/product/${p.id}`}>
-                            <div className="relative rounded-2xl overflow-hidden bg-gray-100 aspect-[3/4] mb-4">
-                                <img src={p.image} alt={p.name} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
-                                {p.isNew && <span className="absolute top-3 left-3 bg-brand text-white text-[10px] font-bold px-3 py-1 rounded-full uppercase">New</span>}
-                            </div>
-                        </Link>
-                        <div className="px-1">
-                            <p className="text-[11px] text-muted font-medium uppercase tracking-wider mb-1">{p.brand}</p>
-                            <h3 className="font-heading font-semibold text-sm text-gray-900 mb-1 truncate">{p.name}</h3>
-                            <div className="flex items-center gap-1 mb-2">
-                                {[...Array(5)].map((_, s) => <IoStar key={s} size={11} className={s < Math.floor(p.rating) ? "text-gold" : "text-gray-200"} />)}
-                            </div>
-                            <div className="flex items-center gap-2 mb-3">
-                                <span className="font-heading font-bold text-base text-accent">₹{p.price.toFixed(2)}</span>
-                                {p.originalPrice && <span className="text-xs text-muted line-through">₹{p.originalPrice.toFixed(2)}</span>}
-                            </div>
-                            <div className="flex gap-2">
-                                <button onClick={() => handleMoveToCart(p)} className="flex-1 flex items-center justify-center gap-2 py-2.5 bg-brand text-white rounded-xl text-xs font-semibold hover:bg-brand-light transition-colors"><IoBagAddOutline size={14} /> Move to Cart</button>
-                                <button onClick={() => toggle(p.id)} className="p-2.5 rounded-xl border border-gray-200 text-gray-400 hover:text-red-500 hover:border-red-200 hover:bg-red-50 transition-all"><IoTrashOutline size={16} /></button>
-                            </div>
-                        </div>
-                    </motion.div>
-                ))}
-            </div>
-        </div>
-    );
+      ) : (
+        <>
+          <p className="mb-5 text-[14px] text-v2-muted">
+            {w.products.length} saved {w.products.length === 1 ? "item" : "items"}
+          </p>
+          <ul className="grid grid-cols-2 gap-x-3 gap-y-8 sm:grid-cols-3 sm:gap-x-4 xl:grid-cols-4">
+            {w.products.map((p) => (
+              <li key={p.id}>
+                <WishCard product={p} onMove={() => w.moveToCart(p)} onRemove={() => w.remove(p)} />
+              </li>
+            ))}
+          </ul>
+        </>
+      )}
+    </AccountShell>
+  );
 };
 
-export default Wishlist;
+const WishCard: React.FC<{ product: Product; onMove: () => Promise<void>; onRemove: () => Promise<void> }> = ({
+  product: p,
+  onMove,
+  onRemove,
+}) => {
+  const [busy, setBusy] = useState<null | "move" | "remove">(null);
+  const run = (kind: "move" | "remove", fn: () => Promise<void>) => async () => {
+    setBusy(kind);
+    try {
+      await fn();
+    } finally {
+      setBusy(null);
+    }
+  };
+  return (
+    <article className="flex h-full flex-col">
+      <Link to={`/product/${p.id}`} className="group block overflow-hidden rounded-v2-lg">
+        <Img src={p.image} alt={p.name} frameClassName="aspect-[4/5]" className="transition-transform duration-500 group-hover:scale-[1.04]" />
+      </Link>
+      <div className="mt-3 flex flex-1 flex-col">
+        <div className="flex items-center justify-between gap-2">
+          <span className="truncate text-[11.5px] font-semibold uppercase tracking-[0.1em] text-v2-muted">{p.brand}</span>
+          <Rating value={p.rating} count={p.reviews} />
+        </div>
+        <Link to={`/product/${p.id}`} className="mt-1 line-clamp-2 text-[14.5px] font-medium leading-snug hover:text-v2-plum">
+          {p.name}
+        </Link>
+        <Price price={p.price} original={p.originalPrice} size="sm" showPct={false} className="mt-2" />
+        <div className="mt-auto flex flex-col gap-1.5 pt-3">
+          <Button size="sm" block onClick={run("move", onMove)} loading={busy === "move"} disabled={!!busy}>
+            <IoBagAddOutline /> Move to cart
+          </Button>
+          <button
+            type="button"
+            onClick={run("remove", onRemove)}
+            disabled={!!busy}
+            className="py-1.5 text-[13px] font-semibold text-v2-muted hover:text-v2-coral"
+          >
+            {busy === "remove" ? "Removing…" : "Remove"}
+          </button>
+        </div>
+      </div>
+    </article>
+  );
+};
+
+export default WishlistPage;

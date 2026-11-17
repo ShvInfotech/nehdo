@@ -1,785 +1,432 @@
-import React, { useEffect, useState } from "react";
-import { useParams, Link, useNavigate } from "react-router-dom";
-import { motion } from "framer-motion";
+import React, { useEffect, useRef, useState } from "react";
+import { Link, useParams } from "react-router-dom";
 import {
-    IoStar,
-    IoHeartOutline,
-    IoHeart,
-    IoRemoveOutline,
-    IoAddOutline,
-    IoShieldCheckmarkOutline,
-    IoCarOutline,
-    IoRefreshOutline,
-    IoFlashOutline,
+  IoAdd,
+  IoBagAddOutline,
+  IoCardOutline,
+  IoCashOutline,
+  IoCheckmark,
+  IoChevronDown,
+  IoCubeOutline,
+  IoFlashOutline,
+  IoHeart,
+  IoHeartOutline,
+  IoRemove,
+  IoShieldCheckmarkOutline,
+  IoStar,
 } from "react-icons/io5";
-import { getProductById, products } from "../data/products";
-import { useCart } from "../context/CartContext";
-import { useWishlist } from "../context/WishlistContext";
-import { useAuth } from "../context/AuthContext";
-import { triggerMagicCheckout } from "../utils/magicCheckout";
-import { toast } from "react-toastify";
-import Breadcrumb from "../components/Breadcrumb";
-import ProductCard from "../components/ProductCard";
-import { userapiRequest } from "../services/apiService";
-
-const tabs = ["Description", "Reviews", "Shipping"];
-
-interface Review {
-    _id: string;
-    rating: number;
-    review: string;
-    userName: string;
-}
-
-const ProductDetail = () => {
-    const { id } = useParams();
-
-    const product: any = getProductById(id || "");
-
-    const { addItem } = useCart();
-    const { toggle, has } = useWishlist();
-    const { user, setSession } = useAuth();
-    const navigate = useNavigate();
-    const [isBuyingNow, setIsBuyingNow] = useState(false);
-
-    const [selectedSize, setSelectedSize] = useState(
-        product?.sizes?.[0] || ""
-    );
-
-    const [selectedColor, setSelectedColor] = useState(
-        product?.colors?.[0]?.name || ""
-    );
-
-    const [quantity, setQuantity] = useState(1);
-    const [activeTab, setActiveTab] = useState("Description");
-    const [mainImage, setMainImage] = useState(0);
-    const [added, setAdded] = useState(false);
-
-    const [reviews, setReviews] = useState<Review[]>([]);
-
-    const [reviewForm, setReviewForm] = useState({
-        rating: 5,
-        name: "",
-        title: "",
-        text: "",
-    });
-
-    const [reviewSubmitted, setReviewSubmitted] = useState(false);
-
-    if (!product) {
-        return (
-            <div className="max-w-[1440px] mx-auto px-4 py-20 text-center">
-                <h2 className="font-heading text-2xl font-bold">
-                    Product not found
-                </h2>
-
-                <Link
-                    to="/shop"
-                    className="text-brand mt-4 inline-block"
-                >
-                    Back to Shop
-                </Link>
-            </div>
-        );
-    }
-
-    const inWishlist = has(product.id);
-
-    const related = products
-        .filter(
-            (p) =>
-                p.category === product.category &&
-                p.id !== product.id
-        )
-        .slice(0, 4);
-
-    // Selected Variant
-    const selectedVariant = product.variants?.find(
-        (v: any) =>
-            v.name === `${selectedColor}/${selectedSize}`
-    );
-
-
-    // Selected Variant Price
-    const displayPrice =
-        selectedVariant?.price ?? product.price;
-
-    // Selected Variant Stock
-    // null / undefined => 0
-    const stock = Number(selectedVariant?.stock ?? 0);
-
-    // Stock status
-    const isOutOfStock = stock <= 0;
-    const isLowStock = stock > 0 && stock <= 4;
-
-    // Original/Base Price
-    const originalPrice =
-        product.originalPrice ?? product.price;
-
-    const discount =
-        originalPrice > displayPrice
-            ? Math.round(
-                  (1 - displayPrice / originalPrice) * 100
-              )
-            : null;
-
-    const handleAddToCart = () => {
-        addItem({
-            productId: product.id,
-            name: product.name,
-            brand: product.brand,
-            image: product.image,
-            price: displayPrice,
-            originalPrice: product.originalPrice,
-            size:
-                selectedSize ||
-                product.sizes[0],
-            color:
-                selectedColor ||
-                product.colors[0]?.name ||
-                "",
-            shipping: product.shipping ?? true,
-        });
-
-        setAdded(true);
-
-        setTimeout(() => setAdded(false), 2000);
-    };
-
-    const handleBuyNow = () => {
-        if (isOutOfStock) return;
-        setIsBuyingNow(true);
-
-        const buyNowItem = {
-            productId: product.id,
-            name: product.name,
-            brand: product.brand,
-            image: product.image,
-            price: displayPrice,
-            originalPrice: product.originalPrice,
-            size: selectedSize || product.sizes?.[0] || "",
-            color: selectedColor || product.colors?.[0]?.name || "",
-            quantity: quantity,
-            shipping: product.shipping ?? true,
-        };
-
-        triggerMagicCheckout({
-            items: [buyNowItem],
-            user,
-            onSuccess: (res) => {
-                setIsBuyingNow(false);
-                if (res.accessToken && res.user) {
-                    setSession(res.user, res.accessToken);
-                }
-                toast.success("Order placed successfully!");
-                navigate("/order-confirmation");
-            },
-            onError: () => {
-                setIsBuyingNow(false);
-            },
-            onClose: () => {
-                setIsBuyingNow(false);
-            }
-        });
-    };
-
-
-    const getreview = async () => {
-        const respons = await userapiRequest(
-            `/user/api/v1/product/reviews/${product.id}`,
-            "GET"
-        );
-
-        setReviews(respons.reviews);
-    };
-
-    useEffect(() => {
-        getreview();
-    }, []);
-
-    return (
-        <div className="max-w-[1440px] mx-auto px-4 md:px-8 lg:px-16 py-8">
-
-            {/* Breadcrumb */}
-            <div className="mb-6">
-                <Breadcrumb
-                    items={[
-                        {
-                            label: "Shop",
-                            href: "/shop",
-                        },
-                        {
-                            label: product.category,
-                            href: "/shop",
-                        },
-                        {
-                            label: product.name,
-                        },
-                    ]}
-                />
-            </div>
-
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 lg:gap-14 mb-20">
-
-                {/* Images */}
-                <motion.div
-                    initial={{
-                        opacity: 0,
-                        x: -20,
-                    }}
-                    animate={{
-                        opacity: 1,
-                        x: 0,
-                    }}
-                    className="flex flex-col-reverse md:flex-row gap-4"
-                >
-                    <div className="flex md:flex-col gap-3 overflow-x-auto md:overflow-y-auto md:max-h-[600px]">
-
-                        {product.images.map(
-                            (img: string, i: number) => (
-                                <button
-                                    key={i}
-                                    onClick={() =>
-                                        setMainImage(i)
-                                    }
-                                    className={`flex-shrink-0 w-16 h-20 md:w-20 md:h-24 rounded-xl overflow-hidden border-2 transition-all ${
-                                        mainImage === i
-                                            ? "border-brand"
-                                            : "border-transparent hover:border-gray-300"
-                                    }`}
-                                >
-                                    <img
-                                        src={img}
-                                        alt=""
-                                        className="w-full h-full object-cover"
-                                    />
-                                </button>
-                            )
-                        )}
-
-                    </div>
-
-                    <div className="flex-1 relative rounded-2xl md:rounded-3xl overflow-hidden bg-gray-100 aspect-[3/4] group">
-
-                        <img
-                            src={product.images[mainImage]}
-                            alt={product.name}
-                            className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
-                        />
-
-                        {product.isNew && (
-                            <span className="absolute top-4 left-4 bg-brand text-white text-xs font-bold px-3 py-1.5 rounded-full">
-                                NEW
-                            </span>
-                        )}
-
-                        {discount && (
-                            <span className="absolute top-4 left-4 mt-8 bg-accent text-white text-xs font-bold px-3 py-1.5 rounded-full">
-                                -{discount}%
-                            </span>
-                        )}
-
-                    </div>
-                </motion.div>
-
-                {/* Info */}
-                <motion.div
-                    initial={{
-                        opacity: 0,
-                        x: 20,
-                    }}
-                    animate={{
-                        opacity: 1,
-                        x: 0,
-                    }}
-                    className="flex flex-col"
-                >
-
-                    <p className="text-sm text-muted font-medium uppercase tracking-wider mb-1">
-                        {product.brand}
-                    </p>
-
-                    <h1 className="font-heading text-2xl md:text-3xl lg:text-4xl font-bold text-gray-900 mb-3">
-                        {product.name}
-                    </h1>
-
-                    <div className="flex items-center gap-3 mb-4">
-
-                        <div className="flex gap-0.5">
-                            {[...Array(5)].map(
-                                (_, i) => (
-                                    <IoStar
-                                        key={i}
-                                        size={16}
-                                        className={
-                                            i <
-                                            Math.floor(
-                                                product.rating
-                                            )
-                                                ? "text-gold"
-                                                : "text-gray-200"
-                                        }
-                                    />
-                                )
-                            )}
-                        </div>
-
-                        <span className="text-sm font-semibold text-gray-900">
-                            {product.rating}
-                        </span>
-
-                        <span className="text-sm text-muted">
-                            ({product.reviews} reviews)
-                        </span>
-
-                    </div>
-
-                    {/* Price */}
-                    <div className="flex items-center gap-3 mb-2">
-
-                        <span
-                            className={`font-heading text-3xl font-bold ${
-                                isOutOfStock
-                                    ? "text-red-500 line-through"
-                                    : "text-accent"
-                            }`}
-                        >
-                            ₹{displayPrice.toFixed(2)}
-                        </span>
-
-                        {originalPrice > displayPrice && (
-                            <span className="text-lg text-muted line-through">
-                                ₹{originalPrice.toFixed(2)}
-                            </span>
-                        )}
-
-                        {discount && !isOutOfStock && (
-                            <span className="text-sm font-bold text-green-600 bg-green-50 px-2 py-1 rounded-lg">
-                                {discount}% OFF
-                            </span>
-                        )}
-
-                    </div>
-
-                    {/* Stock Status */}
-                    {isOutOfStock && (
-                        <div className="mb-6">
-                            <span className="text-sm font-semibold text-red-500">
-                                Out of Stock
-                            </span>
-                        </div>
-                    )}
-
-                    {isLowStock && (
-                        <div className="mb-6">
-                            <span className="text-sm font-semibold text-orange-500">
-                                Low Stock — Only {stock} left
-                            </span>
-                        </div>
-                    )}
-
-                    <p className="text-muted text-sm leading-relaxed mb-6">
-                        {product.sortdescription}
-                    </p>
-
-                    <div className="h-px bg-gray-200 mb-6" />
-
-                    {/* Size */}
-                    <div className="mb-5">
-
-                        <h3 className="font-heading font-bold text-sm text-gray-900 mb-3">
-                            Size
-                        </h3>
-
-                        <div className="flex flex-wrap gap-2">
-
-                            {product.sizes.map(
-                                (s: string) => (
-                                    <button
-                                        key={s}
-                                        onClick={() =>
-                                            setSelectedSize(s)
-                                        }
-                                        className={`min-w-[48px] px-4 py-2.5 rounded-xl text-sm font-medium border-2 transition-all ${
-                                            selectedSize === s
-                                                ? "border-brand bg-brand text-white"
-                                                : "border-gray-200 hover:border-brand text-gray-700"
-                                        }`}
-                                    >
-                                        {s}
-                                    </button>
-                                )
-                            )}
-
-                        </div>
-
-                    </div>
-
-                    {/* Color */}
-                    {product.colors.length > 0 && (
-                        <div className="mb-6">
-
-                            <h3 className="font-heading font-bold text-sm text-gray-900 mb-3">
-                                Color:
-                                <span className="font-normal text-muted">
-                                    {" "}
-                                    {selectedColor ||
-                                        product.colors[0].name}
-                                </span>
-                            </h3>
-
-                            <div className="flex gap-3">
-
-                                {product.colors.map(
-                                    (c: any) => (
-                                        <button
-                                            key={c.name}
-                                            onClick={() =>
-                                                setSelectedColor(
-                                                    c.name
-                                                )
-                                            }
-                                            className={`w-10 h-10 rounded-full border-2 transition-all ${
-                                                (
-                                                    selectedColor ||
-                                                    product.colors[0]
-                                                        .name
-                                                ) === c.name
-                                                    ? "border-brand scale-110 ring-2 ring-brand/30"
-                                                    : "border-gray-200 hover:border-gray-400"
-                                            }`}
-                                            style={{
-                                                backgroundColor:
-                                                    c.hex,
-                                            }}
-                                            title={c.name}
-                                        />
-                                    )
-                                )}
-
-                            </div>
-
-                        </div>
-                    )}
-
-                    {/* Quantity + Add to Cart + Buy Now + Wishlist */}
-                    <div className="flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-4 mb-6">
-
-                        {/* Quantity selector & Mobile Wishlist */}
-                        <div className="flex items-center justify-between sm:justify-start gap-3">
-                            <div className="flex items-center border border-gray-200 rounded-xl overflow-hidden bg-white shadow-sm sm:shadow-none">
-                                <button
-                                    type="button"
-                                    onClick={() =>
-                                        setQuantity((q) =>
-                                            Math.max(
-                                                1,
-                                                q - 1
-                                            )
-                                        )
-                                    }
-                                    className="px-3.5 py-2.5 sm:px-4 sm:py-3 hover:bg-gray-100 transition-colors"
-                                    aria-label="Decrease quantity"
-                                >
-                                    <IoRemoveOutline size={18} />
-                                </button>
-
-                                <span className="px-3 py-2.5 sm:px-4 sm:py-3 font-semibold text-sm min-w-[42px] sm:min-w-[48px] text-center select-none">
-                                    {quantity}
-                                </span>
-
-                                <button
-                                    type="button"
-                                    onClick={() =>
-                                        setQuantity(
-                                            (q) => q + 1
-                                        )
-                                    }
-                                    className="px-3.5 py-2.5 sm:px-4 sm:py-3 hover:bg-gray-100 transition-colors"
-                                    aria-label="Increase quantity"
-                                >
-                                    <IoAddOutline size={18} />
-                                </button>
-                            </div>
-
-                            {/* Mobile Wishlist Button */}
-                            <button
-                                type="button"
-                                onClick={() =>
-                                    toggle(product.id)
-                                }
-                                className={`sm:hidden h-[44px] w-[44px] rounded-xl border-2 transition-all flex items-center justify-center ${
-                                    inWishlist
-                                        ? "border-red-200 bg-red-50 text-red-500"
-                                        : "border-gray-200 text-gray-600 hover:border-brand"
-                                }`}
-                                aria-label="Add to wishlist"
-                            >
-                                {inWishlist ? (
-                                    <IoHeart size={22} className="text-red-500" />
-                                ) : (
-                                    <IoHeartOutline size={22} className="text-gray-600" />
-                                )}
-                            </button>
-                        </div>
-
-                        {/* Add to Cart & Buy Now Action Buttons */}
-                        <div className="grid grid-cols-2 sm:flex sm:flex-1 items-center gap-3">
-                            <button
-                                type="button"
-                                onClick={handleAddToCart}
-                                disabled={isOutOfStock}
-                                className={`w-full py-3.5 sm:py-4 px-3 sm:px-4 rounded-xl sm:rounded-2xl text-sm sm:text-base font-bold transition-all flex items-center justify-center gap-1.5 sm:gap-2 whitespace-nowrap disabled:opacity-50 ${
-                                    added
-                                        ? "bg-green-500 text-white"
-                                        : "bg-brand text-white shadow-button hover:shadow-button-hover hover:bg-brand-light"
-                                }`}
-                            >
-                                {added ? (
-                                    <>
-                                        <span className="hidden sm:inline">✓ Added to Cart!</span>
-                                        <span className="sm:hidden">✓ Added!</span>
-                                    </>
-                                ) : (
-                                    "Add to Cart"
-                                )}
-                            </button>
-
-                            <button
-                                type="button"
-                                onClick={handleBuyNow}
-                                disabled={isOutOfStock || isBuyingNow}
-                                className="w-full py-3.5 sm:py-4 px-3 sm:px-4 rounded-xl sm:rounded-2xl text-sm sm:text-base font-bold text-white bg-gradient-to-r from-indigo-600 via-purple-600 to-indigo-700 hover:from-indigo-700 hover:to-purple-700 shadow-button hover:shadow-button-hover transition-all flex items-center justify-center gap-1.5 sm:gap-2 whitespace-nowrap disabled:opacity-50 cursor-pointer"
-                            >
-                                {isBuyingNow ? (
-                                    <>
-                                        <span className="w-4 h-4 sm:w-5 sm:h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                                        <span className="hidden sm:inline">Opening Checkout...</span>
-                                        <span className="sm:hidden">Opening...</span>
-                                    </>
-                                ) : (
-                                    <>
-                                        <IoFlashOutline size={18} className="animate-pulse" />
-                                        <span>Buy Now</span>
-                                    </>
-                                )}
-                            </button>
-                        </div>
-
-                        {/* Desktop Wishlist Button */}
-                        <button
-                            type="button"
-                            onClick={() =>
-                                toggle(product.id)
-                            }
-                            className={`hidden sm:flex p-4 rounded-2xl border-2 transition-all items-center justify-center ${
-                                inWishlist
-                                    ? "border-red-200 bg-red-50"
-                                    : "border-gray-200 hover:border-brand"
-                            }`}
-                            aria-label="Add to wishlist"
-                        >
-                            {inWishlist ? (
-                                <IoHeart
-                                    size={22}
-                                    className="text-red-500"
-                                />
-                            ) : (
-                                <IoHeartOutline
-                                    size={22}
-                                    className="text-gray-600"
-                                />
-                            )}
-                        </button>
-
-                    </div>
-
-                    {/* Trust badges */}
-                    <div className="grid grid-cols-3 gap-3">
-
-                        {[
-                            {
-                                icon: IoCarOutline,
-                                label: "Free Shipping",
-                                sub: "Orders ₹250+",
-                            },
-                            {
-                                icon: IoRefreshOutline,
-                                label: "Easy Returns",
-                                sub: "30 days",
-                            },
-                            {
-                                icon: IoShieldCheckmarkOutline,
-                                label: "Secure Pay",
-                                sub: "100% safe",
-                            },
-                        ].map((b) => (
-                            <div
-                                key={b.label}
-                                className="flex flex-col items-center text-center p-3 bg-gray-50 rounded-xl"
-                            >
-                                <b.icon
-                                    size={20}
-                                    className="text-brand mb-1"
-                                />
-
-                                <span className="text-[11px] font-semibold text-gray-800">
-                                    {b.label}
-                                </span>
-
-                                <span className="text-[10px] text-muted">
-                                    {b.sub}
-                                </span>
-                            </div>
-                        ))}
-
-                    </div>
-
-                </motion.div>
-            </div>
-
-            {/* Tabs */}
-            <div className="mb-20">
-
-                <div className="flex gap-1 border-b border-gray-200 mb-6">
-
-                    {tabs.map((t) => (
-                        <button
-                            key={t}
-                            onClick={() =>
-                                setActiveTab(t)
-                            }
-                            className={`px-6 py-3 text-sm font-semibold transition-all border-b-2 ${
-                                activeTab === t
-                                    ? "border-brand text-brand"
-                                    : "border-transparent text-muted hover:text-gray-900"
-                            }`}
-                        >
-                            {t}
-                        </button>
-                    ))}
-
-                </div>
-
-                {activeTab === "Description" && (
-                    <div className="prose max-w-3xl text-muted text-sm leading-relaxed">
-                        <p>{product.description}</p>
-                    </div>
-                )}
-
-                {activeTab === "Reviews" && (
-                    <div className="grid grid-cols-1 lg:grid-cols-3 gap-12">
-
-                        <div className="lg:col-span-2 space-y-4">
-
-                            <h3 className="font-heading font-bold text-xl mb-6">
-                                Customer Reviews
-                            </h3>
-
-                            {reviews.map((r) => (
-                                <div
-                                    key={r._id}
-                                    className="bg-white border border-gray-100 rounded-2xl p-5 shadow-sm"
-                                >
-
-                                    <div className="flex items-center gap-2 mb-2">
-
-                                        <div className="flex gap-0.5">
-
-                                            {[...Array(5)].map(
-                                                (_, s) => (
-                                                    <IoStar
-                                                        key={s}
-                                                        size={14}
-                                                        className={
-                                                            s <
-                                                            r.rating
-                                                                ? "text-gold"
-                                                                : "text-gray-200"
-                                                        }
-                                                    />
-                                                )
-                                            )}
-
-                                        </div>
-
-                                        <span className="font-semibold text-sm">
-                                            {r.userName}
-                                        </span>
-
-                                    </div>
-
-                                    <p className="text-sm text-muted">
-                                        {r.review}
-                                    </p>
-
-                                </div>
-                            ))}
-
-                        </div>
-
-                    </div>
-                )}
-
-                {activeTab === "Shipping" && (
-                    <div className="text-sm text-muted space-y-2 max-w-2xl">
-
-                        <p>
-                            • Free standard shipping on orders above ₹250
-                        </p>
-
-                        <p>
-                            • Standard delivery: 5-7 business days
-                        </p>
-
-                        <p>
-                            • Express delivery: 2-3 business days (₹14.99)
-                        </p>
-
-                        <p>
-                            • International shipping available
-                        </p>
-
-                        <p>
-                            •{" "}
-                            <Link
-                                to="/shipping"
-                                className="text-brand underline"
-                            >
-                                View full shipping policy
-                            </Link>
-                        </p>
-
-                    </div>
-                )}
-
-            </div>
-
-            {/* Related */}
-            {related.length > 0 && (
-                <div>
-
-                    <h2 className="font-heading text-2xl md:text-3xl font-bold text-gray-900 mb-8">
-                        You Might Also Like
-                    </h2>
-
-                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4 md:gap-6">
-
-                        {related.map((p, i) => (
-                            <ProductCard
-                                key={p.id}
-                                product={p}
-                                index={i}
-                            />
-                        ))}
-
-                    </div>
-
-                </div>
-            )}
-
-        </div>
-    );
+import { useProductDetail, type ProductReview } from "../hooks/useProductDetail";
+import { Badge, Breadcrumbs, Button, ButtonLink, Container, Price, Section, SectionHeader, Skeleton } from "../components/ui";
+import Gallery from "../components/product/Gallery";
+import ProductRail from "../components/product/ProductRail";
+import { cx, inr } from "../lib/format";
+import { FREE_SHIPPING_ABOVE } from "../config";
+
+/** Remount per product id so selection state resets when navigating between products. */
+const ProductPage: React.FC = () => {
+  const { id = "" } = useParams();
+  return <ProductView key={id} id={id} />;
 };
 
-export default ProductDetail;
+const ProductView: React.FC<{ id: string }> = ({ id }) => {
+  const d = useProductDetail(id);
+  const ctaRef = useRef<HTMLDivElement>(null);
+  const showBar = useStickyBar(ctaRef, !!d.product);
+
+  if (!d.product) return <NotFound />;
+  const p = d.product;
+
+  return (
+    <>
+      <Container className="pb-6 pt-5 md:pt-8">
+        <Breadcrumbs
+          items={[
+            { label: "Shop", to: "/shop" },
+            ...(p.category ? [{ label: p.category, to: `/shop?category=${encodeURIComponent(p.category.toLowerCase())}` }] : []),
+            { label: p.name },
+          ]}
+        />
+
+        {/* grid-cols-1 = minmax(0,1fr): stops the swipe gallery widening the column on mobile */}
+        <div className="mt-5 grid grid-cols-1 gap-8 md:mt-8 md:grid-cols-2 lg:grid-cols-[1.15fr_1fr] lg:gap-14">
+          <Gallery
+            images={d.gallery}
+            alt={p.name}
+            badges={
+              <>
+                {d.discount && !d.isOutOfStock && <Badge tone="coral">−{d.discount}%</Badge>}
+                {p.isNew && <Badge tone="white">New</Badge>}
+              </>
+            }
+          />
+
+          {/* buy box */}
+          <div className="md:sticky md:top-[calc(var(--v2-header-h)+24px)] md:self-start">
+            {p.brand && (
+              <Link
+                to={`/shop?brand=${encodeURIComponent(p.brand.toLowerCase())}`}
+                className="-my-3 inline-block py-3 text-[12px] font-semibold uppercase tracking-[0.12em] text-v2-muted hover:text-v2-plum"
+              >
+                {p.brand}
+              </Link>
+            )}
+            <h1 className="mt-2 text-[28px] leading-[1.1] md:text-[36px]">{p.name}</h1>
+
+            {d.avgRating > 0 && (
+              <a href="#reviews" className="mt-1 inline-flex min-h-11 items-center gap-2 text-[13.5px] text-v2-muted hover:text-v2-ink">
+                <Stars value={d.avgRating} />
+                <span className="font-semibold text-v2-ink">{d.avgRating.toFixed(1)}</span>
+                <span>· {d.reviews.length || p.reviews} reviews</span>
+              </a>
+            )}
+
+            <div className="mt-5 flex flex-wrap items-center gap-3">
+              <Price price={d.price} original={d.original > d.price ? d.original : null} size="lg" />
+            </div>
+
+            <StockLine out={d.isOutOfStock} low={d.isLowStock} stock={d.stock} />
+
+            {p.sortdescription && <p className="mt-5 text-[15px] leading-relaxed text-v2-ink/80">{p.sortdescription}</p>}
+
+            {/* options */}
+            <div className="mt-6 space-y-5">
+              {p.colors?.length > 0 && (
+                <OptionGroup label="Colour" value={d.color}>
+                  <div className="flex flex-wrap gap-2.5">
+                    {p.colors.map((c: { name: string; hex: string }) => (
+                      <button
+                        key={c.name}
+                        type="button"
+                        onClick={() => d.setColor(c.name)}
+                        aria-pressed={d.color === c.name}
+                        aria-label={c.name}
+                        title={c.name}
+                        className={cx(
+                          "h-11 w-11 rounded-full border border-black/10 ring-offset-2 md:h-9 md:w-9 ring-offset-v2-bg transition",
+                          d.color === c.name ? "ring-2 ring-v2-plum" : "hover:ring-2 hover:ring-v2-line",
+                        )}
+                        style={{ backgroundColor: c.hex }}
+                      />
+                    ))}
+                  </div>
+                </OptionGroup>
+              )}
+
+              {p.sizes?.length > 0 && (
+                <OptionGroup label="Size" value={d.size}>
+                  <div className="flex flex-wrap gap-2">
+                    {p.sizes.map((s: string) => (
+                      <button
+                        key={s}
+                        type="button"
+                        onClick={() => d.setSize(s)}
+                        aria-pressed={d.size === s}
+                        className={cx(
+                          "h-11 min-w-12 rounded-full border px-4 text-[13.5px] font-semibold transition-colors md:h-10",
+                          d.size === s ? "border-v2-ink bg-v2-ink text-white" : "border-v2-line bg-v2-surface hover:border-v2-ink/40",
+                        )}
+                      >
+                        {s}
+                      </button>
+                    ))}
+                  </div>
+                </OptionGroup>
+              )}
+            </div>
+
+            {/* actions */}
+            <div ref={ctaRef} className="mt-7">
+              <div className="flex gap-2.5">
+                <Stepper value={d.quantity} onChange={d.setQuantity} disabled={d.isOutOfStock} max={d.stock} />
+                <Button
+                  size="lg"
+                  className="min-w-0 flex-1 px-4 sm:px-8"
+                  onClick={d.addToCart}
+                  loading={d.adding}
+                  disabled={d.isOutOfStock}
+                  variant={d.added ? "secondary" : "primary"}
+                >
+                  {d.added ? <IoCheckmark size={18} /> : <IoBagAddOutline size={18} />}
+                  {d.isOutOfStock ? "Out of stock" : d.added ? "Added to cart" : "Add to cart"}
+                </Button>
+                <button
+                  type="button"
+                  onClick={d.toggleWishlist}
+                  aria-pressed={d.inWishlist}
+                  aria-label={d.inWishlist ? "Remove from wishlist" : "Save to wishlist"}
+                  className={cx(
+                    "flex h-14 w-14 shrink-0 items-center justify-center rounded-full border transition-colors",
+                    d.inWishlist ? "border-v2-coral/40 bg-v2-blush text-v2-coral" : "border-v2-line bg-v2-surface hover:border-v2-ink/30",
+                  )}
+                >
+                  {d.inWishlist ? <IoHeart size={20} /> : <IoHeartOutline size={20} />}
+                </button>
+              </div>
+              {!d.isOutOfStock && (
+                <Button size="lg" variant="accent" block className="mt-2.5" onClick={d.buyNow} loading={d.buying}>
+                  <IoFlashOutline size={18} /> Buy now
+                </Button>
+              )}
+              {!d.isOutOfStock && (
+                <p className="mt-3 text-center text-[13px] text-v2-muted">
+                  Free shipping on orders above {inr(FREE_SHIPPING_ABOVE)} · Cash on delivery available
+                </p>
+              )}
+            </div>
+
+            {/* reassurance */}
+            <ul className="mt-6 grid grid-cols-2 gap-2.5">
+              {[
+                { icon: IoCubeOutline, label: "Discreet, plain packaging" },
+                { icon: IoCardOutline, label: "Neutral billing name" },
+                { icon: IoCashOutline, label: "Cash on delivery" },
+                { icon: IoShieldCheckmarkOutline, label: "100% genuine & sealed" },
+              ].map(({ icon: Icon, label }) => (
+                <li key={label} className="flex items-center gap-2.5 rounded-v2 bg-v2-sunken/70 px-3 py-2.5 text-[13px] font-medium">
+                  <Icon className="shrink-0 text-v2-plum" size={17} />
+                  {label}
+                </li>
+              ))}
+            </ul>
+
+            {/* details */}
+            <div className="mt-8 divide-y divide-v2-line border-y border-v2-line">
+              {p.description && (
+                <Accordion title="Description" defaultOpen>
+                  <p className="whitespace-pre-line">{p.description}</p>
+                </Accordion>
+              )}
+              <Accordion title="Shipping & discreet delivery">
+                <ul className="list-disc space-y-1.5 pl-5">
+                  <li>Ships in a plain outer box with no product names or branding on the label.</li>
+                  <li>Free shipping on orders above {inr(FREE_SHIPPING_ABOVE)}. Cash on delivery available.</li>
+                  <li>Delivery time for your pincode is calculated at checkout.</li>
+                </ul>
+                <p className="mt-3">
+                  See our{" "}
+                  <Link to="/shipping" className="font-semibold text-v2-plum underline-offset-2 hover:underline">
+                    shipping policy
+                  </Link>{" "}
+                  and{" "}
+                  <Link to="/returns" className="font-semibold text-v2-plum underline-offset-2 hover:underline">
+                    returns policy
+                  </Link>
+                  .
+                </p>
+              </Accordion>
+            </div>
+          </div>
+        </div>
+      </Container>
+
+      <Reviews reviews={d.reviews} loading={d.reviewsLoading} avg={d.avgRating} />
+
+      {d.related.length > 0 && (
+        <Section>
+          <Container>
+            <SectionHeader title="You might also like" />
+            <ProductRail products={d.related} label="Related products" />
+          </Container>
+        </Section>
+      )}
+
+      {/* mobile sticky buy bar */}
+      <div
+        className={cx(
+          "fixed inset-x-0 bottom-0 z-[90] border-t border-v2-line bg-v2-bg/95 px-4 pt-3 pb-[calc(0.75rem+env(safe-area-inset-bottom))] backdrop-blur transition-transform duration-300 md:hidden",
+          showBar ? "translate-y-0" : "translate-y-full",
+        )}
+        aria-hidden={!showBar}
+      >
+        <div className="flex items-center gap-3">
+          <div className="min-w-0 flex-1">
+            <p className="truncate text-[13px] text-v2-muted">{p.name}</p>
+            <p className="font-v2-display text-[18px] font-semibold">{inr(d.price)}</p>
+          </div>
+          <Button onClick={d.addToCart} loading={d.adding} disabled={d.isOutOfStock} tabIndex={showBar ? 0 : -1}>
+            {d.isOutOfStock ? "Out of stock" : d.added ? "Added" : "Add to cart"}
+          </Button>
+        </div>
+      </div>
+    </>
+  );
+};
+
+/* ── Pieces ──────────────────────────────────────────────────── */
+
+/** True once the main CTA has scrolled above the viewport (mobile only uses it). */
+function useStickyBar(ref: React.RefObject<HTMLElement | null>, enabled: boolean) {
+  const [show, setShow] = useState(false);
+  useEffect(() => {
+    if (!enabled) return;
+    const check = () => {
+      const el = ref.current;
+      if (el) setShow(el.getBoundingClientRect().bottom < 0);
+    };
+    check();
+    window.addEventListener("scroll", check, { passive: true });
+    window.addEventListener("resize", check);
+    return () => {
+      window.removeEventListener("scroll", check);
+      window.removeEventListener("resize", check);
+    };
+  }, [ref, enabled]);
+
+  // lift the global WhatsApp button above the bar while it's visible
+  useEffect(() => {
+    // the bar itself is md:hidden, so only flag it below 768px
+    document.body.classList.toggle("v2-sticky-bar", show && window.matchMedia("(max-width: 767px)").matches);
+    return () => document.body.classList.remove("v2-sticky-bar");
+  }, [show]);
+  return show;
+}
+
+const StockLine: React.FC<{ out: boolean; low: boolean; stock: number }> = ({ out, low, stock }) => (
+  <p
+    className={cx(
+      "mt-3 inline-flex items-center gap-2 text-[13.5px] font-semibold",
+      out ? "text-v2-muted" : low ? "text-v2-coral" : "text-v2-sage",
+    )}
+  >
+    <span className={cx("h-2 w-2 rounded-full", out ? "bg-v2-muted" : low ? "bg-v2-coral" : "bg-v2-sage")} />
+    {out ? "Out of stock for this option" : low ? `Only ${stock} left` : "In stock, ready to ship"}
+  </p>
+);
+
+const OptionGroup: React.FC<{ label: string; value?: string; children: React.ReactNode }> = ({ label, value, children }) => (
+  <div>
+    <p className="mb-2.5 text-[13px] font-semibold">
+      {label}
+      {value && <span className="ml-1.5 font-normal text-v2-muted">{value}</span>}
+    </p>
+    {children}
+  </div>
+);
+
+const Stepper: React.FC<{ value: number; onChange: (n: number) => void; disabled?: boolean; max: number }> = ({
+  value,
+  onChange,
+  disabled,
+  max,
+}) => (
+  <div className={cx("flex h-14 items-center rounded-full border border-v2-line bg-v2-surface", disabled && "opacity-50")}>
+    <button
+      type="button"
+      onClick={() => onChange(value - 1)}
+      disabled={disabled || value <= 1}
+      aria-label="Decrease quantity"
+      className="flex h-full w-11 items-center justify-center rounded-l-full disabled:text-v2-muted/50"
+    >
+      <IoRemove />
+    </button>
+    <span className="w-6 text-center text-[15px] font-semibold" aria-live="polite" aria-label={`Quantity ${value}`}>
+      {value}
+    </span>
+    <button
+      type="button"
+      onClick={() => onChange(value + 1)}
+      disabled={disabled || value >= max}
+      aria-label="Increase quantity"
+      className="flex h-full w-11 items-center justify-center rounded-r-full disabled:text-v2-muted/50"
+    >
+      <IoAdd />
+    </button>
+  </div>
+);
+
+const Accordion: React.FC<{ title: string; defaultOpen?: boolean; children: React.ReactNode }> = ({
+  title,
+  defaultOpen,
+  children,
+}) => (
+  <details className="group" open={defaultOpen}>
+    <summary className="flex cursor-pointer list-none items-center justify-between py-4 text-[15px] font-semibold [&::-webkit-details-marker]:hidden">
+      {title}
+      <IoChevronDown className="text-v2-muted transition-transform group-open:rotate-180" />
+    </summary>
+    <div className="pb-5 text-[14.5px] leading-relaxed text-v2-ink/80">{children}</div>
+  </details>
+);
+
+const Stars: React.FC<{ value: number; size?: number }> = ({ value, size = 14 }) => (
+  <span className="inline-flex gap-0.5 text-[#F5A524]" aria-label={`${value.toFixed(1)} out of 5 stars`}>
+    {Array.from({ length: 5 }).map((_, i) => (
+      <IoStar key={i} size={size} className={i < Math.round(value) ? "" : "opacity-25"} />
+    ))}
+  </span>
+);
+
+const Reviews: React.FC<{ reviews: ProductReview[]; loading: boolean; avg: number }> = ({ reviews, loading, avg }) => {
+  const [showAll, setShowAll] = useState(false);
+  const dist = [5, 4, 3, 2, 1].map((n) => ({ n, count: reviews.filter((r) => Math.round(r.rating) === n).length }));
+  const shown = showAll ? reviews : reviews.slice(0, 6);
+
+  return (
+    <Section id="reviews" className="scroll-mt-24 border-t border-v2-line bg-v2-surface">
+      <Container>
+        <SectionHeader title="Customer reviews" />
+        {loading ? (
+          <div className="grid gap-4 md:grid-cols-3">
+            {Array.from({ length: 3 }).map((_, i) => (
+              <Skeleton key={i} className="h-32" />
+            ))}
+          </div>
+        ) : reviews.length === 0 ? (
+          <p className="rounded-v2-lg bg-v2-sunken px-5 py-8 text-center text-[15px] text-v2-muted">
+            No reviews yet. Bought this? Your review helps others shop with confidence.
+          </p>
+        ) : (
+          <div className="grid gap-10 lg:grid-cols-[280px_1fr]">
+            <div>
+              <p className="font-v2-display text-[48px] font-semibold leading-none">{avg.toFixed(1)}</p>
+              <div className="mt-2">
+                <Stars value={avg} size={18} />
+              </div>
+              <p className="mt-1 text-[13.5px] text-v2-muted">Based on {reviews.length} reviews</p>
+              <ul className="mt-5 space-y-1.5">
+                {dist.map(({ n, count }) => (
+                  <li key={n} className="flex items-center gap-2 text-[12.5px] text-v2-muted">
+                    <span className="w-3">{n}</span>
+                    <IoStar className="text-[#F5A524]" size={12} />
+                    <span className="h-1.5 flex-1 overflow-hidden rounded-full bg-v2-sunken">
+                      <span className="block h-full rounded-full bg-v2-plum" style={{ width: `${(count / reviews.length) * 100}%` }} />
+                    </span>
+                    <span className="w-6 text-right">{count}</span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+            <div>
+              <ul className="grid gap-4 md:grid-cols-2">
+                {shown.map((r) => (
+                  <li key={r._id} className="rounded-v2-lg border border-v2-line bg-v2-bg p-5">
+                    <Stars value={r.rating} />
+                    <p className="mt-3 text-[14.5px] leading-relaxed">{r.review}</p>
+                    <p className="mt-3 text-[13px] font-semibold">{r.userName || "Customer"}</p>
+                  </li>
+                ))}
+              </ul>
+              {reviews.length > 6 && (
+                <Button variant="secondary" className="mt-5" onClick={() => setShowAll((s) => !s)}>
+                  {showAll ? "Show fewer" : `Show all ${reviews.length} reviews`}
+                </Button>
+              )}
+            </div>
+          </div>
+        )}
+      </Container>
+    </Section>
+  );
+};
+
+const NotFound: React.FC = () => (
+  <Container className="py-24 text-center">
+    <p className="font-v2-display text-[28px] font-semibold">We couldn’t find that product</p>
+    <p className="mx-auto mt-2 max-w-sm text-[15px] text-v2-muted">It may have sold out or been removed. Have a look at what’s in stock.</p>
+    <ButtonLink to="/shop" className="mt-6">
+      Browse all products
+    </ButtonLink>
+  </Container>
+);
+
+export default ProductPage;
