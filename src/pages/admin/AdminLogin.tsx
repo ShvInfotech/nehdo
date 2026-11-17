@@ -1,10 +1,15 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { IoMailOutline, IoLockClosedOutline, IoAlertCircleOutline, IoEyeOutline, IoEyeOffOutline } from 'react-icons/io5';
+import { IoMailOutline, IoLockClosedOutline, IoAlertCircleOutline, IoEyeOutline, IoEyeOffOutline, IoArrowBack } from 'react-icons/io5';
 import { useAdminAuth } from '../../context/AdminAuthContext';
 import { toast } from 'react-toastify';
 import { getDeviceToken } from '../../services/firebase';
 
+/*
+ * Removed from the previous screen: a visible "Demo: admin@… / password" line
+ * (credentials shown publicly on the live site), and "Remember me" /
+ * "Forgot password?" controls that had no behaviour behind them.
+ */
 const AdminLogin = () => {
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
@@ -46,135 +51,100 @@ const AdminLogin = () => {
         }
     };
 
-    return (
-        <div className="min-h-screen bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900 flex flex-col justify-center py-12 sm:px-6 lg:px-8 font-sans relative overflow-hidden">
-            {/* Background decoration */}
-            <div className="absolute inset-0 overflow-hidden">
-                <div className="absolute -top-40 -right-40 w-80 h-80 bg-brand/10 rounded-full blur-3xl"></div>
-                <div className="absolute -bottom-40 -left-40 w-80 h-80 bg-brand/5 rounded-full blur-3xl"></div>
-            </div>
+    const field =
+        "block h-12 w-full rounded-xl border border-gray-200 bg-white pl-11 text-gray-900 placeholder:text-gray-400 transition focus:border-brand focus:outline-none focus:ring-4 focus:ring-brand/10";
 
-            <div className="relative z-10">
-                <div className="sm:mx-auto sm:w-full sm:max-w-md">
-                    <div className="flex justify-center mb-6">
-                        <div className="w-16 h-16 bg-brand/20 rounded-2xl flex items-center justify-center">
-                            <img src={`${import.meta.env.BASE_URL}images/nehdo-logo.png`} alt="NEHDO" className="h-8" onError={(e) => {
-                                (e.target as HTMLImageElement).style.display = 'none';
-                                (e.target as HTMLImageElement).parentElement!.innerHTML = '<span class="text-2xl font-bold text-white">N</span>';
-                            }} />
-                        </div>
-                    </div>
-                    <h2 className="mt-4 text-center text-3xl font-heading font-extrabold text-white">
-                        Admin Portal
-                    </h2>
-                    <p className="mt-2 text-center text-sm text-gray-400">
-                        Sign in to manage your store
+    return (
+        <div className="grid min-h-screen bg-[#f6f4f8] lg:grid-cols-[1fr_1.1fr]">
+            {/* Brand panel */}
+            <div className="relative hidden overflow-hidden bg-brand-dark p-12 text-white lg:flex lg:flex-col lg:justify-between">
+                <div aria-hidden className="absolute -right-24 -top-24 h-96 w-96 rounded-full bg-brand blur-2xl" />
+                <div aria-hidden className="absolute -bottom-32 left-10 h-80 w-80 rounded-full bg-accent/40 blur-3xl" />
+                <img src={`${import.meta.env.BASE_URL}images/nehdo-logo.png`} alt="Nehdo" className="relative h-10 w-auto self-start" />
+                <div className="relative max-w-md">
+                    <p className="text-[12px] font-semibold uppercase tracking-[0.16em] text-white/50">Admin portal</p>
+                    <h1 className="mt-3 text-[40px] leading-[1.05] text-white">Run your store from one place.</h1>
+                    <p className="mt-4 text-[15px] leading-relaxed text-white/70">
+                        Orders, products, customers, banners and reports — everything you need to keep Nehdo running smoothly.
                     </p>
                 </div>
+                <p className="relative text-xs text-white/40">Authorised staff only.</p>
+            </div>
 
-                <div className="mt-8 sm:mx-auto sm:w-full sm:max-w-md">
-                    <div className="bg-white/5 backdrop-blur-xl py-8 px-4 shadow-2xl sm:rounded-2xl sm:px-10 border border-white/10">
-                        {error && (
-                            <div className="mb-6 flex items-center gap-3 p-4 bg-red-500/10 border border-red-500/20 rounded-xl">
-                                <IoAlertCircleOutline className="h-5 w-5 text-red-400 flex-shrink-0" />
-                                <p className="text-sm text-red-300 font-medium">{error}</p>
-                            </div>
-                        )}
+            {/* Form */}
+            <div className="flex items-center justify-center px-5 py-12 sm:px-8">
+                <div className="w-full max-w-[400px]">
+                    <img src={`${import.meta.env.BASE_URL}images/nehdo-logo.png`} alt="Nehdo" className="mb-8 h-9 w-auto lg:hidden" />
+                    <h2 className="text-[28px]">Sign in</h2>
+                    <p className="mt-1 text-sm text-gray-500">Use your admin account to continue.</p>
 
-                        <form className="space-y-6" onSubmit={handleLogin}>
-                            <div>
-                                <label className="block text-sm font-semibold text-gray-300 mb-2">
-                                    Email address
-                                </label>
-                                <div className="relative">
-                                    <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                                        <IoMailOutline className="h-5 w-5 text-gray-500" />
-                                    </div>
-                                    <input
-                                        type="email"
-                                        required
-                                        value={email}
-                                        onChange={(e) => { setEmail(e.target.value); setError(''); }}
-                                        className="block w-full pl-10 pr-3 py-3 bg-white/5 border border-white/10 rounded-xl text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-brand/50 focus:border-brand/50 sm:text-sm transition-all"
-                                        placeholder="admin@nehdo.com"
-                                    />
-                                </div>
-                            </div>
-
-                            <div>
-                                <label className="block text-sm font-semibold text-gray-300 mb-2">
-                                    Password
-                                </label>
-                                <div className="relative">
-                                    <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                                        <IoLockClosedOutline className="h-5 w-5 text-gray-500" />
-                                    </div>
-                                    <input
-                                        type={showPassword ? 'text' : 'password'}
-                                        required
-                                        value={password}
-                                        onChange={(e) => { setPassword(e.target.value); setError(''); }}
-                                        className="block w-full pl-10 pr-12 py-3 bg-white/5 border border-white/10 rounded-xl text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-brand/50 focus:border-brand/50 sm:text-sm transition-all"
-                                        placeholder="••••••••"
-                                    />
-                                    <button
-                                        type="button"
-                                        onClick={() => setShowPassword(!showPassword)}
-                                        className="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-500 hover:text-gray-300 transition-colors"
-                                    >
-                                        {showPassword ? <IoEyeOffOutline className="h-5 w-5" /> : <IoEyeOutline className="h-5 w-5" />}
-                                    </button>
-                                </div>
-                            </div>
-
-                            <div className="flex items-center justify-between">
-                                <div className="flex items-center">
-                                    <input
-                                        id="remember-me"
-                                        name="remember-me"
-                                        type="checkbox"
-                                        className="h-4 w-4 text-brand focus:ring-brand border-gray-600 rounded bg-white/10"
-                                    />
-                                    <label htmlFor="remember-me" className="ml-2 block text-sm text-gray-400">
-                                        Remember me
-                                    </label>
-                                </div>
-
-                                <div className="text-sm">
-                                    <a href="#" className="font-semibold text-brand hover:text-brand-light transition-colors">
-                                        Forgot password?
-                                    </a>
-                                </div>
-                            </div>
-
-                            <div>
-                                <button
-                                    type="submit"
-                                    disabled={isLoading}
-                                    className="w-full flex justify-center items-center gap-2 py-3 px-4 border border-transparent rounded-xl shadow-lg text-sm font-bold text-white bg-brand hover:bg-brand-light focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-brand transition-all disabled:opacity-60 disabled:cursor-not-allowed"
-                                >
-                                    {isLoading ? (
-                                        <>
-                                            <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                                            Signing in...
-                                        </>
-                                    ) : (
-                                        'Sign in'
-                                    )}
-                                </button>
-                            </div>
-                        </form>
-
-                        <div className="mt-6 pt-6 border-t border-white/10">
-                            <p className="text-xs text-gray-500 text-center">
-                                Demo: admin@nehdo.com / Admin@123
-                            </p>
+                    {error && (
+                        <div role="alert" className="mt-6 flex items-start gap-3 rounded-xl border border-rose-200 bg-rose-50 p-3.5">
+                            <IoAlertCircleOutline className="mt-0.5 h-5 w-5 shrink-0 text-rose-500" />
+                            <p className="text-sm font-medium text-rose-700">{error}</p>
                         </div>
-                    </div>
+                    )}
 
-                    <p className="mt-6 text-center text-xs text-gray-600">
-                        <a href="/" className="hover:text-gray-400 transition-colors">← Back to Store</a>
-                    </p>
+                    <form className="mt-7 space-y-5" onSubmit={handleLogin}>
+                        <label className="block">
+                            <span className="mb-1.5 block text-[13px] font-semibold text-gray-700">Email address</span>
+                            <span className="relative block">
+                                <IoMailOutline className="pointer-events-none absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 text-gray-400" />
+                                <input
+                                    type="email"
+                                    required
+                                    autoComplete="username"
+                                    value={email}
+                                    onChange={(e) => { setEmail(e.target.value); setError(''); }}
+                                    className={`${field} pr-4`}
+                                    placeholder="you@company.com"
+                                />
+                            </span>
+                        </label>
+
+                        <label className="block">
+                            <span className="mb-1.5 block text-[13px] font-semibold text-gray-700">Password</span>
+                            <span className="relative block">
+                                <IoLockClosedOutline className="pointer-events-none absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 text-gray-400" />
+                                <input
+                                    type={showPassword ? 'text' : 'password'}
+                                    required
+                                    autoComplete="current-password"
+                                    value={password}
+                                    onChange={(e) => { setPassword(e.target.value); setError(''); }}
+                                    className={`${field} pr-12`}
+                                    placeholder="••••••••"
+                                />
+                                <button
+                                    type="button"
+                                    onClick={() => setShowPassword(!showPassword)}
+                                    aria-label={showPassword ? "Hide password" : "Show password"}
+                                    className="absolute right-1 top-1/2 flex h-10 w-10 -translate-y-1/2 items-center justify-center rounded-lg text-gray-400 hover:text-gray-600"
+                                >
+                                    {showPassword ? <IoEyeOffOutline className="h-5 w-5" /> : <IoEyeOutline className="h-5 w-5" />}
+                                </button>
+                            </span>
+                        </label>
+
+                        <button
+                            type="submit"
+                            disabled={isLoading}
+                            className="flex h-12 w-full items-center justify-center gap-2 rounded-xl bg-brand text-sm font-semibold text-white shadow-button transition hover:bg-brand-dark disabled:cursor-not-allowed disabled:opacity-60"
+                        >
+                            {isLoading ? (
+                                <>
+                                    <span className="h-4 w-4 animate-spin rounded-full border-2 border-white/30 border-t-white" />
+                                    Signing in…
+                                </>
+                            ) : (
+                                'Sign in'
+                            )}
+                        </button>
+                    </form>
+
+                    <a href="/" className="mt-8 inline-flex min-h-[44px] items-center gap-1.5 text-sm font-medium text-gray-500 hover:text-gray-800">
+                        <IoArrowBack /> Back to store
+                    </a>
                 </div>
             </div>
         </div>
