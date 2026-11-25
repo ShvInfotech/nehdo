@@ -145,6 +145,12 @@ const AdminProducts = () => {
     }, [searchTerm, categoryFilter, statusFilter]);
 
     useEffect(() => {
+        if (currentPage > totalPages) {
+            setCurrentPage(totalPages);
+        }
+    }, [currentPage, totalPages]);
+
+    useEffect(() => {
         if (isEditing) {
             if (isInitialEditLoad.current) {
                 isInitialEditLoad.current = false;
@@ -387,7 +393,10 @@ const AdminProducts = () => {
   
     const fetchProducts = async () => {
         try {
-            const res = await apiRequest("/admin/api/v1/product/get","GET");
+            const res = await apiRequest("/admin/api/v1/product/get", "GET", null, {
+                page: 1,
+                limit: 10000,
+            });
             setProductList(res.products || []);
         } catch (error) {
             console.log(error);
