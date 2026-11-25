@@ -1,53 +1,59 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { toast } from "react-toastify";
 import { onMessage } from "firebase/messaging";
 import { messagingReady, getDeviceToken } from "../services/firebase";
 import { apiRequest } from "../services/apiService";
-import { Link, useLocation, Outlet, useNavigate } from "react-router-dom";
+import { Link, NavLink, useLocation, Outlet, useNavigate } from "react-router-dom";
 import {
     IoGridOutline, IoCubeOutline, IoLayersOutline, IoCartOutline,
     IoPeopleOutline, IoStatsChartOutline, IoSettingsOutline,
-    IoMenuOutline, IoLogOutOutline, IoPricetagOutline, IoDocumentTextOutline,
-    IoImagesOutline, IoStarOutline, IoAirplaneOutline, IoCardOutline,
-    IoCalculatorOutline, IoChevronDownOutline
+    IoMenuOutline, IoLogOutOutline, IoPricetagOutline,
+    IoImagesOutline, IoStarOutline, IoChevronDownOutline, IoCloseOutline,
+    IoCloseCircleOutline, IoBarChartOutline, IoTicketOutline, IoStorefrontOutline,
+    IoOpenOutline,
 } from "react-icons/io5";
 import { useAdminAuth } from "../context/AdminAuthContext";
+import { cx } from "./admin/AdminUI";
 
-const sidebarLinks = [
+type NavItem = { name: string; path: string; icon: React.ComponentType<{ size?: number; className?: string }> };
+
+const sidebarLinks: { title: string; items: NavItem[] }[] = [
     {
         title: "Overview", items: [
             { name: "Dashboard", path: "/admin", icon: IoGridOutline },
         ]
     },
     {
-        title: "E-Commerce", items: [
+        title: "Sales", items: [
+            { name: "Orders", path: "/admin/orders", icon: IoCartOutline },
+            { name: "Cancelled Orders", path: "/admin/canceledorders", icon: IoCloseCircleOutline },
+            { name: "Customers", path: "/admin/customers", icon: IoPeopleOutline },
+        ]
+    },
+    {
+        title: "Catalogue", items: [
             { name: "Products", path: "/admin/products", icon: IoCubeOutline },
             { name: "Categories", path: "/admin/categories", icon: IoLayersOutline },
             { name: "Brands", path: "/admin/brands", icon: IoPricetagOutline },
-            { name: "Orders", path: "/admin/orders", icon: IoCartOutline },
-            { name: "Cancelled Orders", path: "/admin/Canceledorders", icon: IoCartOutline },
-            { name: "Customers", path: "/admin/customers", icon: IoPeopleOutline },
             { name: "Inventory", path: "/admin/inventory", icon: IoStatsChartOutline },
         ]
     },
     {
-        title: "Marketing & Content", items: [
-            { name: "Coupons", path: "/admin/coupons", icon: IoPricetagOutline },
-            // { name: "CMS Pages", path: "/admin/cms", icon: IoDocumentTextOutline },
+        title: "Marketing", items: [
+            { name: "Coupons", path: "/admin/coupons", icon: IoTicketOutline },
             { name: "Banners", path: "/admin/banners", icon: IoImagesOutline },
             { name: "Reviews", path: "/admin/reviews", icon: IoStarOutline },
         ]
     },
     {
-        title: "Configuration", items: [
-            // { name: "Shipping", path: "/admin/shipping", icon: IoAirplaneOutline },
-            // { name: "Payment", path: "/admin/payment", icon: IoCardOutline },
-            // { name: "Tax / GST", path: "/admin/tax", icon: IoCalculatorOutline },
-            { name: "Reports", path: "/admin/reports", icon: IoStatsChartOutline },
+        title: "Insights & setup", items: [
+            { name: "Reports", path: "/admin/reports", icon: IoBarChartOutline },
             { name: "Settings", path: "/admin/settings", icon: IoSettingsOutline },
         ]
     }
 ];
+
+const allItems = sidebarLinks.flatMap((s) => s.items);
 
 const AdminLayout = () => {
     const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -55,6 +61,7 @@ const AdminLayout = () => {
     const location = useLocation();
     const navigate = useNavigate();
     const { adminUser, adminLogout } = useAdminAuth();
+    const profileRef = useRef<HTMLDivElement>(null);
 
     // Register / sync admin device token with backend and listen for new order notifications
     useEffect(() => {
@@ -96,143 +103,213 @@ const AdminLayout = () => {
             if (unsubscribe) unsubscribe();
         };
     }, [navigate]);
+
+    // close drawers on navigation
+    useEffect(() => {
+        setSidebarOpen(false);
+        setProfileDropdown(false);
+    }, [location.pathname]);
+
+    // mobile drawer: lock page scroll, Escape closes
+    useEffect(() => {
+        if (!sidebarOpen) return;
+        const prev = document.body.style.overflow;
+        document.body.style.overflow = "hidden";
+        const onKey = (e: KeyboardEvent) => e.key === "Escape" && setSidebarOpen(false);
+        window.addEventListener("keydown", onKey);
+        return () => {
+            document.body.style.overflow = prev;
+            window.removeEventListener("keydown", onKey);
+        };
+    }, [sidebarOpen]);
+
+    // profile menu: click outside / Escape closes
+    useEffect(() => {
+        if (!profileDropdown) return;
+        const onDown = (e: MouseEvent) => {
+            if (profileRef.current && !profileRef.current.contains(e.target as Node)) setProfileDropdown(false);
+        };
+        const onKey = (e: KeyboardEvent) => e.key === "Escape" && setProfileDropdown(false);
+        document.addEventListener("mousedown", onDown);
+        window.addEventListener("keydown", onKey);
+        return () => {
+            document.removeEventListener("mousedown", onDown);
+            window.removeEventListener("keydown", onKey);
+        };
+    }, [profileDropdown]);
+
     const handleLogout = () => {
         adminLogout();
         navigate('/admin/login', { replace: true });
     };
 
+    const path = location.pathname.toLowerCase().replace(/\/$/, "") || "/admin";
+    const current = allItems.find((i) => i.path === path) || allItems.find((i) => i.path !== "/admin" && path.startsWith(i.path));
+    const initial = adminUser?.name?.charAt(0)?.toUpperCase() || "A";
+
+    const sidebar = (
+        <div className="flex h-full flex-col bg-brand-dark text-white">
+            <div className="flex h-16 shrink-0 items-center justify-between px-5">
+                <Link to="/admin" className="flex items-center gap-2.5">
+                    <img src={`${import.meta.env.BASE_URL}images/nehdo-logo.png`} alt="Nehdo" className="h-7 w-auto" />
+                    <span className="rounded-md bg-white/10 px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-[0.14em] text-white/80">Admin</span>
+                </Link>
+                <button
+                    type="button"
+                    onClick={() => setSidebarOpen(false)}
+                    className="flex h-10 w-10 items-center justify-center rounded-lg text-white/70 hover:bg-white/10 lg:hidden"
+                    aria-label="Close menu"
+                >
+                    <IoCloseOutline size={22} />
+                </button>
+            </div>
+
+            <nav aria-label="Admin" className="custom-scrollbar flex-1 overflow-y-auto px-3 pb-4 pt-2">
+                {sidebarLinks.map((section) => (
+                    <div key={section.title} className="mb-5">
+                        <p className="mb-1.5 px-3 text-[11px] font-semibold uppercase tracking-[0.12em] text-white/40">{section.title}</p>
+                        <ul className="space-y-0.5">
+                            {section.items.map((link) => {
+                                const Icon = link.icon;
+                                return (
+                                    <li key={link.path}>
+                                        <NavLink
+                                            to={link.path}
+                                            end={link.path === "/admin"}
+                                            className={({ isActive }) =>
+                                                cx(
+                                                    "group relative flex min-h-[42px] items-center gap-3 rounded-xl px-3 text-[14px] font-medium transition-colors",
+                                                    isActive ? "bg-white/[0.12] text-white" : "text-white/65 hover:bg-white/[0.06] hover:text-white",
+                                                )
+                                            }
+                                        >
+                                            {({ isActive }) => (
+                                                <>
+                                                    {isActive && <span className="absolute left-0 top-1/2 h-5 w-1 -translate-y-1/2 rounded-r-full bg-accent" />}
+                                                    <Icon size={18} className={isActive ? "text-accent-light" : "text-white/50 group-hover:text-white/80"} />
+                                                    {link.name}
+                                                </>
+                                            )}
+                                        </NavLink>
+                                    </li>
+                                );
+                            })}
+                        </ul>
+                    </div>
+                ))}
+            </nav>
+
+            <div className="space-y-0.5 border-t border-white/10 p-3">
+                <a
+                    href="/"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex min-h-[42px] items-center gap-3 rounded-xl px-3 text-[14px] font-medium text-white/65 hover:bg-white/[0.06] hover:text-white"
+                >
+                    <IoStorefrontOutline size={18} className="text-white/50" />
+                    View store
+                    <IoOpenOutline size={14} className="ml-auto text-white/40" />
+                </a>
+                <button
+                    type="button"
+                    onClick={handleLogout}
+                    className="flex min-h-[42px] w-full items-center gap-3 rounded-xl px-3 text-[14px] font-medium text-rose-300 hover:bg-rose-500/10 hover:text-rose-200"
+                >
+                    <IoLogOutOutline size={18} />
+                    Sign out
+                </button>
+            </div>
+        </div>
+    );
+
     return (
-        <div className="flex h-screen bg-gray-50 overflow-hidden font-sans">
-            {/* Mobile Sidebar Overlay */}
-            {sidebarOpen && (
+        <div className="flex h-screen overflow-hidden bg-[#f6f4f8] font-sans">
+            {/* Desktop sidebar */}
+            <aside className="hidden w-[260px] shrink-0 lg:block">{sidebar}</aside>
+
+            {/* Mobile drawer */}
+            <div className={cx("fixed inset-0 z-50 lg:hidden", sidebarOpen ? "pointer-events-auto" : "pointer-events-none")} aria-hidden={!sidebarOpen}>
                 <div
-                    className="fixed inset-0 bg-black/50 z-40 lg:hidden"
+                    className={cx("absolute inset-0 bg-brand-dark/50 backdrop-blur-[2px] transition-opacity", sidebarOpen ? "opacity-100" : "opacity-0")}
                     onClick={() => setSidebarOpen(false)}
                 />
-            )}
+                <aside
+                    role="dialog"
+                    aria-modal="true"
+                    aria-label="Admin menu"
+                    className={cx(
+                        "absolute inset-y-0 left-0 w-[86vw] max-w-[300px] shadow-2xl transition-transform duration-300",
+                        sidebarOpen ? "translate-x-0" : "-translate-x-full",
+                    )}
+                >
+                    {sidebar}
+                </aside>
+            </div>
 
-            {/* Sidebar */}
-            <aside className={`fixed lg:static inset-y-0 left-0 w-64 bg-white border-r border-gray-200 z-50 transform transition-transform duration-300 flex flex-col ${sidebarOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0"}`}>
-                <div className="h-16 flex items-center px-6 border-b border-gray-100 flex-shrink-0">
-                    <Link to="/admin" className="flex items-center gap-2">
-                        <img src={`${import.meta.env.BASE_URL}images/nehdo-logo.png`} alt="NEHDO" className="h-6" />
-                        <span className="font-heading font-bold text-xs uppercase tracking-widest text-brand mt-1 border-l pl-2 border-gray-300">Admin</span>
-                    </Link>
-                </div>
-
-                <div className="flex-1 overflow-y-auto py-4 px-3 custom-scrollbar">
-                    {sidebarLinks.map((section, idx) => (
-                        <div key={idx} className="mb-6">
-                            <h3 className="px-3 text-xs font-bold uppercase tracking-wider text-gray-400 mb-2">
-                                {section.title}
-                            </h3>
-                            <div className="space-y-1">
-                                {section.items.map((link) => {
-                                    const Icon = link.icon;
-                                    const isActive = location.pathname === link.path;
-                                    return (
-                                        <Link
-                                            key={link.path}
-                                            to={link.path}
-                                            onClick={() => setSidebarOpen(false)}
-                                            className={`flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${isActive
-                                                    ? "bg-brand/10 text-brand"
-                                                    : "text-gray-600 hover:bg-gray-100 hover:text-gray-900"
-                                                }`}
-                                        >
-                                            <Icon size={18} className={isActive ? "text-brand" : "text-gray-400"} />
-                                            {link.name}
-                                        </Link>
-                                    );
-                                })}
-                            </div>
-                        </div>
-                    ))}
-                </div>
-
-                <div className="p-4 border-t border-gray-100 space-y-1">
-                    <Link to="/" className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium text-gray-600 hover:bg-gray-100 hover:text-gray-900 transition-colors">
-                        <IoLogOutOutline size={18} className="text-gray-400" />
-                        Back to Store
-                    </Link>
+            {/* Main */}
+            <div className="flex min-w-0 flex-1 flex-col overflow-hidden">
+                <header className="sticky top-0 z-30 flex h-16 shrink-0 items-center gap-3 border-b border-gray-200/70 bg-white/85 px-3 backdrop-blur-md sm:px-6">
                     <button
-                        onClick={handleLogout}
-                        className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium text-red-600 hover:bg-red-50 hover:text-red-700 transition-colors"
-                    >
-                        <IoLogOutOutline size={18} className="text-red-400" />
-                        Logout
-                    </button>
-                </div>
-            </aside>
-
-            {/* Main Content */}
-            <main className="flex-1 flex flex-col min-w-0 overflow-hidden">
-                {/* Top Header */}
-                <header className="h-16 bg-white border-b border-gray-200 flex items-center justify-between px-4 sm:px-6 flex-shrink-0 z-10">
-                    <button
+                        type="button"
                         onClick={() => setSidebarOpen(true)}
-                        className="p-2 -ml-2 text-gray-600 hover:bg-gray-100 rounded-lg lg:hidden"
+                        className="flex h-11 w-11 items-center justify-center rounded-xl text-gray-600 hover:bg-gray-100 lg:hidden"
+                        aria-label="Open menu"
                     >
                         <IoMenuOutline size={24} />
                     </button>
 
-                    <div className="flex-1" />
+                    <div className="min-w-0 flex-1">
+                        <p className="truncate font-heading text-[17px] font-semibold text-gray-900">{current?.name || "Admin"}</p>
+                    </div>
 
-                    <div className="relative">
+                    <div className="relative" ref={profileRef}>
                         <button
-                            onClick={() => setProfileDropdown(!profileDropdown)}
-                            className="flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-gray-50 transition-colors"
+                            type="button"
+                            onClick={() => setProfileDropdown((o) => !o)}
+                            aria-expanded={profileDropdown}
+                            aria-haspopup="menu"
+                            className="flex min-h-[44px] items-center gap-2.5 rounded-xl px-2 hover:bg-gray-100"
                         >
-                            <div className="w-8 h-8 rounded-full bg-brand text-white flex items-center justify-center font-bold text-sm overflow-hidden">
+                            <span className="flex h-9 w-9 items-center justify-center overflow-hidden rounded-full bg-brand text-sm font-bold text-white">
                                 {adminUser?.profile ? (
-                                    <img
-                                        src={adminUser?.profile}
-                                        alt={adminUser?.name || "Admin"}
-                                        className="w-full h-full object-cover"
-                                    />
+                                    <img src={adminUser.profile} alt="" className="h-full w-full object-cover" />
                                 ) : (
-                                    adminUser?.name?.charAt(0)?.toUpperCase() || "A"
+                                    initial
                                 )}
-                            </div>
-                            <div className="hidden sm:block text-left">
-                                <span className="text-sm font-semibold text-gray-700 block">{adminUser?.name || 'Admin User'}</span>
-                                <span className="text-xs text-gray-400 block">{adminUser?.role || 'Super Admin'}</span>
-                            </div>
-                            <IoChevronDownOutline size={14} className="text-gray-400 hidden sm:block" />
+                            </span>
+                            <span className="hidden text-left sm:block">
+                                <span className="block text-[13px] font-semibold text-gray-800">{adminUser?.name || "Admin"}</span>
+                                <span className="block text-[11px] text-gray-500">{adminUser?.role || "Administrator"}</span>
+                            </span>
+                            <IoChevronDownOutline size={14} className={cx("hidden text-gray-400 transition-transform sm:block", profileDropdown && "rotate-180")} />
                         </button>
 
                         {profileDropdown && (
-                            <>
-                                <div className="fixed inset-0 z-10" onClick={() => setProfileDropdown(false)} />
-                                <div className="absolute right-0 mt-2 w-48 bg-white rounded-xl shadow-lg border border-gray-100 z-20 py-2">
-                                    <div className="px-4 py-2 border-b border-gray-100">
-                                        <p className="text-sm font-semibold text-gray-900">{adminUser?.name}</p>
-                                        <p className="text-xs text-gray-500">{adminUser?.email}</p>
-                                    </div>
-                                    <Link
-                                        to="/admin/settings"
-                                        className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 transition-colors"
-                                        onClick={() => setProfileDropdown(false)}
-                                    >
-                                        Settings
-                                    </Link>
-                                    <button
-                                        onClick={handleLogout}
-                                        className="w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-red-50 transition-colors"
-                                    >
-                                        Sign out
-                                    </button>
+                            <div role="menu" className="absolute right-0 z-40 mt-2 w-60 overflow-hidden rounded-2xl border border-gray-200/70 bg-white py-1.5 shadow-card-hover">
+                                <div className="border-b border-gray-100 px-4 py-3">
+                                    <p className="truncate text-sm font-semibold text-gray-900">{adminUser?.name || "Admin"}</p>
+                                    <p className="truncate text-xs text-gray-500">{adminUser?.email}</p>
                                 </div>
-                            </>
+                                <Link to="/admin/settings" role="menuitem" className="flex min-h-[42px] items-center gap-2.5 px-4 text-sm text-gray-700 hover:bg-gray-50">
+                                    <IoSettingsOutline size={16} className="text-gray-400" /> Settings
+                                </Link>
+                                <a href="/" target="_blank" rel="noopener noreferrer" role="menuitem" className="flex min-h-[42px] items-center gap-2.5 px-4 text-sm text-gray-700 hover:bg-gray-50">
+                                    <IoStorefrontOutline size={16} className="text-gray-400" /> View store
+                                </a>
+                                <button type="button" role="menuitem" onClick={handleLogout} className="flex min-h-[42px] w-full items-center gap-2.5 px-4 text-left text-sm text-rose-600 hover:bg-rose-50">
+                                    <IoLogOutOutline size={16} /> Sign out
+                                </button>
+                            </div>
                         )}
                     </div>
                 </header>
 
-                {/* Page Content */}
-                <div className="flex-1 overflow-auto p-4 sm:p-6 lg:p-8 bg-gray-50">
-                    <Outlet />
-                </div>
-            </main>
+                <main className="flex-1 overflow-auto">
+                    <div className="mx-auto w-full max-w-[1440px] px-4 py-5 sm:px-6 sm:py-6 lg:px-8 lg:py-8">
+                        <Outlet />
+                    </div>
+                </main>
+            </div>
         </div>
     );
 };

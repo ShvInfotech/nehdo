@@ -1,13 +1,16 @@
 import React, { useEffect, useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link } from "react-router-dom";
 import {
-  IoTrendingUpOutline,
   IoBagCheckOutline,
   IoPeopleOutline,
   IoWalletOutline,
-  IoArrowForwardOutline,
+  IoReceiptOutline,
+  IoCubeOutline,
+  IoBarChartOutline,
 } from "react-icons/io5";
 import { apiRequest } from "../../services/apiService";
+import { useAdminAuth } from "../../context/AdminAuthContext";
+import { Card, CardHeader, EmptyState, PageHeader, StatCard, StatusBadge, cx, inr } from "../../components/admin/AdminUI";
 
 interface RevenueAnalytics {
   label: string;
@@ -42,26 +45,27 @@ interface DashboardData {
   recentOrders: RecentOrder[];
 }
 
+const RANGES = [
+  { value: "today", label: "Today" },
+  { value: "yesterday", label: "Yesterday" },
+  { value: "last7days", label: "Last 7 days" },
+  { value: "last30days", label: "Last 30 days" },
+];
+
+const formatDate = (date: string) =>
+  new Date(date).toLocaleString("en-IN", { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" });
+
 const AdminDashboard = () => {
   const [range, setRange] = useState("today");
-
   const [dashboard, setDashboard] = useState<DashboardData | null>(null);
-
   const [loading, setLoading] = useState(false);
-  const navigate = useNavigate()
-  // =====================================================
-  // FETCH DASHBOARD
-  // =====================================================
+  const { adminUser } = useAdminAuth();
 
+  // same endpoint + params as before
   const fetchDashboard = async (selectedRange: string) => {
     try {
       setLoading(true);
-
-      const response = await apiRequest(
-        `/admin/api/v1/dashboard/get?range=${selectedRange}`,
-        "GET",
-      );
-
+      const response = await apiRequest(`/admin/api/v1/dashboard/get?range=${selectedRange}`, "GET");
       if (response?.success) {
         setDashboard(response.dashboard);
       }
@@ -72,346 +76,203 @@ const AdminDashboard = () => {
     }
   };
 
-  // =====================================================
-  // INITIAL LOAD
-  // =====================================================
-
   useEffect(() => {
     fetchDashboard(range);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // =====================================================
-  // RANGE CHANGE
-  // =====================================================
-
-  const handleRangeChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
-    const selectedRange = e.target.value;
-
-    setRange(selectedRange);
-
-    fetchDashboard(selectedRange);
+  const changeRange = (value: string) => {
+    setRange(value);
+    fetchDashboard(value);
   };
 
-  // =====================================================
-  // STATS
-  // =====================================================
-
-  const stats = [
-    {
-      title: "Total Revenue",
-      value: `₹${Number(dashboard?.totalRevenue || 0).toLocaleString("en-IN")}`,
-      icon: IoWalletOutline,
-      color: "text-green-600",
-      bg: "bg-green-100",
-    },
-
-    {
-      title: "Total Orders",
-      value: Number(dashboard?.totalOrders || 0).toLocaleString("en-IN"),
-      icon: IoBagCheckOutline,
-      color: "text-blue-600",
-      bg: "bg-blue-100",
-    },
-
-    {
-      title: "New Customers",
-      value: Number(dashboard?.newCustomers || 0).toLocaleString("en-IN"),
-      icon: IoPeopleOutline,
-      color: "text-orange-600",
-      bg: "bg-orange-100",
-    },
-  ];
-
-  // =====================================================
-  // STATUS LABEL
-  // =====================================================
-
-  const formatStatus = (status: string) => {
-    return status
-      .replace(/_/g, " ")
-      .replace(/\b\w/g, (char) => char.toUpperCase());
-  };
-
-  // =====================================================
-  // DATE FORMAT
-  // =====================================================
-
-  const formatDate = (date: string) => {
-    const orderDate = new Date(date);
-
-    return orderDate.toLocaleString("en-IN", {
-      day: "2-digit",
-      month: "short",
-      hour: "2-digit",
-      minute: "2-digit",
-    });
-  };
+  const revenue = dashboard?.revenueAnalytics || [];
+  const maxRevenue = Math.max(...revenue.map((r) => r.revenue), 1);
+  const avgOrder = dashboard?.totalOrders ? (dashboard.totalRevenue || 0) / dashboard.totalOrders : 0;
+  const rangeLabel = RANGES.find((r) => r.value === range)?.label.toLowerCase();
 
   return (
     <div className="space-y-6">
-      {/* =================================================
-                HEADER
-            ================================================= */}
+      <PageHeader
+        title={`Welcome back${adminUser?.name ? `, ${adminUser.name.split(" ")[0]}` : ""}`}
+        description={`Here’s how the store is doing — ${rangeLabel}.`}
+        actions={
+          <div role="tablist" aria-label="Date range" className="flex rounded-xl border border-gray-200 bg-white p-1 shadow-card">
+            {RANGES.map((r) => (
+              <button
+                key={r.value}
+                role="tab"
+                aria-selected={range === r.value}
+                onClick={() => changeRange(r.value)}
+                className={cx(
+                  "min-h-[36px] rounded-lg px-3 text-[13px] font-semibold transition-colors",
+                  range === r.value ? "bg-brand text-white" : "text-gray-600 hover:bg-gray-100",
+                )}
+              >
+                {r.label}
+              </button>
+            ))}
+          </div>
+        }
+      />
 
-      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-        <div>
-          <h1 className="font-heading text-2xl font-bold text-gray-900">
-            Dashboard
-          </h1>
-
-          <p className="text-sm text-gray-500 mt-1">
-            Welcome back, Admin. Here's what's happening with your store today.
-          </p>
-        </div>
-
-        <div className="flex gap-2">
-          <select
-            value={range}
-            onChange={handleRangeChange}
-            className="px-4 py-2 bg-white border border-gray-200 rounded-lg text-sm font-semibold text-gray-700 focus:outline-none focus:border-brand"
-          >
-            <option value="today">Today</option>
-
-            <option value="yesterday">Yesterday</option>
-
-            <option value="last7days">Last 7 Days</option>
-
-            <option value="last30days">Last 30 Days</option>
-          </select>
-        </div>
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
+        <StatCard label="Revenue" value={inr(dashboard?.totalRevenue)} icon={IoWalletOutline} tone="green" loading={loading} />
+        <StatCard
+          label="Orders"
+          value={Number(dashboard?.totalOrders || 0).toLocaleString("en-IN")}
+          icon={IoBagCheckOutline}
+          tone="plum"
+          loading={loading}
+        />
+        <StatCard label="Average order value" value={inr(avgOrder)} icon={IoReceiptOutline} tone="blue" loading={loading} />
+        <StatCard
+          label="New customers"
+          value={Number(dashboard?.newCustomers || 0).toLocaleString("en-IN")}
+          icon={IoPeopleOutline}
+          tone="coral"
+          loading={loading}
+        />
       </div>
 
-      {/* =================================================
-                QUICK STATS
-            ================================================= */}
-
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-        {stats.map((stat, i) => (
-          <div
-            key={i}
-            className="bg-white p-5 rounded-2xl shadow-sm border border-gray-100 flex flex-col justify-between hover:shadow-md transition-shadow"
-          >
-            <div className="flex items-center justify-between mb-4">
-              <div className={`p-3 rounded-xl ${stat.bg} ${stat.color}`}>
-                <stat.icon size={22} />
-              </div>
-            </div>
-
+      <div className="grid grid-cols-1 gap-6 xl:grid-cols-3">
+        {/* Revenue chart */}
+        <Card className="xl:col-span-2">
+          <CardHeader title="Revenue" action={{ label: "Full report", to: "/admin/reports" }} />
+          {revenue.length ? (
             <div>
-              <h3 className="text-2xl font-bold text-gray-900">
-                {loading ? "..." : stat.value}
-              </h3>
-
-              <p className="text-sm font-medium text-gray-500 mt-1">
-                {stat.title}
-              </p>
-            </div>
-          </div>
-        ))}
-      </div>
-
-      {/* =================================================
-                CHART + TOP PRODUCTS
-            ================================================= */}
-
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Revenue Analytics */}
-
-        <div className="lg:col-span-2 bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
-          <div className="flex items-center justify-between mb-6">
-            <h2 className="text-lg font-bold text-gray-900">
-              Revenue Analytics
-            </h2>
-
-            <button onClick={()=> navigate('/admin/reports')} className="text-sm font-semibold text-brand hover:underline">
-              View Report
-            </button>
-          </div>
-
-          <div className="h-64 flex items-end justify-between gap-2 border-b border-gray-100 pb-2">
-            {dashboard?.revenueAnalytics?.length ? (
-              dashboard.revenueAnalytics.map((item, i) => {
-                const maxRevenue = Math.max(
-                  ...dashboard.revenueAnalytics.map((item) => item.revenue),
-                  1,
-                );
-
-                const height = (item.revenue / maxRevenue) * 100;
-
-                return (
-                  <div
-                    key={i}
-                    className="w-full bg-brand/10 hover:bg-brand/30 rounded-t-md relative group cursor-pointer transition-colors"
-                    style={{
-                      height: `${Math.max(height, 5)}%`,
-                    }}
-                  >
-                    <div className="absolute -top-8 left-1/2 -translate-x-1/2 bg-gray-900 text-white text-xs font-bold py-1 px-2 rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap">
-                      ₹{Number(item.revenue).toLocaleString("en-IN")}
-                    </div>
-                  </div>
-                );
-              })
-            ) : (
-              <div className="w-full h-full flex items-center justify-center text-sm text-gray-400">
-                No revenue data
-              </div>
-            )}
-          </div>
-
-          <div className="flex justify-between text-xs font-semibold text-gray-400 mt-3 px-1">
-            {dashboard?.revenueAnalytics?.length
-              ? dashboard.revenueAnalytics.map((item, i) => (
-                  <span key={i}>{item.label}</span>
-                ))
-              : null}
-          </div>
-        </div>
-
-        {/* =================================================
-                    TOP PRODUCTS
-                ================================================= */}
-
-        <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
-          <div className="flex items-center justify-between mb-6">
-            <h2 className="text-lg font-bold text-gray-900">Top Products</h2>
-
-            <Link
-              to="/admin/products"
-              className="text-sm font-semibold text-brand hover:underline"
-            >
-              View All
-            </Link>
-          </div>
-
-          <div className="space-y-4">
-            {dashboard?.topProducts?.length ? (
-              dashboard.topProducts.map((prod) => (
-                <div
-                  key={prod.productId}
-                  className="flex items-center justify-between"
-                >
-                  <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 bg-gray-100 rounded-lg overflow-hidden">
-                      {prod.image && (
-                        <img
-                          src={prod.image}
-                          alt={prod.name}
-                          className="w-full h-full object-cover"
-                        />
-                      )}
-                    </div>
-
-                    <div>
-                      <p className="text-sm font-bold text-gray-900 line-clamp-1">
-                        {prod.name}
-                      </p>
-
-                      <p className="text-xs font-medium text-gray-500">
-                        {prod.sales} sales
-                      </p>
-                    </div>
-                  </div>
-
-                  <span className="text-sm font-bold text-green-600">
-                    ₹{Number(prod.revenue).toLocaleString("en-IN")}
-                  </span>
+              <div className="relative h-64">
+                {/* gridlines */}
+                <div aria-hidden className="absolute inset-0 flex flex-col justify-between">
+                  {[0, 1, 2, 3].map((g) => (
+                    <div key={g} className="border-t border-dashed border-gray-100" />
+                  ))}
                 </div>
-              ))
-            ) : (
-              <p className="text-sm text-gray-400 text-center py-5">
-                No products found
-              </p>
-            )}
-          </div>
-        </div>
+                <div className="relative flex h-full items-end gap-1.5 sm:gap-2.5">
+                  {revenue.map((item, i) => {
+                    const h = Math.max((item.revenue / maxRevenue) * 100, 3);
+                    return (
+                      <div key={i} className="group relative flex h-full flex-1 items-end">
+                        <div
+                          className="w-full rounded-t-lg bg-brand/80 transition-colors group-hover:bg-brand"
+                          style={{ height: `${h}%` }}
+                          role="img"
+                          aria-label={`${item.label}: ${inr(item.revenue)}`}
+                        />
+                        <span className="pointer-events-none absolute -top-9 left-1/2 z-10 -translate-x-1/2 whitespace-nowrap rounded-lg bg-gray-900 px-2 py-1 text-xs font-semibold text-white opacity-0 shadow-lg transition-opacity group-hover:opacity-100">
+                          {inr(item.revenue)}
+                        </span>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+              <div className="mt-3 flex gap-1.5 sm:gap-2.5">
+                {revenue.map((item, i) => (
+                  <span key={i} className="flex-1 truncate text-center text-[11px] font-medium text-gray-400">
+                    {item.label}
+                  </span>
+                ))}
+              </div>
+            </div>
+          ) : (
+            <EmptyState icon={IoBarChartOutline} title={loading ? "Loading…" : "No revenue in this period"} />
+          )}
+        </Card>
+
+        {/* Top products */}
+        <Card>
+          <CardHeader title="Top products" action={{ label: "All products", to: "/admin/products" }} />
+          {dashboard?.topProducts?.length ? (
+            <ol className="space-y-3">
+              {dashboard.topProducts.map((prod, i) => (
+                <li key={prod.productId} className="flex items-center gap-3">
+                  <span className="w-5 shrink-0 text-center text-xs font-bold text-gray-400">{i + 1}</span>
+                  <span className="h-11 w-11 shrink-0 overflow-hidden rounded-xl bg-gray-100">
+                    {prod.image && <img src={prod.image} alt="" className="h-full w-full object-cover" />}
+                  </span>
+                  <span className="min-w-0 flex-1">
+                    <span className="block truncate text-sm font-semibold text-gray-900">{prod.name}</span>
+                    <span className="block text-xs text-gray-500">{prod.sales} sold</span>
+                  </span>
+                  <span className="text-sm font-semibold text-gray-900">{inr(prod.revenue)}</span>
+                </li>
+              ))}
+            </ol>
+          ) : (
+            <EmptyState icon={IoCubeOutline} title={loading ? "Loading…" : "No sales yet"} />
+          )}
+        </Card>
       </div>
 
-      {/* =================================================
-                RECENT ORDERS
-            ================================================= */}
-
-      <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
-        <div className="p-6 border-b border-gray-100 flex items-center justify-between">
-          <h2 className="text-lg font-bold text-gray-900">Recent Orders</h2>
-
-          <Link
-            to="/admin/orders"
-            className="flex items-center gap-1 text-sm font-semibold text-brand hover:underline"
-          >
-            View All
-            <IoArrowForwardOutline />
-          </Link>
+      {/* Recent orders */}
+      <Card padded={false} className="overflow-hidden">
+        <div className="px-5 pt-5 md:px-6 md:pt-6">
+          <CardHeader title="Recent orders" action={{ label: "All orders", to: "/admin/orders" }} />
         </div>
 
-        <div className="overflow-x-auto">
-          <table className="w-full text-sm text-left">
-            <thead className="bg-gray-50 text-gray-500 font-semibold uppercase text-xs tracking-wider">
-              <tr>
-                <th className="px-6 py-4">Order ID</th>
-
-                <th className="px-6 py-4">Customer</th>
-
-                <th className="px-6 py-4">Date</th>
-
-                <th className="px-6 py-4">Status</th>
-
-                <th className="px-6 py-4">Total</th>
-              </tr>
-            </thead>
-
-            <tbody className="divide-y divide-gray-100">
-              {dashboard?.recentOrders?.length ? (
-                dashboard.recentOrders.map((order) => (
-                  <tr
-                    key={order.orderId}
-                    className="hover:bg-gray-50 transition-colors"
-                  >
-                    <td className="px-6 py-4 font-semibold text-brand cursor-pointer hover:underline">
-                      #{order.id}
-                    </td>
-
-                    <td className="px-6 py-4 font-medium text-gray-900">
-                      {order.customer}
-                    </td>
-
-                    <td className="px-6 py-4 text-gray-500">
-                      {formatDate(order.date)}
-                    </td>
-
-                    <td className="px-6 py-4">
-                      <span
-                        className={`px-2.5 py-1 rounded-full text-xs font-semibold ${
-                          order.status === "delivered"
-                            ? "bg-green-100 text-green-700"
-                            : order.status === "cancelled"
-                              ? "bg-red-100 text-red-700"
-                              : "bg-orange-100 text-orange-700"
-                        }`}
-                      >
-                        {formatStatus(order.status)}
-                      </span>
-                    </td>
-
-                    <td className="px-6 py-4 font-bold text-gray-900">
-                      ₹{Number(order.total).toLocaleString("en-IN")}
-                    </td>
+        {dashboard?.recentOrders?.length ? (
+          <>
+            {/* table ≥ md */}
+            <div className="hidden overflow-x-auto md:block">
+              <table className="w-full text-left text-sm">
+                <thead className="border-y border-gray-100 bg-gray-50/70 text-[12px] font-semibold uppercase tracking-wider text-gray-500">
+                  <tr>
+                    <th className="px-6 py-3">Order</th>
+                    <th className="px-6 py-3">Customer</th>
+                    <th className="px-6 py-3">Date</th>
+                    <th className="px-6 py-3">Status</th>
+                    <th className="px-6 py-3 text-right">Total</th>
                   </tr>
-                ))
-              ) : (
-                <tr>
-                  <td
-                    colSpan={5}
-                    className="px-6 py-10 text-center text-gray-400"
-                  >
-                    No recent orders found
-                  </td>
-                </tr>
-              )}
-            </tbody>
-          </table>
-        </div>
-      </div>
+                </thead>
+                <tbody className="divide-y divide-gray-100">
+                  {dashboard.recentOrders.map((order) => (
+                    <tr key={order.orderId} className="transition-colors hover:bg-gray-50/70">
+                      <td className="px-6 py-3.5 font-mono text-[13px] font-medium text-brand">#{order.id}</td>
+                      <td className="px-6 py-3.5">
+                        <span className="block font-medium text-gray-900">{order.customer}</span>
+                        <span className="block text-xs text-gray-500">{order.email}</span>
+                      </td>
+                      <td className="px-6 py-3.5 text-gray-500">{formatDate(order.date)}</td>
+                      <td className="px-6 py-3.5">
+                        <StatusBadge status={order.status} />
+                      </td>
+                      <td className="px-6 py-3.5 text-right font-semibold text-gray-900">{inr(order.total)}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+
+            {/* cards < md */}
+            <ul className="divide-y divide-gray-100 border-t border-gray-100 md:hidden">
+              {dashboard.recentOrders.map((order) => (
+                <li key={order.orderId} className="flex items-start justify-between gap-3 px-5 py-4">
+                  <div className="min-w-0">
+                    <p className="font-mono text-[13px] font-medium text-brand">#{order.id}</p>
+                    <p className="mt-0.5 truncate text-sm font-medium text-gray-900">{order.customer}</p>
+                    <p className="text-xs text-gray-500">{formatDate(order.date)}</p>
+                  </div>
+                  <div className="flex shrink-0 flex-col items-end gap-1.5">
+                    <span className="text-sm font-semibold text-gray-900">{inr(order.total)}</span>
+                    <StatusBadge status={order.status} />
+                  </div>
+                </li>
+              ))}
+            </ul>
+          </>
+        ) : (
+          <EmptyState icon={IoBagCheckOutline} title={loading ? "Loading…" : "No recent orders"} />
+        )}
+      </Card>
+
+      <p className="text-center text-xs text-gray-400">
+        Need more detail? Open{" "}
+        <Link to="/admin/reports" className="font-semibold text-brand hover:underline">
+          Reports
+        </Link>
+        .
+      </p>
     </div>
   );
 };

@@ -1,170 +1,227 @@
-import { useEffect, useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
-import { motion, AnimatePresence } from "framer-motion";
-import { IoTrashOutline, IoRemoveOutline, IoAddOutline, IoArrowForward, IoBagOutline, IoFlashOutline } from "react-icons/io5";
-import { useCart } from "../context/CartContext";
-import Breadcrumb from "../components/Breadcrumb";
-import { useAuth } from "../context/AuthContext";
-import { triggerMagicCheckout } from "../utils/magicCheckout";
-import { toast } from "react-toastify";
+import React from "react";
+import { Link } from "react-router-dom";
+import { AnimatePresence, motion } from "framer-motion";
+import { IoAdd, IoArrowForward, IoBagHandleOutline, IoCubeOutline, IoRemove, IoTrashOutline } from "react-icons/io5";
+import { useCart, type CartItem } from "../context/CartContext";
+import { useCartCheckout, useCartLines } from "../hooks/useCheckout";
+import { useTrendingProducts } from "../hooks/useProducts";
+import { Breadcrumbs, Button, ButtonLink, Container, Img, Section, SectionHeader, Spinner } from "../components/ui";
+import ProductRail from "../components/product/ProductRail";
+import { FreeShippingBar, PaymentMarks, SummaryRow, variantLabel } from "../components/checkout/Parts";
+import { FREE_SHIPPING_ABOVE } from "../config";
+import { cx, inr } from "../lib/format";
 
-const Cart = () => {
-    const { items, removeItem, updateQuantity, subtotal, itemCount, clearCart } = useCart();
-    const { user, setSession } = useAuth();
-    const [isCheckingOut, setIsCheckingOut] = useState(false);
-    const navigate = useNavigate();
+const CartPage: React.FC = () => {
+  const { items, subtotal, itemCount } = useCart();
+  const { checkout, checkingOut } = useCartCheckout();
+  const lines = useCartLines();
 
-    useEffect(() => {
-        sessionStorage.removeItem('appliedCoupon');
-        sessionStorage.removeItem('shippingCharge');
-    }, []);
+  if (items.length === 0) return <EmptyCart />;
 
-    const finalTotal = subtotal;
+  const savings = items.reduce(
+    (s, i) => s + (i.originalPrice && i.originalPrice > i.price ? (i.originalPrice - i.price) * i.quantity : 0),
+    0,
+  );
+  const freeShipping = subtotal >= FREE_SHIPPING_ABOVE;
 
-    if (items.length === 0)
-        return (
-            <div className="max-w-[1440px] mx-auto px-4 md:px-8 lg:px-16 py-20 text-center">
-                <motion.div initial={{ scale: 0 }} animate={{ scale: 1 }} transition={{ type: "spring" }} >
-                    <div className="w-24 h-24 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-6">
-                        <IoBagOutline size={40} className="text-gray-400" />
-                    </div>
-                    <h2 className="font-heading text-2xl font-bold text-gray-900 mb-3"> Your cart is empty </h2>
-                    <p className="text-muted mb-6"> Looks like you haven't added anything yet </p>
-                    <Link to="/shop" className="inline-flex items-center gap-2 bg-brand text-white px-8 py-4 rounded-2xl font-semibold hover:bg-brand-light transition-colors shadow-button" >
-                        Continue Shopping <IoArrowForward size={18} />
-                    </Link>
-                </motion.div>
-            </div>
-        );
+  return (
+    <>
+      <Container className="pb-28 pt-5 md:pb-16 md:pt-8">
+        <Breadcrumbs items={[{ label: "Cart" }]} />
+        <h1 className="mt-5 text-[32px] md:text-[44px]">
+          Your cart <span className="text-v2-muted">({itemCount})</span>
+        </h1>
 
-    return (
-        <div className="max-w-[1440px] mx-auto px-4 md:px-8 lg:px-16 py-8">
-            <div className="mb-6">
-                <Breadcrumb items={[{ label: "Cart" }]} />
-            </div>
+        <div className="mt-6 grid grid-cols-1 gap-8 lg:mt-8 lg:grid-cols-[1fr_380px] lg:gap-12">
+          <div>
+            <FreeShippingBar subtotal={subtotal} />
+            <ul className="mt-4 divide-y divide-v2-line rounded-v2-lg border border-v2-line bg-v2-surface">
+              <AnimatePresence initial={false}>
+                {items.map((item) => (
+                  <Line
+                    key={item._id}
+                    item={item}
+                    pending={!!lines.pending[item._id]}
+                    onQty={(q) => lines.setQty(item._id, q)}
+                    onRemove={() => lines.remove(item._id)}
+                  />
+                ))}
+              </AnimatePresence>
+            </ul>
+            <Link to="/shop" className="mt-1 inline-flex min-h-11 items-center gap-1.5 text-[14px] font-semibold text-v2-plum hover:underline">
+              Continue shopping <IoArrowForward />
+            </Link>
+          </div>
 
-            <h1 className="font-heading text-3xl md:text-4xl font-bold text-gray-900 mb-8">
-                Shopping Cart
-                <span className="text-muted text-xl font-normal">({itemCount} items)</span>
-            </h1>
-
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-                {/* Cart Items */}
-                <div className="lg:col-span-2 space-y-4">
-                    <AnimatePresence>
-                        {items.map((item) => (
-                            <motion.div key={`${item.productId}-${item.size}-${item.color}`} layout exit={{ opacity: 0, x: -50, height: 0 }} className="flex gap-4 md:gap-6 bg-white border border-gray-100 rounded-2xl p-4 md:p-5 shadow-card" >
-                                <Link to={`/product/${item.productId}`} className="flex-shrink-0 w-24 h-28 md:w-28 md:h-32 rounded-xl overflow-hidden bg-gray-100" >
-                                    <img src={item.image} alt={item.name} className="w-full h-full object-cover hover:scale-105 transition-transform" />
-                                </Link>
-
-                                <div className="flex-1 min-w-0 flex flex-col justify-between">
-                                    <div>
-                                        <p className="text-[11px] text-muted font-medium uppercase tracking-wider">{item.brand}</p>
-
-                                        <Link to={`/product/${item.productId}`} className="font-heading font-semibold text-sm md:text-base text-gray-900 hover:text-brand transition-colors truncate block" >
-                                            {item.name}
-                                        </Link>
-
-                                        <p className="text-xs text-muted mt-0.5"> Size: {item.size} · Color: {item.color} </p>
-                                    </div>
-
-                                    <div className="flex items-center justify-between mt-3">
-                                        <div className="flex items-center border border-gray-200 rounded-lg overflow-hidden">
-                                            <button onClick={() => updateQuantity(item._id, item.quantity - 1)} className="px-3 py-2 hover:bg-gray-100 transition-colors" >
-                                                <IoRemoveOutline size={14} />
-                                            </button>
-
-                                            <span className="px-3 py-2 text-sm font-semibold"> {item.quantity} </span>
-
-                                            <button onClick={() => updateQuantity(item._id, item.quantity + 1)} className="px-3 py-2 hover:bg-gray-100 transition-colors" >
-                                                <IoAddOutline size={14} />
-                                            </button>
-                                        </div>
-
-                                        <div className="flex items-center gap-4">
-                                            <span className="font-heading font-bold text-base text-accent"> ₹{(item.price * item.quantity).toFixed(2)} </span>
-
-                                            <button onClick={() => removeItem(item._id)} className="p-2 rounded-lg text-gray-400 hover:text-red-500 hover:bg-red-50 transition-all" >
-                                                <IoTrashOutline size={18} />
-                                            </button>
-                                        </div>
-                                    </div>
-                                </div>
-                            </motion.div>
-                        ))}
-                    </AnimatePresence>
+          {/* summary */}
+          <aside aria-label="Order summary" className="lg:sticky lg:top-[calc(var(--v2-header-h)+24px)] lg:self-start">
+            <div className="rounded-v2-xl bg-v2-surface p-6 shadow-v2">
+              <h2 className="text-[20px]">Order summary</h2>
+              <dl className="mt-5 space-y-3">
+                <SummaryRow label={`Subtotal (${itemCount} ${itemCount === 1 ? "item" : "items"})`} value={inr(subtotal)} />
+                {savings > 0 && <SummaryRow label="You save" value={<span className="text-v2-sage">−{inr(savings)}</span>} />}
+                <SummaryRow
+                  label="Shipping"
+                  value={freeShipping ? <span className="font-semibold text-v2-sage">Free*</span> : "At checkout"}
+                  muted={!freeShipping}
+                />
+                <SummaryRow label="Coupons" value="Apply at checkout" muted />
+                <div className="border-t border-v2-line pt-3">
+                  <SummaryRow label="Estimated total" value={inr(subtotal)} strong />
                 </div>
-
-                {/* Order Summary */}
-                <div>
-                    <div className="sticky top-24 bg-white border border-gray-100 rounded-2xl shadow-card p-6">
-                        <h2 className="font-heading font-bold text-lg text-gray-900 mb-5"> Order Summary </h2>
-
-                        <div className="space-y-3 text-sm mb-5">
-                            <div className="flex justify-between">
-                                <span className="text-muted">Subtotal</span>
-                                <span className="font-semibold"> ₹{subtotal.toFixed(2)} </span>
-                            </div>
-                        </div>
-
-                        <div className="h-px bg-gray-200 mb-5" />
-
-                        <div className="flex justify-between mb-6">
-                            <span className="font-heading font-bold text-lg"> Total </span>
-                            <span className="font-heading font-bold text-xl text-brand"> ₹{finalTotal.toFixed(2)} </span>
-                        </div>
-
-                        <button
-                            type="button"
-                            disabled={isCheckingOut}
-                            onClick={() => {
-                                setIsCheckingOut(true);
-                                triggerMagicCheckout({
-                                    items,
-                                    user,
-                                    onSuccess: (res) => {
-                                        setIsCheckingOut(false);
-                                        if (res.accessToken && res.user) {
-                                            setSession(res.user, res.accessToken);
-                                        }
-                                        clearCart();
-                                        sessionStorage.removeItem("appliedCoupon");
-                                        sessionStorage.removeItem("shippingCharge");
-                                        toast.success("Order placed successfully!");
-                                        navigate("/order-confirmation");
-                                    },
-                                    onError: () => {
-                                        setIsCheckingOut(false);
-                                    },
-                                    onClose: () => {
-                                        setIsCheckingOut(false);
-                                    }
-                                });
-                            }}
-                            className="flex items-center justify-center gap-2 w-full py-4 bg-gradient-to-r from-indigo-600 via-purple-600 to-indigo-700 hover:from-indigo-700 hover:to-purple-700 text-white text-center rounded-2xl font-bold text-base shadow-button hover:shadow-button-hover transition-all cursor-pointer disabled:opacity-60"
-                        >
-                            {isCheckingOut ? (
-                                <>
-                                    <span className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                                    <span>Opening Magic Checkout...</span>
-                                </>
-                            ) : (
-                                <>
-                                    <IoFlashOutline size={20} className="animate-pulse" />
-                                    <span>Proceed to Magic Checkout ⚡</span>
-                                </>
-                            )}
-                        </button>
-
-                        <Link to="/shop" className="block text-center text-sm text-muted hover:text-brand mt-4 transition-colors" >
-                            ← Continue Shopping
-                        </Link>
-                    </div>
-                </div>
+              </dl>
+              <Button size="lg" block className="mt-6" onClick={checkout} loading={checkingOut}>
+                {checkingOut ? "Opening secure checkout…" : "Checkout securely"}
+              </Button>
+              <p className="mt-3 text-center text-[12.5px] text-v2-muted">
+                Pay by UPI, card or net banking. Cash on delivery where available.
+                {freeShipping && " *Free shipping applies to serviceable pincodes."}
+              </p>
+              <PaymentMarks className="mt-5" />
             </div>
+            <p className="mt-4 flex items-start gap-2.5 rounded-v2-lg bg-v2-lilac/60 p-4 text-[13.5px]">
+              <IoCubeOutline className="mt-0.5 shrink-0 text-v2-plum" size={18} />
+              Arrives in a plain box with no product names on the label, billed under a neutral name.
+            </p>
+          </aside>
         </div>
-    );
+      </Container>
+
+      {/* mobile checkout bar */}
+      <div className="fixed inset-x-0 bottom-0 z-[90] border-t border-v2-line bg-v2-bg/95 px-4 pt-3 pb-[calc(0.75rem+env(safe-area-inset-bottom))] backdrop-blur lg:hidden">
+        <div className="flex items-center gap-3">
+          <div className="flex-1">
+            <p className="text-[12px] text-v2-muted">Estimated total</p>
+            <p className="font-v2-display text-[19px] font-semibold">{inr(subtotal)}</p>
+          </div>
+          <Button onClick={checkout} loading={checkingOut}>
+            Checkout
+          </Button>
+        </div>
+      </div>
+      <StickyBarClass />
+    </>
+  );
 };
 
-export default Cart;
+const Line: React.FC<{
+  item: CartItem;
+  pending: boolean;
+  onQty: (q: number) => void;
+  onRemove: () => void;
+}> = ({ item, pending, onQty, onRemove }) => {
+  const variant = variantLabel(item.size, item.color);
+  return (
+    <motion.li
+      layout
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0, height: 0 }}
+      className={cx("flex gap-4 p-4 sm:p-5", pending && "opacity-60")}
+    >
+      <Link to={`/product/${item.productId}`} className="shrink-0">
+        <Img src={item.image} alt={item.name} frameClassName="h-[104px] w-[84px] rounded-v2 sm:h-[120px] sm:w-[96px]" />
+      </Link>
+      <div className="flex min-w-0 flex-1 flex-col">
+        <div className="flex items-start justify-between gap-3">
+          <div className="min-w-0">
+            {item.brand && (
+              <p className="text-[11.5px] font-semibold uppercase tracking-[0.1em] text-v2-muted">{item.brand}</p>
+            )}
+            <Link to={`/product/${item.productId}`} className="line-clamp-2 text-[15px] font-medium leading-snug hover:text-v2-plum">
+              {item.name}
+            </Link>
+            {variant && <p className="mt-0.5 text-[13px] text-v2-muted">{variant}</p>}
+          </div>
+          <p className="shrink-0 text-right font-v2-display text-[16px] font-semibold">{inr(item.price * item.quantity)}</p>
+        </div>
+        <div className="mt-auto flex flex-wrap items-center justify-between gap-x-3 gap-y-1 pt-3">
+          <div className="flex h-11 items-center rounded-full border border-v2-line md:h-10">
+            <button
+              type="button"
+              onClick={() => onQty(item.quantity - 1)}
+              disabled={pending}
+              aria-label={item.quantity === 1 ? `Remove ${item.name}` : "Decrease quantity"}
+              className="flex h-full w-11 items-center justify-center rounded-l-full hover:bg-v2-sunken md:w-10"
+            >
+              {item.quantity === 1 ? <IoTrashOutline size={15} /> : <IoRemove />}
+            </button>
+            <span className="flex w-7 justify-center text-[14px] font-semibold" aria-live="polite">
+              {pending ? <Spinner className="h-3.5 w-3.5" /> : item.quantity}
+            </span>
+            <button
+              type="button"
+              onClick={() => onQty(item.quantity + 1)}
+              disabled={pending}
+              aria-label="Increase quantity"
+              className="flex h-full w-11 items-center justify-center rounded-r-full hover:bg-v2-sunken md:w-10"
+            >
+              <IoAdd />
+            </button>
+          </div>
+          <div className="flex items-center gap-1 sm:gap-3">
+            {item.quantity > 1 && <span className="hidden text-[12.5px] text-v2-muted sm:inline">{inr(item.price)} each</span>}
+            <button
+              type="button"
+              onClick={onRemove}
+              disabled={pending}
+              className="-my-2 px-1 py-3 text-[13px] font-semibold text-v2-muted underline-offset-2 hover:text-v2-coral hover:underline"
+            >
+              Remove
+            </button>
+          </div>
+        </div>
+      </div>
+    </motion.li>
+  );
+};
+
+/** Lift the global WhatsApp button above the mobile checkout bar. */
+const StickyBarClass: React.FC = () => {
+  React.useEffect(() => {
+    const mq = window.matchMedia("(max-width: 1023px)");
+    const sync = () => document.body.classList.toggle("v2-sticky-bar", mq.matches);
+    sync();
+    mq.addEventListener("change", sync);
+    return () => {
+      mq.removeEventListener("change", sync);
+      document.body.classList.remove("v2-sticky-bar");
+    };
+  }, []);
+  return null;
+};
+
+const EmptyCart: React.FC = () => {
+  const { products, loading } = useTrendingProducts(10);
+  return (
+    <>
+      <Container className="py-16 text-center md:py-24">
+        <span className="mx-auto flex h-20 w-20 items-center justify-center rounded-full bg-v2-lilac text-v2-plum">
+          <IoBagHandleOutline size={34} />
+        </span>
+        <h1 className="mt-6 text-[30px] md:text-[38px]">Your cart is empty</h1>
+        <p className="mx-auto mt-2 max-w-sm text-[15px] text-v2-muted">
+          Nothing here yet. Browse bestsellers or start with a collection made for you.
+        </p>
+        <div className="mt-7 flex flex-wrap justify-center gap-2.5">
+          <ButtonLink to="/shop" size="lg">
+            Start shopping <IoArrowForward />
+          </ButtonLink>
+          <ButtonLink to="/shop?filter=trending" size="lg" variant="secondary">
+            Bestsellers
+          </ButtonLink>
+        </div>
+      </Container>
+      {(loading || products.length > 0) && (
+        <Section className="border-t border-v2-line">
+          <Container>
+            <SectionHeader title="Popular right now" />
+            <ProductRail products={products} loading={loading} label="Popular products" />
+          </Container>
+        </Section>
+      )}
+    </>
+  );
+};
+
+export default CartPage;

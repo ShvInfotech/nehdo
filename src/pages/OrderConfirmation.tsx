@@ -1,57 +1,65 @@
-import React, { useEffect } from "react";
-import { Link } from "react-router-dom";
+import React from "react";
 import { motion } from "framer-motion";
-import { IoCheckmarkCircle, IoBagHandleOutline, IoArrowForward } from "react-icons/io5";
+import { IoArrowForward, IoCheckmark, IoCubeOutline, IoReceiptOutline, IoSearchOutline } from "react-icons/io5";
+import { useLastOrder } from "../hooks/useCheckout";
+import { ButtonLink, Container } from "../components/ui";
 
-const OrderConfirmation = () => {
-    // Retrieve real order number or fallback
-    const savedOrderId = localStorage.getItem("orderId");
-    const orderNumber = savedOrderId || `ORD-2026-${Math.floor(Math.random() * 10000).toString().padStart(4, '0')}`;
+/*
+ * old claimed "We've sent a confirmation email" — the magic-checkout completion
+ * handler on the server sends no email, so v2 doesn't promise one.
+ */
+const NEXT = [
+  { icon: IoReceiptOutline, title: "Order confirmed", desc: "Your order is saved to your account." },
+  { icon: IoCubeOutline, title: "Packed discreetly", desc: "Plain outer box, no product names on the label." },
+  { icon: IoSearchOutline, title: "Track anytime", desc: "Follow progress from My Orders." },
+];
 
-    return (
-        <div className="max-w-[1440px] mx-auto px-4 py-20 min-h-[80vh] flex flex-col items-center justify-center text-center">
-            <motion.div 
-                initial={{ scale: 0 }} 
-                animate={{ scale: 1 }} 
-                transition={{ type: "spring", stiffness: 200, damping: 20 }}
-                className="w-24 h-24 bg-green-100 text-green-500 rounded-full flex items-center justify-center mb-8"
-            >
-                <IoCheckmarkCircle size={48} />
-            </motion.div>
+const OrderConfirmationPage: React.FC = () => {
+  const { orderNumber } = useLastOrder();
+  return (
+    <Container className="py-14 text-center md:py-20">
+      <div className="mx-auto max-w-[760px]">
+      <motion.span
+        initial={{ scale: 0.6, opacity: 0 }}
+        animate={{ scale: 1, opacity: 1 }}
+        transition={{ type: "spring", stiffness: 260, damping: 18 }}
+        className="mx-auto flex h-20 w-20 items-center justify-center rounded-full bg-v2-sage text-white shadow-v2"
+      >
+        <IoCheckmark size={40} />
+      </motion.span>
+      <h1 className="mt-7 text-[34px] md:text-[46px]">Thank you — order placed</h1>
+      <p className="mx-auto mt-3 max-w-md text-[15.5px] text-v2-muted">
+        {orderNumber ? (
+          <>
+            Your order number is <span className="font-semibold text-v2-ink">#{orderNumber}</span>. Keep it handy if you
+            contact us.
+          </>
+        ) : (
+          "Your order has been received. You’ll find it in My Orders."
+        )}
+      </p>
 
-            <motion.h1 
-                initial={{ opacity: 0, y: 20 }} 
-                animate={{ opacity: 1, y: 0 }} 
-                transition={{ delay: 0.2 }}
-                className="font-heading text-4xl md:text-5xl font-extrabold text-gray-900 mb-4"
-            >
-                Thank You for Your Order!
-            </motion.h1>
+      <ol className="mt-10 grid gap-3 text-left sm:grid-cols-3">
+        {NEXT.map(({ icon: Icon, title, desc }) => (
+          <li key={title} className="rounded-v2-lg border border-v2-line bg-v2-surface p-5">
+            <Icon className="text-v2-plum" size={22} />
+            <p className="mt-3 text-[15px] font-semibold">{title}</p>
+            <p className="mt-1 text-[13.5px] text-v2-muted">{desc}</p>
+          </li>
+        ))}
+      </ol>
 
-            <motion.p 
-                initial={{ opacity: 0, y: 20 }} 
-                animate={{ opacity: 1, y: 0 }} 
-                transition={{ delay: 0.3 }}
-                className="text-lg text-muted mb-8 max-w-lg"
-            >
-                Your order <span className="font-bold text-gray-900">#{orderNumber}</span> has been confirmed. We've sent a confirmation email with your order details and tracking information.
-            </motion.p>
-
-            <motion.div 
-                initial={{ opacity: 0, y: 20 }} 
-                animate={{ opacity: 1, y: 0 }} 
-                transition={{ delay: 0.4 }}
-                className="flex flex-col sm:flex-row gap-4 w-full sm:w-auto"
-            >
-                <Link to="/orders" className="flex items-center justify-center gap-2 px-8 py-4 bg-white border-2 border-gray-200 text-gray-800 rounded-2xl font-bold hover:border-brand hover:text-brand transition-all">
-                    <IoBagHandleOutline size={20} /> View Order History
-                </Link>
-                <Link to="/shop" className="flex items-center justify-center gap-2 px-8 py-4 bg-brand text-white rounded-2xl font-bold shadow-button hover:bg-brand-light transition-all">
-                    Continue Shopping <IoArrowForward size={20} />
-                </Link>
-            </motion.div>
-        </div>
-    );
+      <div className="mt-10 flex flex-col justify-center gap-2.5 sm:flex-row">
+        <ButtonLink to="/orders" size="lg">
+          View my orders
+        </ButtonLink>
+        <ButtonLink to="/shop" size="lg" variant="secondary">
+          Continue shopping <IoArrowForward />
+        </ButtonLink>
+      </div>
+      </div>
+    </Container>
+  );
 };
 
-export default OrderConfirmation;
+export default OrderConfirmationPage;
