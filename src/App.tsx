@@ -1,11 +1,33 @@
 import React, { lazy, Suspense, useState } from "react";
-import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { BrowserRouter, Routes, Route, useLocation } from "react-router-dom";
 import { useEffect } from "react";
 import { loadProducts } from "./data/products";
 import { FaWhatsapp } from "react-icons/fa";
 import { ToastContainer } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 import { storefrontRoutes } from "./routes";
+import { SUPPORT_WHATSAPP } from "./config";
+
+/**
+ * Floating WhatsApp chat for shoppers. Desktop only (lg+): on phones it would
+ * cover products and prices, so the header shows a WhatsApp icon instead.
+ * Never shown inside the admin panel.
+ */
+const WhatsAppFab = () => {
+  const { pathname } = useLocation();
+  if (pathname.toLowerCase().startsWith("/admin")) return null;
+  return (
+    <a
+      href={`https://wa.me/${SUPPORT_WHATSAPP}`}
+      target="_blank"
+      rel="noopener noreferrer"
+      aria-label="Chat on WhatsApp"
+      className="fixed bottom-6 right-6 z-[9999] hidden h-14 w-14 items-center justify-center rounded-full bg-green-500 text-white shadow-lg transition-all duration-300 hover:scale-110 hover:bg-green-600 lg:flex"
+    >
+      <FaWhatsapp className="text-3xl" />
+    </a>
+  );
+};
 
 const AdminLayout = lazy(() => import("./components/AdminLayout"));
 const AdminProtectedRoute = lazy(
@@ -111,15 +133,7 @@ function App() {
           theme="light"
         />
 
-        <a
-          href="https://wa.me/916354245275"
-          target="_blank"
-          rel="noopener noreferrer"
-          aria-label="Chat on WhatsApp"
-          className="fixed bottom-6 right-6 z-[9999] flex h-14 w-14 items-center justify-center rounded-full bg-green-500 text-white shadow-lg transition-all duration-300 hover:scale-110 hover:bg-green-600"
-        >
-          <FaWhatsapp className="text-3xl" />
-        </a>
+        <WhatsAppFab />
       </Suspense>
     </BrowserRouter>
   );

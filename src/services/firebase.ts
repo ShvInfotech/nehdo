@@ -24,18 +24,21 @@ export let messaging: Messaging | null = null;
 export const messagingReady: Promise<Messaging | null> =
   typeof window === "undefined"
     ? Promise.resolve(null)
-    : isSupported()
-        .then((supported) => {
-          if (supported && "serviceWorker" in navigator) {
-            try {
-              messaging = getMessaging(app);
-            } catch (e) {
-              console.warn("Firebase messaging initialization skipped:", e);
-            }
+    : (async () => {
+        try {
+          const supported = await isSupported();
+          if (
+            supported &&
+            "serviceWorker" in navigator &&
+            (location.protocol === "https:" || location.hostname === "localhost")
+          ) {
+            messaging = getMessaging(app);
           }
-          return messaging;
-        })
-        .catch(() => null);
+        } catch (e) {
+          console.warn("Firebase messaging initialization skipped:", e);
+        }
+        return messaging;
+      })();
 
 /** FCM device token for push notifications, or null when unsupported / denied. */
 export const getDeviceToken = async (): Promise<string | null> => {

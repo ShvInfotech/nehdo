@@ -48,9 +48,9 @@ export const PaymentMarks: React.FC<{ className?: string }> = ({ className }) =>
     <p className="flex items-center justify-center gap-1.5 text-[12.5px] text-v2-muted">
       <IoLockClosedOutline className="text-v2-sage" /> Secure checkout by Razorpay
     </p>
-    <ul className="mt-2.5 flex flex-wrap justify-center gap-1.5" aria-label="Accepted payment methods">
+    <ul className="mx-auto mt-2.5 grid max-w-[300px] grid-cols-3 gap-1.5" aria-label="Accepted payment methods">
       {PAYMENT_METHODS.map((m) => (
-        <li key={m} className="rounded-md border border-v2-line bg-v2-surface px-2 py-0.5 text-[11px] font-semibold text-v2-muted">
+        <li key={m} className="truncate rounded-md border border-v2-line bg-v2-surface px-2 py-1 text-center text-[11px] font-semibold text-v2-muted">
           {m}
         </li>
       ))}

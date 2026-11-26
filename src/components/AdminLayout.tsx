@@ -151,7 +151,7 @@ const AdminLayout = () => {
         <div className="flex h-full flex-col bg-brand-dark text-white">
             <div className="flex h-16 shrink-0 items-center justify-between px-5">
                 <Link to="/admin" className="flex items-center gap-2.5">
-                    <img src={`${import.meta.env.BASE_URL}images/nehdo-logo.png`} alt="Nehdo" className="h-7 w-auto" />
+                    <img src={`${import.meta.env.BASE_URL}images/nehdo-logo.png`} alt="Nehdo" style={{ filter: "brightness(0) invert(1)" }} className="h-7 w-auto" />
                     <span className="rounded-md bg-white/10 px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-[0.14em] text-white/80">Admin</span>
                 </Link>
                 <button

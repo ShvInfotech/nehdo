@@ -14,6 +14,7 @@ import {
   IoRemove,
   IoShieldCheckmarkOutline,
   IoStar,
+  IoStarHalf,
 } from "react-icons/io5";
 import { useProductDetail, type ProductReview } from "../hooks/useProductDetail";
 import { Badge, Breadcrumbs, Button, ButtonLink, Container, Price, Section, SectionHeader, Skeleton } from "../components/ui";
@@ -254,14 +255,18 @@ const ProductView: React.FC<{ id: string }> = ({ id }) => {
 
 /* ── Pieces ──────────────────────────────────────────────────── */
 
-/** True once the main CTA has scrolled above the viewport (mobile only uses it). */
+/** True while the main CTA is outside the viewport (the bar itself is phone-only). */
 function useStickyBar(ref: React.RefObject<HTMLElement | null>, enabled: boolean) {
   const [show, setShow] = useState(false);
   useEffect(() => {
     if (!enabled) return;
     const check = () => {
       const el = ref.current;
-      if (el) setShow(el.getBoundingClientRect().bottom < 0);
+      if (!el) return;
+      // show whenever the main buttons are off-screen — above (scrolled past)
+      // or below (photo fills the first screen on phones)
+      const r = el.getBoundingClientRect();
+      setShow(r.bottom < 0 || r.top > window.innerHeight - 72);
     };
     check();
     window.addEventListener("scroll", check, { passive: true });
@@ -348,13 +353,23 @@ const Accordion: React.FC<{ title: string; defaultOpen?: boolean; children: Reac
   </details>
 );
 
-const Stars: React.FC<{ value: number; size?: number }> = ({ value, size = 14 }) => (
-  <span className="inline-flex gap-0.5 text-[#F5A524]" aria-label={`${value.toFixed(1)} out of 5 stars`}>
-    {Array.from({ length: 5 }).map((_, i) => (
-      <IoStar key={i} size={size} className={i < Math.round(value) ? "" : "opacity-25"} />
-    ))}
-  </span>
-);
+/** Rounded to the nearest half star, so 4.5 shows 4½ (not 5). */
+const Stars: React.FC<{ value: number; size?: number }> = ({ value, size = 14 }) => {
+  const r = Math.round(value * 2) / 2;
+  return (
+    <span className="inline-flex gap-0.5 text-[#F5A524]" aria-label={`${value.toFixed(1)} out of 5 stars`}>
+      {Array.from({ length: 5 }).map((_, i) =>
+        i < Math.floor(r) ? (
+          <IoStar key={i} size={size} />
+        ) : i < r ? (
+          <IoStarHalf key={i} size={size} />
+        ) : (
+          <IoStar key={i} size={size} className="opacity-25" />
+        ),
+      )}
+    </span>
+  );
+};
 
 const Reviews: React.FC<{ reviews: ProductReview[]; loading: boolean; avg: number }> = ({ reviews, loading, avg }) => {
   const [showAll, setShowAll] = useState(false);

@@ -35,7 +35,7 @@ const Footer: React.FC = () => (
     <div className="mx-auto max-w-[1320px] px-4 pb-8 pt-14 sm:px-6 md:pt-20 lg:px-10">
       <div className="grid gap-10 md:grid-cols-12">
         <div className="md:col-span-4">
-          <img src={`${import.meta.env.BASE_URL}images/nehdo-logo.png`} alt="Nehdo Wellness" className="h-9 w-auto" />
+          <img src={`${import.meta.env.BASE_URL}images/nehdo-logo.png`} alt="Nehdo Wellness" style={{ filter: "brightness(0) invert(1)" }} className="h-9 w-auto" />
           <p className="mt-5 max-w-sm text-[15px] leading-relaxed text-white/70">
             Sexual wellness, without the awkwardness. Genuine products, honest guidance, and packaging that keeps it
             between you and your doorstep.

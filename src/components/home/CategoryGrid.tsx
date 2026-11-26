@@ -7,12 +7,21 @@ import { Container, Img, Section, SectionHeader, Skeleton } from "../ui";
 const CategoryGrid: React.FC = () => {
   const { categories, loading } = useHomeCategories();
   if (!loading && categories.length === 0) return null;
+  // desktop columns follow the count (max 6) so a few categories still fill the row
+  const n = loading ? 6 : Math.min(Math.max(categories.length, 2), 6);
+  const cols = {
+    2: "md:grid-cols-2 lg:grid-cols-2",
+    3: "md:grid-cols-3 lg:grid-cols-3",
+    4: "md:grid-cols-4 lg:grid-cols-4",
+    5: "md:grid-cols-4 lg:grid-cols-5",
+    6: "md:grid-cols-4 lg:grid-cols-6",
+  }[n];
 
   return (
     <Section tight>
       <Container>
         <SectionHeader title="Browse categories" action={{ label: "View all", to: "/shop" }} />
-        <div className="v2-no-scrollbar -mx-4 flex gap-3 overflow-x-auto px-4 sm:-mx-6 sm:px-6 md:mx-0 md:grid md:grid-cols-4 md:gap-4 md:overflow-visible md:px-0 lg:grid-cols-6">
+        <div className={`v2-no-scrollbar -mx-4 flex gap-3 overflow-x-auto px-4 sm:-mx-6 sm:px-6 md:mx-0 md:grid md:gap-4 md:overflow-visible md:px-0 ${cols}`}>
           {loading
             ? Array.from({ length: 6 }).map((_, i) => (
                 <div key={i} className="w-[38%] shrink-0 md:w-auto">

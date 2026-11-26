@@ -60,7 +60,7 @@ const AdminLogin = () => {
             <div className="relative hidden overflow-hidden bg-brand-dark p-12 text-white lg:flex lg:flex-col lg:justify-between">
                 <div aria-hidden className="absolute -right-24 -top-24 h-96 w-96 rounded-full bg-brand blur-2xl" />
                 <div aria-hidden className="absolute -bottom-32 left-10 h-80 w-80 rounded-full bg-accent/40 blur-3xl" />
-                <img src={`${import.meta.env.BASE_URL}images/nehdo-logo.png`} alt="Nehdo" className="relative h-10 w-auto self-start" />
+                <img src={`${import.meta.env.BASE_URL}images/nehdo-logo.png`} alt="Nehdo" style={{ filter: "brightness(0) invert(1)" }} className="relative h-10 w-auto self-start" />
                 <div className="relative max-w-md">
                     <p className="text-[12px] font-semibold uppercase tracking-[0.16em] text-white/50">Admin portal</p>
                     <h1 className="mt-3 text-[40px] leading-[1.05] text-white">Run your store from one place.</h1>

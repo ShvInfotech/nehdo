@@ -8,13 +8,14 @@ import {
   IoMenuOutline,
   IoPersonOutline,
   IoSearchOutline,
+  IoLogoWhatsapp,
 } from "react-icons/io5";
 import { useCart } from "../../context/CartContext";
 import { useWishlist } from "../../context/WishlistContext";
 import { useAuth } from "../../context/AuthContext";
 import { IconButton } from "../ui";
 import { cx } from "../../lib/format";
-import { NAV, type NavItem } from "../../config";
+import { NAV, SUPPORT_WHATSAPP, type NavItem } from "../../config";
 import SearchSheet from "./SearchSheet";
 import MobileMenu from "./MobileMenu";
 import { OPEN_SEARCH_EVENT } from "./MobileTabBar";
@@ -146,6 +147,16 @@ const Header: React.FC = () => {
           <IconButton label="Open menu" className="lg:hidden" onClick={() => setMenuOpen(true)}>
             <IoMenuOutline size={24} />
           </IconButton>
+          {/* phones/tablets: WhatsApp lives here instead of a floating button that covers content */}
+          <a
+            href={`https://wa.me/${SUPPORT_WHATSAPP}`}
+            target="_blank"
+            rel="noopener noreferrer"
+            aria-label="Chat on WhatsApp"
+            className="inline-flex h-11 w-11 items-center justify-center rounded-full text-[#1a9c4b] hover:bg-v2-sunken lg:hidden"
+          >
+            <IoLogoWhatsapp size={22} />
+          </a>
 
           <Logo className="mr-4 max-lg:absolute max-lg:left-1/2 max-lg:-translate-x-1/2" />
 

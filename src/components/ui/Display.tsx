@@ -13,7 +13,7 @@ export const Section: React.FC<React.HTMLAttributes<HTMLElement> & { tight?: boo
   className,
   tight,
   ...rest
-}) => <section className={cx(tight ? "py-10 md:py-14" : "py-14 md:py-20", className)} {...rest} />;
+}) => <section className={cx(tight ? "py-8 md:py-12" : "py-12 md:py-16", className)} {...rest} />;
 
 export const SectionHeader: React.FC<{
   eyebrow?: string;
@@ -62,21 +62,21 @@ export const Breadcrumbs: React.FC<{ items: { label: string; to?: string }[]; cl
   className,
 }) => (
   <nav aria-label="Breadcrumb" className={cx("text-[13px] text-v2-muted", className)}>
-    <ol className="flex flex-wrap items-center gap-1.5">
-      <li>
+    <ol className="flex min-w-0 items-center gap-1.5 whitespace-nowrap">
+      <li className="shrink-0">
         <Link to="/" className="-my-3 inline-block py-3 hover:text-v2-ink">
           Home
         </Link>
       </li>
       {items.map((it, i) => (
-        <li key={i} className="flex min-w-0 items-center gap-1.5">
+        <li key={i} className={cx("flex items-center gap-1.5", i === items.length - 1 ? "min-w-0" : "shrink-0")}>
           <span aria-hidden>/</span>
           {it.to && i < items.length - 1 ? (
             <Link to={it.to} className="-my-3 inline-block py-3 hover:text-v2-ink">
               {it.label}
             </Link>
           ) : (
-            <span aria-current={i === items.length - 1 ? "page" : undefined} className="max-w-[60vw] truncate text-v2-ink">
+            <span aria-current={i === items.length - 1 ? "page" : undefined} className="min-w-0 truncate text-v2-ink">
               {it.label}
             </span>
           )}
